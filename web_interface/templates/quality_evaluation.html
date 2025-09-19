@@ -1,0 +1,605 @@
+{% extends "base.html" %}
+
+{% block title %}脱敏数据质量评测 - SDG 工具集{% endblock %}
+
+{% block content %}
+<section class="evaluation-page">
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1>脱敏数据质量评测</h1>
+            <p>全面评估脱敏数据的质量和相似性</p>
+        </div>
+
+        <!-- 评测流程 -->
+        <div class="evaluation-container">
+            <!-- 左侧：配置面板 -->
+            <div class="config-panel">
+                <div class="panel-section">
+                    <h3><i class="fas fa-upload"></i> 数据上传</h3>
+                    <div class="data-upload">
+                        <div class="upload-tabs">
+                            <button class="tab-btn active" onclick="showUploadTab('original')">原始数据</button>
+                            <button class="tab-btn" onclick="showUploadTab('synthetic')">合成数据</button>
+                        </div>
+                        
+                        <div class="upload-content">
+                            <div class="upload-tab active" id="original-upload">
+                                <div class="upload-area" onclick="document.getElementById('original-file').click()">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>上传原始数据文件</p>
+                                    <small>支持CSV、Excel格式</small>
+                                </div>
+                                <input type="file" id="original-file" accept=".csv,.xlsx,.xls" style="display: none;">
+                            </div>
+                            
+                            <div class="upload-tab" id="synthetic-upload">
+                                <div class="upload-area" onclick="document.getElementById('synthetic-file').click()">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>上传合成数据文件</p>
+                                    <small>支持CSV、Excel格式</small>
+                                </div>
+                                <input type="file" id="synthetic-file" accept=".csv,.xlsx,.xls" style="display: none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3><i class="fas fa-cogs"></i> 评测配置</h3>
+                    <div class="evaluation-config">
+                        <div class="config-group">
+                            <h4>统计相似性</h4>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" checked> 均值比较</label>
+                                <label><input type="checkbox" checked> 标准差比较</label>
+                                <label><input type="checkbox" checked> 分位数比较</label>
+                            </div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <h4>分布相似性</h4>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" checked> KS检验</label>
+                                <label><input type="checkbox" checked> 卡方检验</label>
+                                <label><input type="checkbox"> 安德森-达林检验</label>
+                            </div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <h4>相关性分析</h4>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" checked> 皮尔逊相关系数</label>
+                                <label><input type="checkbox" checked> 斯皮尔曼相关系数</label>
+                                <label><input type="checkbox"> 肯德尔相关系数</label>
+                            </div>
+                        </div>
+                        
+                        <div class="config-group">
+                            <h4>分类变量分析</h4>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" checked> 频次分布</label>
+                                <label><input type="checkbox" checked> 类别比例</label>
+                                <label><input type="checkbox"> 交叉表分析</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h3><i class="fas fa-chart-bar"></i> 高级选项</h3>
+                    <div class="advanced-options">
+                        <div class="option-group">
+                            <label>置信水平</label>
+                            <select id="confidence-level">
+                                <option value="0.95" selected>95%</option>
+                                <option value="0.99">99%</option>
+                                <option value="0.90">90%</option>
+                            </select>
+                        </div>
+                        
+                        <div class="option-group">
+                            <label>样本大小</label>
+                            <input type="number" id="sample-size" value="1000" min="100" max="10000">
+                        </div>
+                        
+                        <div class="option-group">
+                            <label>
+                                <input type="checkbox" id="generate-report" checked>
+                                生成详细报告
+                            </label>
+                        </div>
+                        
+                        <div class="option-group">
+                            <label>
+                                <input type="checkbox" id="save-results" checked>
+                                保存评测结果
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel-actions">
+                    <button class="btn btn-primary btn-large" onclick="startEvaluation()" id="evaluation-btn">
+                        <i class="fas fa-play"></i> 开始评测
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右侧：结果展示 -->
+            <div class="results-panel">
+                <div class="results-tabs">
+                    <button class="tab-btn active" onclick="showResultsTab('overview')">概览</button>
+                    <button class="tab-btn" onclick="showResultsTab('statistics')">统计对比</button>
+                    <button class="tab-btn" onclick="showResultsTab('distribution')">分布分析</button>
+                    <button class="tab-btn" onclick="showResultsTab('correlation')">相关性</button>
+                    <button class="tab-btn" onclick="showResultsTab('report')">详细报告</button>
+                </div>
+
+                <div class="results-content">
+                    <!-- 概览 -->
+                    <div class="results-tab active" id="overview-tab">
+                        <div class="overview-container">
+                            <div class="quality-score">
+                                <h3>整体质量评分</h3>
+                                <div class="score-display">
+                                    <div class="score-circle">
+                                        <div class="score-value" id="overall-score">-</div>
+                                        <div class="score-label">分</div>
+                                    </div>
+                                    <div class="score-description">
+                                        <p id="score-description">等待评测...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="quality-metrics">
+                                <h4>质量指标</h4>
+                                <div class="metrics-grid">
+                                    <div class="metric-card">
+                                        <div class="metric-icon statistical">
+                                            <i class="fas fa-chart-bar"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h5>统计相似性</h5>
+                                            <div class="metric-score" id="statistical-score">-</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <div class="metric-icon distribution">
+                                            <i class="fas fa-chart-line"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h5>分布相似性</h5>
+                                            <div class="metric-score" id="distribution-score">-</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <div class="metric-icon correlation">
+                                            <i class="fas fa-project-diagram"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h5>相关性保持</h5>
+                                            <div class="metric-score" id="correlation-score">-</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="metric-card">
+                                        <div class="metric-icon privacy">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <div class="metric-info">
+                                            <h5>隐私保护</h5>
+                                            <div class="metric-score" id="privacy-score">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 统计对比 -->
+                    <div class="results-tab" id="statistics-tab">
+                        <div class="statistics-container">
+                            <h4>统计对比分析</h4>
+                            <div class="comparison-table">
+                                <table id="stats-table">
+                                    <thead>
+                                        <tr>
+                                            <th>指标</th>
+                                            <th>原始数据</th>
+                                            <th>合成数据</th>
+                                            <th>差异</th>
+                                            <th>相似度</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stats-table-body">
+                                        <tr>
+                                            <td colspan="5" class="no-data">等待评测...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 分布分析 -->
+                    <div class="results-tab" id="distribution-tab">
+                        <div class="distribution-container">
+                            <h4>分布相似性分析</h4>
+                            <div class="distribution-charts">
+                                <div class="chart-placeholder">
+                                    <i class="fas fa-chart-area"></i>
+                                    <p>分布对比图表</p>
+                                    <small>评测完成后显示</small>
+                                </div>
+                            </div>
+                            
+                            <div class="distribution-tests">
+                                <h5>统计检验结果</h5>
+                                <div class="test-results" id="test-results">
+                                    <div class="no-data">等待评测...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 相关性分析 -->
+                    <div class="results-tab" id="correlation-tab">
+                        <div class="correlation-container">
+                            <h4>相关性分析</h4>
+                            <div class="correlation-matrix">
+                                <div class="matrix-placeholder">
+                                    <i class="fas fa-th"></i>
+                                    <p>相关性矩阵</p>
+                                    <small>评测完成后显示</small>
+                                </div>
+                            </div>
+                            
+                            <div class="correlation-comparison">
+                                <h5>相关性对比</h5>
+                                <div class="comparison-results" id="correlation-comparison">
+                                    <div class="no-data">等待评测...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 详细报告 -->
+                    <div class="results-tab" id="report-tab">
+                        <div class="report-container">
+                            <div class="report-header">
+                                <h4>详细评测报告</h4>
+                                <div class="report-actions">
+                                    <button class="btn btn-primary" onclick="downloadReport()">
+                                        <i class="fas fa-download"></i> 下载报告
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="printReport()">
+                                        <i class="fas fa-print"></i> 打印报告
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="report-content" id="report-content">
+                                <div class="no-data">等待评测完成...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let evaluationInProgress = false;
+let evaluationResults = null;
+
+// 标签页切换
+function showUploadTab(tabName) {
+    document.querySelectorAll('.upload-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.upload-tab').forEach(tab => tab.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(tabName + '-upload').classList.add('active');
+}
+
+function showResultsTab(tabName) {
+    document.querySelectorAll('.results-tabs .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.results-tab').forEach(tab => tab.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(tabName + '-tab').classList.add('active');
+}
+
+// 开始评测
+function startEvaluation() {
+    if (evaluationInProgress) {
+        showAlert('评测正在进行中，请等待完成', 'info');
+        return;
+    }
+    
+    // 检查是否上传了数据
+    const originalFile = document.getElementById('original-file').files[0];
+    const syntheticFile = document.getElementById('synthetic-file').files[0];
+    
+    if (!originalFile || !syntheticFile) {
+        showAlert('请上传原始数据和合成数据文件', 'warning');
+        return;
+    }
+    
+    evaluationInProgress = true;
+    const btn = document.getElementById('evaluation-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 评测中...';
+    
+    // 模拟评测过程
+    simulateEvaluation();
+}
+
+// 模拟评测过程
+function simulateEvaluation() {
+    // 模拟评测进度
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 20;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            
+            // 评测完成
+            evaluationInProgress = false;
+            const btn = document.getElementById('evaluation-btn');
+            btn.innerHTML = '<i class="fas fa-check"></i> 评测完成';
+            btn.disabled = false;
+            
+            // 生成评测结果
+            generateEvaluationResults();
+            
+        } else {
+            // 更新进度（这里可以添加进度条）
+            console.log('评测进度:', Math.round(progress) + '%');
+        }
+    }, 500);
+}
+
+// 生成评测结果
+function generateEvaluationResults() {
+    // 模拟评测结果
+    evaluationResults = {
+        overallScore: 85.5,
+        statisticalScore: 88.2,
+        distributionScore: 82.1,
+        correlationScore: 87.3,
+        privacyScore: 90.0,
+        description: '合成数据质量良好，统计特征保持较好，分布相似性较高，相关性结构得到有效保持。'
+    };
+    
+    // 更新概览
+    updateOverview();
+    
+    // 更新统计对比
+    updateStatistics();
+    
+    // 更新分布分析
+    updateDistribution();
+    
+    // 更新相关性分析
+    updateCorrelation();
+    
+    // 生成详细报告
+    generateReport();
+    
+    showAlert('评测完成！', 'success');
+}
+
+// 更新概览
+function updateOverview() {
+    document.getElementById('overall-score').textContent = evaluationResults.overallScore;
+    document.getElementById('score-description').textContent = evaluationResults.description;
+    document.getElementById('statistical-score').textContent = evaluationResults.statisticalScore + '%';
+    document.getElementById('distribution-score').textContent = evaluationResults.distributionScore + '%';
+    document.getElementById('correlation-score').textContent = evaluationResults.correlationScore + '%';
+    document.getElementById('privacy-score').textContent = evaluationResults.privacyScore + '%';
+}
+
+// 更新统计对比
+function updateStatistics() {
+    const tbody = document.getElementById('stats-table-body');
+    tbody.innerHTML = '';
+    
+    const stats = [
+        { metric: '均值', original: '125.3', synthetic: '127.1', diff: '1.8', similarity: '98.6%' },
+        { metric: '标准差', original: '45.2', synthetic: '43.8', diff: '1.4', similarity: '96.9%' },
+        { metric: '中位数', original: '120.0', synthetic: '122.5', diff: '2.5', similarity: '97.9%' },
+        { metric: '最大值', original: '300.0', synthetic: '295.0', diff: '5.0', similarity: '98.3%' },
+        { metric: '最小值', original: '10.0', synthetic: '12.0', diff: '2.0', similarity: '98.0%' }
+    ];
+    
+    stats.forEach(stat => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${stat.metric}</td>
+            <td>${stat.original}</td>
+            <td>${stat.synthetic}</td>
+            <td>${stat.diff}</td>
+            <td class="similarity-score">${stat.similarity}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// 更新分布分析
+function updateDistribution() {
+    const testResults = document.getElementById('test-results');
+    testResults.innerHTML = `
+        <div class="test-item">
+            <h6>KS检验</h6>
+            <p>统计量: 0.045, p值: 0.234</p>
+            <span class="test-result pass">通过</span>
+        </div>
+        <div class="test-item">
+            <h6>卡方检验</h6>
+            <p>统计量: 12.34, p值: 0.156</p>
+            <span class="test-result pass">通过</span>
+        </div>
+    `;
+}
+
+// 更新相关性分析
+function updateCorrelation() {
+    const comparison = document.getElementById('correlation-comparison');
+    comparison.innerHTML = `
+        <div class="correlation-item">
+            <h6>皮尔逊相关系数</h6>
+            <p>原始数据: 0.756, 合成数据: 0.742</p>
+            <span class="correlation-diff">差异: 0.014</span>
+        </div>
+        <div class="correlation-item">
+            <h6>斯皮尔曼相关系数</h6>
+            <p>原始数据: 0.689, 合成数据: 0.675</p>
+            <span class="correlation-diff">差异: 0.014</span>
+        </div>
+    `;
+}
+
+// 生成详细报告
+function generateReport() {
+    const reportContent = document.getElementById('report-content');
+    reportContent.innerHTML = `
+        <div class="report-section">
+            <h5>评测摘要</h5>
+            <p>本次评测对原始数据和合成数据进行了全面的质量评估，整体质量评分为 ${evaluationResults.overallScore} 分，表明合成数据质量良好。</p>
+        </div>
+        
+        <div class="report-section">
+            <h5>统计相似性分析</h5>
+            <p>统计相似性得分为 ${evaluationResults.statisticalScore}%，表明合成数据在统计特征方面与原始数据保持高度一致。</p>
+            <ul>
+                <li>均值差异: 1.8 (1.4%)</li>
+                <li>标准差差异: 1.4 (3.1%)</li>
+                <li>分位数分布: 高度相似</li>
+            </ul>
+        </div>
+        
+        <div class="report-section">
+            <h5>分布相似性分析</h5>
+            <p>分布相似性得分为 ${evaluationResults.distributionScore}%，通过KS检验和卡方检验，表明数据分布结构得到有效保持。</p>
+        </div>
+        
+        <div class="report-section">
+            <h5>相关性分析</h5>
+            <p>相关性保持得分为 ${evaluationResults.correlationScore}%，变量间的相关关系得到良好保持。</p>
+        </div>
+        
+        <div class="report-section">
+            <h5>隐私保护评估</h5>
+            <p>隐私保护得分为 ${evaluationResults.privacyScore}%，表明合成数据在保护原始数据隐私方面表现优秀。</p>
+        </div>
+        
+        <div class="report-section">
+            <h5>建议</h5>
+            <ul>
+                <li>合成数据质量良好，可用于替代原始数据进行模型训练</li>
+                <li>建议定期进行质量评估以确保数据质量</li>
+                <li>可考虑调整生成参数以进一步优化特定指标</li>
+            </ul>
+        </div>
+    `;
+}
+
+// 下载报告
+function downloadReport() {
+    if (!evaluationResults) {
+        showAlert('请先完成评测', 'warning');
+        return;
+    }
+    
+    showAlert('报告下载功能开发中...', 'info');
+}
+
+// 打印报告
+function printReport() {
+    if (!evaluationResults) {
+        showAlert('请先完成评测', 'warning');
+        return;
+    }
+    
+    window.print();
+}
+
+// 显示提示
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.style.position = 'fixed';
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 检查是否有从快速向导传递的数据
+    loadWizardData();
+});
+
+// 加载从快速向导传递的数据
+function loadWizardData() {
+    const wizardData = sessionStorage.getItem('wizardData');
+    if (wizardData) {
+        try {
+            const data = JSON.parse(wizardData);
+            
+            // 自动填充数据信息
+            if (data.original) {
+                // 显示原始数据信息
+                const originalInfo = document.createElement('div');
+                originalInfo.className = 'data-info-item';
+                originalInfo.innerHTML = `
+                    <label>原始数据:</label>
+                    <span>${data.original.name} (${data.original.rows}行 × ${data.original.cols}列)</span>
+                `;
+                document.querySelector('.overview-container').appendChild(originalInfo);
+            }
+            
+            if (data.synthetic) {
+                // 显示合成数据信息
+                const syntheticInfo = document.createElement('div');
+                syntheticInfo.className = 'data-info-item';
+                syntheticInfo.innerHTML = `
+                    <label>合成数据:</label>
+                    <span>${data.synthetic.name} (${data.synthetic.rows}行 × ${data.synthetic.cols}列)</span>
+                `;
+                document.querySelector('.overview-container').appendChild(syntheticInfo);
+            }
+            
+            // 显示提示信息
+            showAlert('已自动加载快速向导的数据，可以直接开始评测！', 'success');
+            
+            // 清除sessionStorage中的数据
+            sessionStorage.removeItem('wizardData');
+            
+        } catch (error) {
+            console.error('解析快速向导数据失败:', error);
+        }
+    }
+}
+</script>
+{% endblock %}

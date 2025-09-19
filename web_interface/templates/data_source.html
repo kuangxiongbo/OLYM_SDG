@@ -1,0 +1,590 @@
+{% extends "base.html" %}
+
+{% block title %}数据源管理 - SDG{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h1><i class="fas fa-database"></i> 数据源管理</h1>
+                <p>配置和管理各种数据源连接</p>
+            </div>
+
+            <!-- 数据源配置卡片 -->
+            <div class="config-section">
+                <div class="config-card">
+                    <div class="config-header" onclick="toggleDataSourceForm()">
+                        <h3><i class="fas fa-plus-circle"></i> 添加新数据源</h3>
+                        <button class="toggle-btn" id="toggle-btn">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                    </div>
+                    <div class="config-content" id="config-content" style="display: none;">
+                        <div class="form-group">
+                            <label for="datasource-name">数据源名称</label>
+                            <input type="text" id="datasource-name" class="form-control" placeholder="输入数据源名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-type">数据源类型</label>
+                            <select id="datasource-type" class="form-control" onchange="updateFormFields()">
+                                <option value="mysql">MySQL数据库</option>
+                                <option value="postgresql">PostgreSQL数据库</option>
+                                <option value="mongodb">MongoDB数据库</option>
+                                <option value="oracle">Oracle数据库</option>
+                                <option value="sqlserver">SQL Server数据库</option>
+                                <option value="api">API接口</option>
+                                <option value="file">文件系统</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-host">主机地址</label>
+                            <input type="text" id="datasource-host" class="form-control" placeholder="输入主机地址或IP">
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-port">端口号</label>
+                            <input type="number" id="datasource-port" class="form-control" placeholder="输入端口号">
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-database">数据库名</label>
+                            <input type="text" id="datasource-database" class="form-control" placeholder="输入数据库名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-username">用户名</label>
+                            <input type="text" id="datasource-username" class="form-control" placeholder="输入用户名">
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-password">密码</label>
+                            <input type="password" id="datasource-password" class="form-control" placeholder="输入密码">
+                        </div>
+                        <div class="form-group" id="api-url-group" style="display: none;">
+                            <label for="datasource-api-url">API地址</label>
+                            <input type="url" id="datasource-api-url" class="form-control" placeholder="输入API地址">
+                        </div>
+                        <div class="form-group" id="file-path-group" style="display: none;">
+                            <label for="datasource-file-path">文件路径</label>
+                            <input type="text" id="datasource-file-path" class="form-control" placeholder="输入文件路径">
+                        </div>
+                        <div class="form-group">
+                            <label for="datasource-description">描述</label>
+                            <textarea id="datasource-description" class="form-control" rows="3" placeholder="输入数据源描述"></textarea>
+                        </div>
+                        <div class="config-actions">
+                            <button class="btn btn-primary" onclick="testDataSource()">
+                                <i class="fas fa-vial"></i> 测试连接
+                            </button>
+                            <button class="btn btn-success" onclick="saveDataSource()">
+                                <i class="fas fa-save"></i> 保存数据源
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据源统计 -->
+            <div class="datasource-stats">
+                <div class="stats-card">
+                    <div class="stats-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stats-info">
+                        <h4 id="total-datasources">0</h4>
+                        <p>总数据源</p>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stats-info">
+                        <h4 id="connected-datasources">0</h4>
+                        <p>已连接</p>
+                    </div>
+                </div>
+                <div class="stats-card">
+                    <div class="stats-icon warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stats-info">
+                        <h4 id="disconnected-datasources">0</h4>
+                        <p>未连接</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已配置的数据源列表 -->
+            <div class="datasource-list">
+                <div class="list-header">
+                    <h3><i class="fas fa-list"></i> 已配置的数据源</h3>
+                    <div class="list-actions">
+                        <button class="btn btn-secondary" onclick="refreshAllConnections()">
+                            <i class="fas fa-sync"></i> 刷新所有连接
+                        </button>
+                        <button class="btn btn-danger" onclick="deleteAllDataSources()">
+                            <i class="fas fa-trash"></i> 清空所有
+                        </button>
+                    </div>
+                </div>
+                <div class="datasource-grid" id="datasource-grid">
+                    <!-- 数据源卡片将在这里动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 数据源管理
+let dataSources = [];
+
+// 页面加载时恢复数据源列表
+document.addEventListener('DOMContentLoaded', function() {
+    loadDataSources();
+    updateDataSourceGrid();
+    updateStats();
+});
+
+// 切换数据源表单显示/隐藏
+function toggleDataSourceForm() {
+    const content = document.getElementById('config-content');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const icon = toggleBtn.querySelector('i');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.className = 'fas fa-chevron-up';
+    } else {
+        content.style.display = 'none';
+        icon.className = 'fas fa-chevron-down';
+    }
+}
+
+// 测试数据源连接
+function testDataSource() {
+    const name = document.getElementById('datasource-name').value;
+    const type = document.getElementById('datasource-type').value;
+    const host = document.getElementById('datasource-host').value;
+    const port = document.getElementById('datasource-port').value;
+    const database = document.getElementById('datasource-database').value;
+    const username = document.getElementById('datasource-username').value;
+    const password = document.getElementById('datasource-password').value;
+    
+    if (!name || !host || !port || !database || !username || !password) {
+        showAlert('请填写完整的数据源配置信息', 'warning');
+        return;
+    }
+    
+    showAlert('正在测试数据源连接...', 'info');
+    
+    // 调用真实的API测试连接
+    fetch('/api/datasource/test', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            type: type,
+            host: host,
+            port: port,
+            database: database,
+            username: username,
+            password: password
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showAlert('数据源连接测试成功！', 'success');
+        } else {
+            showAlert(`连接测试失败: ${result.error}`, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('连接测试错误:', error);
+        showAlert(`网络错误: ${error.message}`, 'error');
+    });
+}
+
+// 保存数据源
+function saveDataSource() {
+    const name = document.getElementById('datasource-name').value;
+    const type = document.getElementById('datasource-type').value;
+    const host = document.getElementById('datasource-host').value;
+    const port = document.getElementById('datasource-port').value;
+    const database = document.getElementById('datasource-database').value;
+    const username = document.getElementById('datasource-username').value;
+    const password = document.getElementById('datasource-password').value;
+    const apiUrl = document.getElementById('datasource-api-url').value;
+    const filePath = document.getElementById('datasource-file-path').value;
+    const description = document.getElementById('datasource-description').value;
+    
+    // 验证必填字段
+    if (!name) {
+        showAlert('请输入数据源名称', 'warning');
+        return;
+    }
+    
+    if (type === 'api' && !apiUrl) {
+        showAlert('请输入API地址', 'warning');
+        return;
+    }
+    
+    if (type === 'file' && !filePath) {
+        showAlert('请输入文件路径', 'warning');
+        return;
+    }
+    
+    if (type !== 'api' && type !== 'file' && (!host || !port || !database || !username || !password)) {
+        showAlert('请填写完整的数据源配置信息', 'warning');
+        return;
+    }
+    
+    const dataSource = {
+        id: Date.now().toString(),
+        name: name,
+        type: type,
+        host: host || '',
+        port: port || '',
+        database: database || '',
+        username: username || '',
+        password: password || '',
+        apiUrl: apiUrl || '',
+        filePath: filePath || '',
+        description: description,
+        status: 'connected',
+        createdAt: new Date().toISOString()
+    };
+    
+    dataSources.push(dataSource);
+    saveDataSources();
+    updateDataSourceGrid();
+    updateStats();
+    clearForm();
+    
+    showAlert('数据源保存成功！', 'success');
+}
+
+// 删除数据源
+function deleteDataSource(id) {
+    if (confirm('确定要删除这个数据源吗？')) {
+        dataSources = dataSources.filter(ds => ds.id !== id);
+        saveDataSources();
+        updateDataSourceGrid();
+        showAlert('数据源已删除', 'info');
+    }
+}
+
+// 编辑数据源
+function editDataSource(id) {
+    const dataSource = dataSources.find(ds => ds.id === id);
+    if (dataSource) {
+        document.getElementById('datasource-name').value = dataSource.name;
+        document.getElementById('datasource-type').value = dataSource.type;
+        document.getElementById('datasource-host').value = dataSource.host || '';
+        document.getElementById('datasource-port').value = dataSource.port || '';
+        document.getElementById('datasource-database').value = dataSource.database || '';
+        document.getElementById('datasource-username').value = dataSource.username || '';
+        document.getElementById('datasource-password').value = dataSource.password || '';
+        document.getElementById('datasource-api-url').value = dataSource.apiUrl || '';
+        document.getElementById('datasource-file-path').value = dataSource.filePath || '';
+        document.getElementById('datasource-description').value = dataSource.description || '';
+        
+        // 更新表单字段显示
+        updateFormFields();
+        
+        // 滚动到表单顶部
+        document.querySelector('.config-card').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+// 测试数据源连接
+function testDataSourceConnection(id) {
+    const dataSource = dataSources.find(ds => ds.id === id);
+    if (dataSource) {
+        showAlert(`正在测试 ${dataSource.name} 的连接...`, 'info');
+        
+        // 调用真实的API测试连接
+        fetch('/api/datasource/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                type: dataSource.type,
+                host: dataSource.host,
+                port: dataSource.port,
+                database: dataSource.database,
+                username: dataSource.username,
+                password: dataSource.password
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                dataSource.status = 'connected';
+                saveDataSources();
+                updateDataSourceGrid();
+                showAlert(`${dataSource.name} 连接测试成功！`, 'success');
+            } else {
+                dataSource.status = 'disconnected';
+                saveDataSources();
+                updateDataSourceGrid();
+                showAlert(`${dataSource.name} 连接测试失败: ${result.error}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('连接测试错误:', error);
+            dataSource.status = 'disconnected';
+            saveDataSources();
+            updateDataSourceGrid();
+            showAlert(`${dataSource.name} 网络错误: ${error.message}`, 'error');
+        });
+    }
+}
+
+// 更新数据源网格
+function updateDataSourceGrid() {
+    const grid = document.getElementById('datasource-grid');
+    
+    if (dataSources.length === 0) {
+        grid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-database"></i>
+                <h4>暂无数据源</h4>
+                <p>请添加您的第一个数据源</p>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = dataSources.map(ds => `
+        <div class="datasource-card">
+            <div class="datasource-header">
+                <div class="datasource-icon">
+                    <i class="fas fa-${getDataSourceIcon(ds.type)}"></i>
+                </div>
+                <div class="datasource-info">
+                    <h4>${ds.name}</h4>
+                    <p>${getDataSourceTypeName(ds.type)}</p>
+                </div>
+                <div class="datasource-status">
+                    <span class="status-badge ${ds.status === 'connected' ? 'success' : 'warning'}">
+                        ${ds.status === 'connected' ? '已连接' : '未连接'}
+                    </span>
+                </div>
+            </div>
+            <div class="datasource-details">
+                ${ds.type === 'api' ? `
+                <div class="detail-item">
+                    <span class="detail-label">API地址:</span>
+                    <span class="detail-value">${ds.apiUrl}</span>
+                </div>
+                ` : ds.type === 'file' ? `
+                <div class="detail-item">
+                    <span class="detail-label">文件路径:</span>
+                    <span class="detail-value">${ds.filePath}</span>
+                </div>
+                ` : `
+                <div class="detail-item">
+                    <span class="detail-label">主机:</span>
+                    <span class="detail-value">${ds.host}:${ds.port}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">数据库:</span>
+                    <span class="detail-value">${ds.database}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">用户:</span>
+                    <span class="detail-value">${ds.username}</span>
+                </div>
+                `}
+                ${ds.description ? `
+                <div class="detail-item">
+                    <span class="detail-label">描述:</span>
+                    <span class="detail-value">${ds.description}</span>
+                </div>
+                ` : ''}
+            </div>
+            <div class="datasource-actions">
+                <button class="btn btn-sm btn-primary" onclick="testDataSourceConnection('${ds.id}')">
+                    <i class="fas fa-vial"></i> 测试
+                </button>
+                <button class="btn btn-sm btn-secondary" onclick="editDataSource('${ds.id}')">
+                    <i class="fas fa-edit"></i> 编辑
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteDataSource('${ds.id}')">
+                    <i class="fas fa-trash"></i> 删除
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 获取数据源图标
+function getDataSourceIcon(type) {
+    const icons = {
+        'mysql': 'database',
+        'postgresql': 'database',
+        'mongodb': 'database',
+        'oracle': 'database',
+        'sqlserver': 'database',
+        'api': 'plug',
+        'file': 'folder'
+    };
+    return icons[type] || 'database';
+}
+
+// 获取数据源类型名称
+function getDataSourceTypeName(type) {
+    const names = {
+        'mysql': 'MySQL数据库',
+        'postgresql': 'PostgreSQL数据库',
+        'mongodb': 'MongoDB数据库',
+        'oracle': 'Oracle数据库',
+        'sqlserver': 'SQL Server数据库',
+        'api': 'API接口',
+        'file': '文件系统'
+    };
+    return names[type] || type;
+}
+
+// 保存数据源到localStorage
+function saveDataSources() {
+    localStorage.setItem('data_sources', JSON.stringify(dataSources));
+}
+
+// 从localStorage加载数据源
+function loadDataSources() {
+    const saved = localStorage.getItem('data_sources');
+    if (saved) {
+        dataSources = JSON.parse(saved);
+    }
+}
+
+// 清空表单
+function clearForm() {
+    document.getElementById('datasource-name').value = '';
+    document.getElementById('datasource-type').value = 'mysql';
+    document.getElementById('datasource-host').value = '';
+    document.getElementById('datasource-port').value = '';
+    document.getElementById('datasource-database').value = '';
+    document.getElementById('datasource-username').value = '';
+    document.getElementById('datasource-password').value = '';
+    document.getElementById('datasource-api-url').value = '';
+    document.getElementById('datasource-file-path').value = '';
+    document.getElementById('datasource-description').value = '';
+    
+    // 重置表单字段显示
+    updateFormFields();
+}
+
+// 更新表单字段显示
+function updateFormFields() {
+    const type = document.getElementById('datasource-type').value;
+    const apiGroup = document.getElementById('api-url-group');
+    const fileGroup = document.getElementById('file-path-group');
+    const hostGroup = document.querySelector('label[for="datasource-host"]').parentElement;
+    const portGroup = document.querySelector('label[for="datasource-port"]').parentElement;
+    const databaseGroup = document.querySelector('label[for="datasource-database"]').parentElement;
+    const usernameGroup = document.querySelector('label[for="datasource-username"]').parentElement;
+    const passwordGroup = document.querySelector('label[for="datasource-password"]').parentElement;
+    
+    // 隐藏所有特殊字段
+    apiGroup.style.display = 'none';
+    fileGroup.style.display = 'none';
+    
+    // 显示/隐藏字段
+    if (type === 'api') {
+        apiGroup.style.display = 'block';
+        hostGroup.style.display = 'none';
+        portGroup.style.display = 'none';
+        databaseGroup.style.display = 'none';
+        usernameGroup.style.display = 'none';
+        passwordGroup.style.display = 'none';
+    } else if (type === 'file') {
+        fileGroup.style.display = 'block';
+        hostGroup.style.display = 'none';
+        portGroup.style.display = 'none';
+        databaseGroup.style.display = 'none';
+        usernameGroup.style.display = 'none';
+        passwordGroup.style.display = 'none';
+    } else {
+        hostGroup.style.display = 'block';
+        portGroup.style.display = 'block';
+        databaseGroup.style.display = 'block';
+        usernameGroup.style.display = 'block';
+        passwordGroup.style.display = 'block';
+    }
+}
+
+// 更新统计信息
+function updateStats() {
+    const total = dataSources.length;
+    const connected = dataSources.filter(ds => ds.status === 'connected').length;
+    const disconnected = total - connected;
+    
+    document.getElementById('total-datasources').textContent = total;
+    document.getElementById('connected-datasources').textContent = connected;
+    document.getElementById('disconnected-datasources').textContent = disconnected;
+}
+
+// 刷新所有连接
+function refreshAllConnections() {
+    if (dataSources.length === 0) {
+        showAlert('没有数据源需要刷新', 'info');
+        return;
+    }
+    
+    showAlert('正在刷新所有数据源连接...', 'info');
+    
+    let completed = 0;
+    dataSources.forEach((ds, index) => {
+        setTimeout(() => {
+            // 模拟连接测试
+            ds.status = Math.random() > 0.3 ? 'connected' : 'disconnected';
+            completed++;
+            
+            if (completed === dataSources.length) {
+                saveDataSources();
+                updateDataSourceGrid();
+                updateStats();
+                showAlert('所有数据源连接刷新完成', 'success');
+            }
+        }, index * 500);
+    });
+}
+
+// 删除所有数据源
+function deleteAllDataSources() {
+    if (dataSources.length === 0) {
+        showAlert('没有数据源需要删除', 'info');
+        return;
+    }
+    
+    if (confirm(`确定要删除所有 ${dataSources.length} 个数据源吗？此操作不可恢复！`)) {
+        dataSources = [];
+        saveDataSources();
+        updateDataSourceGrid();
+        updateStats();
+        showAlert('所有数据源已删除', 'info');
+    }
+}
+
+// 显示提示信息
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.page-header').appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

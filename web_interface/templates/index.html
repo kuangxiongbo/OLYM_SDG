@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}SDG 工具集{% endblock %}
+
+{% block content %}
+<!-- 工具集首页 -->
+<section class="tools-homepage">
+    <div class="container">
+        <!-- 标题区域 -->
+        <div class="page-header">
+            <h1>SDG 工具集</h1>
+            <p>专业的合成数据生成和质量评估工具</p>
+        </div>
+
+        <!-- 三个核心工具 -->
+        <div class="tools-grid">
+            <!-- 仿真脱敏数据AI生成器 -->
+            <div class="tool-card" onclick="window.location.href='{{ url_for('quick_wizard') }}'">
+                <div class="tool-icon">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3>仿真脱敏数据AI生成器</h3>
+                <p>基于AI技术的智能数据脱敏和仿真生成工具，适用于数据隐私保护、测试数据生成、数据共享等场景</p>
+                <div class="tool-features">
+                    <span class="feature-tag">智能脱敏</span>
+                    <span class="feature-tag">隐私保护</span>
+                    <span class="feature-tag">测试数据</span>
+                </div>
+                <div class="tool-action">
+                    <button class="btn btn-primary">开始生成</button>
+                </div>
+            </div>
+
+            <!-- 脱敏数据质量评估工具 -->
+            <div class="tool-card" onclick="window.location.href='{{ url_for('quality_evaluation') }}'">
+                <div class="tool-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3>脱敏数据质量评估</h3>
+                <p>全面评估脱敏数据的质量和相似性</p>
+                <div class="tool-features">
+                    <span class="feature-tag">多维度评估</span>
+                    <span class="feature-tag">统计分析</span>
+                    <span class="feature-tag">可视化报告</span>
+                </div>
+                <div class="tool-action">
+                    <button class="btn btn-primary">开始评测</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 工具卡片悬停效果
+document.addEventListener('DOMContentLoaded', function() {
+    const toolCards = document.querySelectorAll('.tool-card');
+    
+    toolCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px)';
+            this.style.boxShadow = '0 20px 60px rgba(0, 0, 0, 0.15)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.1)';
+        });
+    });
+});
+</script>
+{% endblock %}

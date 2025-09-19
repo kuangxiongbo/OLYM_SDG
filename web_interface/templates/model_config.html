@@ -1,0 +1,367 @@
+{% extends "base.html" %}
+
+{% block title %}模型配置 - SDG Web界面{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2><i class="fas fa-cogs"></i> 模型配置</h2>
+        <p class="text-muted">配置合成数据生成模型的参数</p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-robot"></i> 选择模型类型</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">模型类型</label>
+                    <select class="form-select" id="model-type" onchange="loadModelConfig()">
+                        <option value="ctgan">CTGAN (推荐)</option>
+                        <option value="gpt">GPT (需要API密钥)</option>
+                    </select>
+                </div>
+                
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> 模型说明</h6>
+                    <ul class="mb-0">
+                        <li><strong>CTGAN</strong>: 基于GAN的表格数据生成，适合大多数场景</li>
+                        <li><strong>GPT</strong>: 基于大语言模型，适合小数据集和文本数据</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-play"></i> 生成设置</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">生成数量</label>
+                    <input type="number" class="form-control" id="num-samples" value="100" min="10" max="10000">
+                    <div class="form-text">建议不超过原始数据的10倍</div>
+                </div>
+                
+                <div class="d-grid">
+                    <button class="btn btn-primary" onclick="generateData()">
+                        <i class="fas fa-magic"></i> 生成合成数据
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-sliders-h"></i> 模型参数配置</h5>
+            </div>
+            <div class="card-body">
+                <div id="model-config-container">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-cog fa-2x mb-3"></i>
+                        <p>请选择模型类型以加载配置参数</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 参数说明 -->
+        <div class="card mt-3" id="parameter-help" style="display: none;">
+            <div class="card-header">
+                <h5><i class="fas fa-question-circle"></i> 参数说明</h5>
+            </div>
+            <div class="card-body" id="parameter-help-content">
+                <!-- 动态加载参数说明 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 生成进度模态框 -->
+<div class="modal fade" id="progressModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-magic"></i> 生成合成数据
+                </h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-spinner fa-spin fa-3x text-primary"></i>
+                </div>
+                <h5>正在生成合成数据...</h5>
+                <p class="text-muted">这可能需要几分钟时间，请耐心等待</p>
+                
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%"></div>
+                </div>
+                
+                <div id="progress-text">初始化中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSessionId = null;
+
+// 页面加载时获取会话ID
+document.addEventListener('DOMContentLoaded', function() {
+    currentSessionId = localStorage.getItem('currentSessionId');
+    if (!currentSessionId) {
+        showAlert('请先上传数据', 'warning');
+        setTimeout(() => {
+            window.location.href = '/data_source';
+        }, 2000);
+        return;
+    }
+    
+    // 加载默认模型配置
+    loadModelConfig();
+});
+
+// 加载模型配置
+function loadModelConfig() {
+    const modelType = document.getElementById('model-type').value;
+    
+    fetch('/get_model_config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({model_type: modelType})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            renderModelConfig(data.config);
+            showParameterHelp(modelType);
+        } else {
+            showAlert('加载模型配置失败: ' + data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('加载模型配置失败: ' + error, 'danger');
+    });
+}
+
+// 渲染模型配置
+function renderModelConfig(config) {
+    const container = document.getElementById('model-config-container');
+    container.innerHTML = '';
+    
+    for (const [key, config_item] of Object.entries(config)) {
+        const div = document.createElement('div');
+        div.className = 'mb-3';
+        
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        label.textContent = config_item.description || key;
+        div.appendChild(label);
+        
+        let input;
+        if (config_item.type === 'select') {
+            input = document.createElement('select');
+            input.className = 'form-select';
+            input.name = key;
+            input.value = config_item.default;
+            
+            for (const option of config_item.options) {
+                const optionElement = document.createElement('option');
+                optionElement.value = option;
+                optionElement.textContent = option;
+                input.appendChild(optionElement);
+            }
+        } else if (config_item.type === 'password') {
+            input = document.createElement('input');
+            input.type = 'password';
+            input.className = 'form-control';
+            input.name = key;
+            input.value = config_item.default;
+            input.placeholder = '请输入' + (config_item.description || key);
+        } else if (config_item.type === 'number') {
+            input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'form-control';
+            input.name = key;
+            input.value = config_item.default;
+            if (config_item.min !== undefined) input.min = config_item.min;
+            if (config_item.max !== undefined) input.max = config_item.max;
+            if (config_item.step !== undefined) input.step = config_item.step;
+        } else {
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control';
+            input.name = key;
+            input.value = config_item.default;
+        }
+        
+        div.appendChild(input);
+        container.appendChild(div);
+    }
+}
+
+// 显示参数说明
+function showParameterHelp(modelType) {
+    const helpContainer = document.getElementById('parameter-help-content');
+    const helpDiv = document.getElementById('parameter-help');
+    
+    let helpContent = '';
+    
+    if (modelType === 'ctgan') {
+        helpContent = `
+            <h6>CTGAN参数说明</h6>
+            <ul>
+                <li><strong>epochs</strong>: 训练轮数，越多训练越充分但耗时越长</li>
+                <li><strong>batch_size</strong>: 批次大小，影响训练稳定性和速度</li>
+                <li><strong>generator_lr</strong>: 生成器学习率，控制生成器学习速度</li>
+                <li><strong>discriminator_lr</strong>: 判别器学习率，控制判别器学习速度</li>
+                <li><strong>generator_decay</strong>: 生成器权重衰减，防止过拟合</li>
+                <li><strong>discriminator_decay</strong>: 判别器权重衰减，防止过拟合</li>
+                <li><strong>generator_dim</strong>: 生成器网络维度，格式如(256, 256)</li>
+                <li><strong>discriminator_dim</strong>: 判别器网络维度，格式如(256, 256)</li>
+            </ul>
+            <div class="alert alert-warning">
+                <strong>建议设置：</strong>
+                <ul class="mb-0">
+                    <li>小数据集：epochs=50, batch_size=500</li>
+                    <li>大数据集：epochs=100, batch_size=1000</li>
+                    <li>学习率通常保持默认值</li>
+                </ul>
+            </div>
+        `;
+    } else if (modelType === 'gpt') {
+        helpContent = `
+            <h6>GPT参数说明</h6>
+            <ul>
+                <li><strong>openai_API_key</strong>: OpenAI API密钥，必填</li>
+                <li><strong>openai_API_url</strong>: API地址，支持自定义端点</li>
+                <li><strong>gpt_model</strong>: 模型版本，gpt-4效果更好但成本更高</li>
+                <li><strong>temperature</strong>: 创造性参数，0-2之间，越小越保守</li>
+                <li><strong>max_tokens</strong>: 最大生成token数，影响生成数据量</li>
+                <li><strong>timeout</strong>: 请求超时时间，网络慢时可增加</li>
+                <li><strong>query_batch</strong>: 批次大小，影响处理效率</li>
+            </ul>
+            <div class="alert alert-info">
+                <strong>使用提示：</strong>
+                <ul class="mb-0">
+                    <li>需要有效的OpenAI API密钥</li>
+                    <li>支持自定义API端点（如本地部署的模型）</li>
+                    <li>适合小数据集和文本数据</li>
+                </ul>
+            </div>
+        `;
+    }
+    
+    helpContainer.innerHTML = helpContent;
+    helpDiv.style.display = 'block';
+}
+
+// 生成数据
+function generateData() {
+    if (!currentSessionId) {
+        showAlert('请先上传数据', 'warning');
+        return;
+    }
+    
+    const numSamples = document.getElementById('num-samples').value;
+    const modelType = document.getElementById('model-type').value;
+    
+    // 收集模型配置
+    const modelConfig = {model_type: modelType};
+    const configInputs = document.querySelectorAll('#model-config-container input, #model-config-container select');
+    
+    configInputs.forEach(input => {
+        if (input.type === 'number') {
+            modelConfig[input.name] = parseFloat(input.value);
+        } else {
+            modelConfig[input.name] = input.value;
+        }
+    });
+    
+    // 验证必填参数
+    if (modelType === 'gpt' && (!modelConfig.openai_API_key || modelConfig.openai_API_key.trim() === '')) {
+        showAlert('GPT模型需要API密钥', 'warning');
+        return;
+    }
+    
+    // 显示进度模态框
+    const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+    progressModal.show();
+    
+    // 模拟进度更新
+    let progress = 0;
+    const progressBar = document.querySelector('.progress-bar');
+    const progressText = document.getElementById('progress-text');
+    
+    const progressInterval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress > 90) progress = 90;
+        
+        progressBar.style.width = progress + '%';
+        
+        if (progress < 30) {
+            progressText.textContent = '正在初始化模型...';
+        } else if (progress < 60) {
+            progressText.textContent = '正在训练模型...';
+        } else if (progress < 90) {
+            progressText.textContent = '正在生成合成数据...';
+        }
+    }, 1000);
+    
+    fetch('/generate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            session_id: currentSessionId,
+            model_config: modelConfig,
+            num_samples: parseInt(numSamples)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        progressText.textContent = '生成完成！';
+        
+        setTimeout(() => {
+            progressModal.hide();
+            
+            if (data.success) {
+                showAlert('合成数据生成成功！', 'success');
+                
+                // 保存结果信息
+                localStorage.setItem('lastResult', JSON.stringify({
+                    result_id: data.result_id,
+                    synthetic_data_info: data.synthetic_data_info,
+                    result_files: data.result_files
+                }));
+                
+                // 跳转到结果页面
+                setTimeout(() => {
+                    window.location.href = '/results';
+                }, 1500);
+            } else {
+                showAlert('生成失败: ' + data.message, 'danger');
+            }
+        }, 1000);
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        progressModal.hide();
+        showAlert('生成失败: ' + error, 'danger');
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block title %}系统配置 - SDG{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h1><i class="fas fa-cogs"></i> 系统配置</h1>
+                <p>配置系统参数、数据源设置和全局选项</p>
+            </div>
+
+            <!-- 系统设置卡片 -->
+            <div class="config-section">
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-database"></i> 数据源配置</h3>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="default-connector">默认数据连接器</label>
+                            <select id="default-connector" class="form-control">
+                                <option value="csv">CSV文件</option>
+                                <option value="excel">Excel文件</option>
+                                <option value="dataframe">DataFrame</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="max-file-size">最大文件大小(MB)</label>
+                            <input type="number" id="max-file-size" class="form-control" value="100" min="1" max="1000">
+                        </div>
+                        <div class="form-group">
+                            <label for="allowed-extensions">允许的文件格式</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="csv" checked> CSV (.csv)
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="xlsx" checked> Excel (.xlsx)
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="json"> JSON (.json)
+                                </label>
+                                <label class="checkbox-item">
+                                    <input type="checkbox" value="parquet"> Parquet (.parquet)
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="data-encoding">默认编码格式</label>
+                            <select id="data-encoding" class="form-control">
+                                <option value="utf-8">UTF-8</option>
+                                <option value="gbk">GBK</option>
+                                <option value="gb2312">GB2312</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-chart-bar"></i> 合成模型配置</h3>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="default-model">默认合成模型</label>
+                            <select id="default-model" class="form-control">
+                                <option value="ctgan">CTGAN</option>
+                                <option value="gaussian-copula">Gaussian Copula</option>
+                                <option value="gpt">GPT模型</option>
+                                <option value="glm">GLM模型</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="default-epochs">默认训练轮数</label>
+                            <input type="number" id="default-epochs" class="form-control" value="300" min="10" max="1000">
+                        </div>
+                        <div class="form-group">
+                            <label for="default-batch-size">默认批次大小</label>
+                            <input type="number" id="default-batch-size" class="form-control" value="500" min="10" max="5000">
+                        </div>
+                        <div class="form-group">
+                            <label for="default-generator-lr">生成器学习率</label>
+                            <input type="number" id="default-generator-lr" class="form-control" value="0.0002" step="0.0001" min="0.0001" max="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="default-discriminator-lr">判别器学习率</label>
+                            <input type="number" id="default-discriminator-lr" class="form-control" value="0.0002" step="0.0001" min="0.0001" max="0.01">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-shield-alt"></i> 安全与隐私设置</h3>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="data-retention">数据保留时间(天)</label>
+                            <input type="number" id="data-retention" class="form-control" value="30" min="1" max="365">
+                        </div>
+                        <div class="form-group">
+                            <label for="auto-cleanup">自动清理临时文件</label>
+                            <div class="switch-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="auto-cleanup" checked>
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="switch-label">启用自动清理</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="log-level">日志级别</label>
+                            <select id="log-level" class="form-control">
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO" selected>INFO</option>
+                                <option value="WARNING">WARNING</option>
+                                <option value="ERROR">ERROR</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="enable-anonymization">启用数据匿名化</label>
+                            <div class="switch-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="enable-anonymization" checked>
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="switch-label">自动匿名化敏感数据</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-server"></i> 服务器配置</h3>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="server-port">服务器端口</label>
+                            <input type="number" id="server-port" class="form-control" value="5000" min="1000" max="65535">
+                        </div>
+                        <div class="form-group">
+                            <label for="debug-mode">调试模式</label>
+                            <div class="switch-container">
+                                <label class="switch">
+                                    <input type="checkbox" id="debug-mode">
+                                    <span class="slider"></span>
+                                </label>
+                                <span class="switch-label">启用调试模式</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="max-workers">最大工作线程数</label>
+                            <input type="number" id="max-workers" class="form-control" value="4" min="1" max="16">
+                        </div>
+                        <div class="form-group">
+                            <label for="request-timeout">请求超时时间(秒)</label>
+                            <input type="number" id="request-timeout" class="form-control" value="300" min="30" max="1800">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统状态 -->
+            <div class="status-overview">
+                <h3><i class="fas fa-info-circle"></i> 系统状态</h3>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-icon system">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="status-info">
+                            <h4>服务器状态</h4>
+                            <p id="server-status">运行中</p>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-icon memory">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <div class="status-info">
+                            <h4>内存使用</h4>
+                            <p id="memory-usage">正常</p>
+                        </div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-icon storage">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <div class="status-info">
+                            <h4>存储空间</h4>
+                            <p id="storage-usage">充足</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="config-actions">
+                <button class="btn btn-primary" onclick="saveAllConfig()">
+                    <i class="fas fa-save"></i> 保存所有配置
+                </button>
+                <button class="btn btn-secondary" onclick="resetConfig()">
+                    <i class="fas fa-undo"></i> 重置配置
+                </button>
+                <button class="btn btn-info" onclick="exportConfig()">
+                    <i class="fas fa-download"></i> 导出配置
+                </button>
+                <button class="btn btn-warning" onclick="importConfig()">
+                    <i class="fas fa-upload"></i> 导入配置
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 保存所有配置
+function saveAllConfig() {
+    const config = {
+        dataSource: {
+            defaultConnector: document.getElementById('default-connector').value,
+            maxFileSize: document.getElementById('max-file-size').value,
+            allowedExtensions: Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value),
+            encoding: document.getElementById('data-encoding').value
+        },
+        model: {
+            defaultModel: document.getElementById('default-model').value,
+            epochs: document.getElementById('default-epochs').value,
+            batchSize: document.getElementById('default-batch-size').value,
+            generatorLr: document.getElementById('default-generator-lr').value,
+            discriminatorLr: document.getElementById('default-discriminator-lr').value
+        },
+        security: {
+            dataRetention: document.getElementById('data-retention').value,
+            autoCleanup: document.getElementById('auto-cleanup').checked,
+            logLevel: document.getElementById('log-level').value,
+            enableAnonymization: document.getElementById('enable-anonymization').checked
+        },
+        server: {
+            port: document.getElementById('server-port').value,
+            debugMode: document.getElementById('debug-mode').checked,
+            maxWorkers: document.getElementById('max-workers').value,
+            requestTimeout: document.getElementById('request-timeout').value
+        }
+    };
+    
+    localStorage.setItem('system_config', JSON.stringify(config));
+    showAlert('系统配置已保存', 'success');
+}
+
+// 重置配置
+function resetConfig() {
+    if (confirm('确定要重置所有配置到默认值吗？')) {
+        localStorage.removeItem('system_config');
+        location.reload();
+    }
+}
+
+// 导出配置
+function exportConfig() {
+    const config = localStorage.getItem('system_config');
+    if (config) {
+        const blob = new Blob([config], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sdg_system_config.json';
+        a.click();
+        URL.revokeObjectURL(url);
+        showAlert('配置已导出', 'success');
+    } else {
+        showAlert('没有找到配置数据', 'warning');
+    }
+}
+
+// 导入配置
+function importConfig() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    localStorage.setItem('system_config', JSON.stringify(config));
+                    loadConfig();
+                    showAlert('配置已导入', 'success');
+                } catch (error) {
+                    showAlert('配置文件格式错误', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+    };
+    input.click();
+}
+
+// 加载配置
+function loadConfig() {
+    const config = localStorage.getItem('system_config');
+    if (config) {
+        const parsedConfig = JSON.parse(config);
+        
+        // 数据源配置
+        if (parsedConfig.dataSource) {
+            document.getElementById('default-connector').value = parsedConfig.dataSource.defaultConnector || 'csv';
+            document.getElementById('max-file-size').value = parsedConfig.dataSource.maxFileSize || 100;
+            document.getElementById('data-encoding').value = parsedConfig.dataSource.encoding || 'utf-8';
+            
+            // 设置允许的文件格式
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = parsedConfig.dataSource.allowedExtensions?.includes(cb.value) || false;
+            });
+        }
+        
+        // 模型配置
+        if (parsedConfig.model) {
+            document.getElementById('default-model').value = parsedConfig.model.defaultModel || 'ctgan';
+            document.getElementById('default-epochs').value = parsedConfig.model.epochs || 300;
+            document.getElementById('default-batch-size').value = parsedConfig.model.batchSize || 500;
+            document.getElementById('default-generator-lr').value = parsedConfig.model.generatorLr || 0.0002;
+            document.getElementById('default-discriminator-lr').value = parsedConfig.model.discriminatorLr || 0.0002;
+        }
+        
+        // 安全配置
+        if (parsedConfig.security) {
+            document.getElementById('data-retention').value = parsedConfig.security.dataRetention || 30;
+            document.getElementById('auto-cleanup').checked = parsedConfig.security.autoCleanup !== false;
+            document.getElementById('log-level').value = parsedConfig.security.logLevel || 'INFO';
+            document.getElementById('enable-anonymization').checked = parsedConfig.security.enableAnonymization !== false;
+        }
+        
+        // 服务器配置
+        if (parsedConfig.server) {
+            document.getElementById('server-port').value = parsedConfig.server.port || 5000;
+            document.getElementById('debug-mode').checked = parsedConfig.server.debugMode || false;
+            document.getElementById('max-workers').value = parsedConfig.server.maxWorkers || 4;
+            document.getElementById('request-timeout').value = parsedConfig.server.requestTimeout || 300;
+        }
+    }
+}
+
+// 显示提示信息
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.page-header').appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+
+// 页面加载时恢复配置
+document.addEventListener('DOMContentLoaded', function() {
+    loadConfig();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,3925 @@
+{% extends "base.html" %}
+
+{% block title %}仿真脱敏数据AI生成器 - SDG 工具集{% endblock %}
+
+{% block content %}
+<section class="wizard-page">
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1>仿真脱敏数据AI生成器</h1>
+            <p>基于AI技术的智能数据脱敏和仿真生成工具，适用于数据隐私保护、测试数据生成、数据共享等场景</p>
+        </div>
+
+        <!-- 向导步骤 -->
+        <div class="wizard-container">
+            <!-- 步骤指示器 -->
+            <div class="wizard-steps">
+                <div class="step active" data-step="1">
+                    <div class="step-number">1</div>
+                    <div class="step-title">数据源</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-number">2</div>
+                    <div class="step-title">模型配置</div>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-number">3</div>
+                    <div class="step-title">生成数据</div>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-number">4</div>
+                    <div class="step-title">质量评估</div>
+                </div>
+                <div class="step" data-step="5">
+                    <div class="step-number">5</div>
+                    <div class="step-title">下载结果</div>
+                </div>
+            </div>
+
+            <!-- 步骤内容 -->
+            <div class="wizard-content">
+                <!-- 步骤1: 数据源 -->
+                <div class="step-content active" id="step-1">
+                    <h3>步骤1: 配置数据源</h3>
+                    <div class="data-source-options">
+                        <div class="option-card" onclick="selectDataSource('upload')">
+                            <div class="option-icon">
+                                <i class="fas fa-upload"></i>
+                            </div>
+                            <h4>上传文件</h4>
+                            <p>上传CSV或Excel文件</p>
+                        </div>
+                        <div class="option-card" onclick="selectDataSource('datasource')">
+                            <div class="option-icon">
+                                <i class="fas fa-server"></i>
+                            </div>
+                            <h4>数据源</h4>
+                            <p>连接外部数据源</p>
+                        </div>
+                        <div class="option-card" onclick="selectDataSource('demo')">
+                            <div class="option-icon">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <h4>全新合成数据</h4>
+                            <p>使用内置演示数据</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件上传区域 -->
+                    <div class="upload-area" id="upload-area" style="display: none;">
+                        <div class="upload-box" onclick="document.getElementById('file-input').click()" 
+                             ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>点击或拖拽文件到此处</p>
+                            <small>支持CSV、Excel格式，最大50MB</small>
+                            <div class="upload-progress" id="upload-progress" style="display: none;">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="upload-progress-fill"></div>
+                                </div>
+                                <div class="progress-text" id="upload-progress-text">上传中...</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+                        
+                        <!-- 文件信息显示 -->
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <div class="file-details">
+                                <div class="file-icon">
+                                    <i class="fas fa-file-csv"></i>
+                                </div>
+                                <div class="file-details-info">
+                                    <h5 id="file-name">-</h5>
+                                    <p id="file-size">-</p>
+                                    <p id="file-type">-</p>
+                                </div>
+                                <div class="file-actions">
+                                    <button class="btn btn-sm btn-primary" onclick="previewFile()">
+                                        <i class="fas fa-eye"></i> 预览
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="removeFile()">
+                                        <i class="fas fa-trash"></i> 移除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 数据源配置区域 -->
+                    <div class="datasource-config" id="datasource-config" style="display: none;">
+                        <h4>选择数据源</h4>
+                        <div class="datasource-selection">
+                            <div class="datasource-tabs">
+                                <button class="tab-btn active" onclick="showDataSourceTab('existing')">已配置数据源</button>
+                                <button class="tab-btn" onclick="showDataSourceTab('new')">新建数据源</button>
+                            </div>
+                            
+                            <!-- 已配置数据源列表 -->
+                            <div class="tab-content active" id="existing-datasource-tab">
+                                <div class="existing-datasources" id="existing-datasources">
+                                    <!-- 已配置的数据源将在这里显示 -->
+                                </div>
+                                
+                                <!-- 表选择区域 -->
+                                <div class="table-selection" id="table-selection" style="display: none;">
+                                    <h5>选择数据表</h5>
+                                    <div class="table-list" id="table-list">
+                                        <!-- 表列表将在这里显示 -->
+                                    </div>
+                                    <div class="table-actions">
+                                        <button class="btn btn-secondary" onclick="refreshTables()">
+                                            <i class="fas fa-sync"></i> 刷新表列表
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="datasource-actions">
+                                    <button class="btn btn-secondary" onclick="refreshDataSources()">
+                                        <i class="fas fa-sync"></i> 刷新列表
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 新建数据源表单 -->
+                            <div class="tab-content" id="new-datasource-tab">
+                                <div class="form-group">
+                                    <label for="datasource-type">数据源类型</label>
+                                    <select id="datasource-type" class="form-control">
+                                        <option value="mysql">MySQL数据库</option>
+                                        <option value="postgresql">PostgreSQL数据库</option>
+                                        <option value="mongodb">MongoDB数据库</option>
+                                        <option value="oracle">Oracle数据库</option>
+                                        <option value="sqlserver">SQL Server数据库</option>
+                                        <option value="api">API接口</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="datasource-host">主机地址</label>
+                                    <input type="text" id="datasource-host" class="form-control" placeholder="输入主机地址或IP">
+                                </div>
+                                <div class="form-group">
+                                    <label for="datasource-port">端口号</label>
+                                    <input type="number" id="datasource-port" class="form-control" placeholder="输入端口号">
+                                </div>
+                                <div class="form-group">
+                                    <label for="datasource-database">数据库名</label>
+                                    <input type="text" id="datasource-database" class="form-control" placeholder="输入数据库名称">
+                                </div>
+                                <div class="form-group">
+                                    <label for="datasource-username">用户名</label>
+                                    <input type="text" id="datasource-username" class="form-control" placeholder="输入用户名">
+                                </div>
+                                <div class="form-group">
+                                    <label for="datasource-password">密码</label>
+                                    <input type="password" id="datasource-password" class="form-control" placeholder="输入密码">
+                                </div>
+                                <div class="form-group">
+                                    <label for="datasource-table">表名/集合名</label>
+                                    <input type="text" id="datasource-table" class="form-control" placeholder="输入要查询的表名或集合名">
+                                </div>
+                                <button class="btn btn-primary" onclick="testDataSource()">测试连接</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 全新合成数据选择区域 -->
+                    <div class="demo-data-selection" id="demo-data-selection" style="display: none;">
+                        <h4>选择全新合成数据类型</h4>
+                        <div class="demo-categories-horizontal">
+                            <div class="demo-category-horizontal" onclick="selectDemoData('customer')">
+                                <div class="demo-icon">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </div>
+                                <div class="demo-content">
+                                    <h5>客户订单数据</h5>
+                                    <p>包含客户信息、订单详情、产品信息等</p>
+                                    <div class="demo-stats">
+                                        <span>15个字段</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="demo-category-horizontal" onclick="selectDemoData('financial')">
+                                <div class="demo-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="demo-content">
+                                    <h5>金融数据</h5>
+                                    <p>包含交易记录、账户信息、风险评估等</p>
+                                    <div class="demo-stats">
+                                        <span>12个字段</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="demo-category-horizontal" onclick="selectDemoData('medical')">
+                                <div class="demo-icon">
+                                    <i class="fas fa-heartbeat"></i>
+                                </div>
+                                <div class="demo-content">
+                                    <h5>医疗数据</h5>
+                                    <p>包含患者信息、诊断记录、治疗方案等</p>
+                                    <div class="demo-stats">
+                                        <span>18个字段</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-actions">
+                        <button class="btn btn-secondary" onclick="goToStep(0)">返回</button>
+                        <button class="btn btn-primary" onclick="nextStep()" id="next-btn-1" disabled>下一步</button>
+                    </div>
+                </div>
+
+                <!-- 步骤2: 模型配置 -->
+                <div class="step-content" id="step-2">
+                    <h3>步骤2: 选择生成模型</h3>
+                    
+                    <!-- 左右布局容器 -->
+                    <div class="model-config-layout">
+                        <!-- 左侧：模型选择 -->
+                        <div class="model-selection-panel">
+                            <h4><i class="fas fa-robot"></i> 选择模型</h4>
+                            
+                            <!-- 已配置模型选择 -->
+                            <div class="configured-models-section">
+                                <div class="configured-models-list" id="configured-models-list">
+                                    <!-- 动态加载已配置的模型 -->
+                                </div>
+                                <div class="no-models-message" id="no-models-message" style="display: none;">
+                                    <div class="empty-state">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <p>暂无已配置的LLM模型</p>
+                                        <p class="text-muted">请先前往 <a href="/llm_config" target="_blank">大模型配置</a> 页面配置模型</p>
+                                        <div class="config-guide">
+                                            <h5>配置步骤：</h5>
+                                            <ol>
+                                                <li>点击上方链接进入大模型配置页面</li>
+                                                <li>选择要配置的模型类型（OpenAI/GLM/本地模型）</li>
+                                                <li>填写API Key、API URL等配置信息</li>
+                                                <li>点击"测试连接"验证配置</li>
+                                                <li>点击"保存配置"完成设置</li>
+                                                <li>返回快速向导即可看到已配置的模型</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 右侧：参数配置 -->
+                        <div class="model-params-panel">
+                            <h4><i class="fas fa-cogs"></i> 参数配置</h4>
+                            
+                            <!-- 模型参数配置 -->
+                            <div class="model-params" id="model-params" style="display: none;">
+                                <div class="param-group">
+                                    <label>生成数量</label>
+                                    <input type="number" id="num-samples" value="1000" min="100" max="10000">
+                                    <small class="text-muted">建议范围：100-10000条</small>
+                                </div>
+                                <div class="param-group" id="ctgan-params" style="display: none;">
+                                    <label>训练轮数</label>
+                                    <input type="number" id="epochs" value="50" min="10" max="200">
+                                    <small class="text-muted">训练轮数越多，模型效果越好，但耗时更长</small>
+                                </div>
+                                <div class="param-group" id="gpt-params" style="display: none;">
+                                    <label>温度参数</label>
+                                    <input type="number" id="temperature" value="0.7" min="0" max="2" step="0.1">
+                                    <small class="text-muted">控制生成数据的随机性，0.7为推荐值</small>
+                                </div>
+                                <div class="param-group" id="gpt-params-2" style="display: none;">
+                                    <label>最大令牌数</label>
+                                    <input type="number" id="max-tokens" value="1000" min="100" max="4000">
+                                    <small class="text-muted">控制生成文本的最大长度</small>
+                                </div>
+                            </div>
+                            
+                            <!-- 未选择模型时的提示 -->
+                            <div class="no-model-selected" id="no-model-selected">
+                                <div class="empty-state">
+                                    <i class="fas fa-mouse-pointer"></i>
+                                    <p>请先选择左侧的模型</p>
+                                    <p class="text-muted">选择模型后将显示相应的参数配置选项</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-actions">
+                        <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+                        <button class="btn btn-primary" onclick="nextStep()" id="next-btn-2" disabled>下一步</button>
+                    </div>
+                </div>
+
+                <!-- 步骤3: 生成数据 -->
+                <div class="step-content" id="step-3">
+                    <h3>步骤3: 生成合成数据</h3>
+                    <div class="generation-summary">
+                        <div class="summary-item">
+                            <label>数据源:</label>
+                            <span id="summary-data-source">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <label>模型:</label>
+                            <span id="summary-model">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <label>生成数量:</label>
+                            <span id="summary-samples">-</span>
+                        </div>
+                    </div>
+                    
+                    <!-- 字段配置区域 -->
+                    <div class="field-config-section" id="field-config-section" style="display: none;">
+                        <h4><i class="fas fa-cogs"></i> 字段配置</h4>
+                        <p class="text-muted">配置每个字段的处理方式：维持原数据、重新脱敏合成或删除字段</p>
+                        
+                        <div class="field-config-controls">
+                            <div class="config-buttons">
+                                <button class="btn btn-sm btn-outline-primary" onclick="setAllFields('keep')">
+                                    <i class="fas fa-lock"></i> 全部维持原数据
+                                </button>
+                                <button class="btn btn-sm btn-outline-success" onclick="setAllFields('regenerate')">
+                                    <i class="fas fa-shield-alt"></i> 全部重新脱敏合成
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning" onclick="setAllFields('remove')">
+                                    <i class="fas fa-trash"></i> 全部删除
+                                </button>
+                            </div>
+                            <div class="config-info">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle"></i> 
+                                    系统已自动识别字段类型，您也可以手动调整字段类型和处理方式
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <div class="field-list" id="field-list">
+                            <!-- 动态生成字段配置项 -->
+                        </div>
+                    </div>
+                    
+                    <div class="generation-controls">
+                        <button class="btn btn-primary btn-large" onclick="startGeneration()" id="generate-btn">
+                            <i class="fas fa-play"></i> 开始生成
+                        </button>
+                    </div>
+                    
+                    <div class="generation-progress" id="generation-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">准备中...</div>
+                    </div>
+                    
+                    <div class="step-actions">
+                        <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+                        <button class="btn btn-primary" onclick="nextStep()" id="next-btn-3" disabled>下一步</button>
+                    </div>
+                </div>
+
+                <!-- 步骤4: 质量评估 -->
+                <div class="step-content" id="step-4">
+                    <h3>步骤4: 质量评估</h3>
+                    <div class="evaluation-container">
+                        <div class="evaluation-summary">
+                            <div class="summary-item">
+                                <div class="summary-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div class="summary-info">
+                                    <h4>数据质量评估</h4>
+                                    <p>对生成的合成数据进行全面质量评估</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 数据信息展示 -->
+                        <div class="data-info-summary">
+                            <h4>评估数据</h4>
+                            <div class="data-info-grid">
+                                <div class="data-info-item">
+                                    <label>原始数据:</label>
+                                    <span id="original-data-info">-</span>
+                                </div>
+                                <div class="data-info-item">
+                                    <label>合成数据:</label>
+                                    <span id="synthetic-data-info">-</span>
+                                </div>
+                                <div class="data-info-item">
+                                    <label>生成模型:</label>
+                                    <span id="model-info">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 评估选项 -->
+                        <div class="evaluation-options">
+                            <h4>评估配置</h4>
+                            <div class="options-grid">
+                                <div class="option-group">
+                                    <label>
+                                        <input type="checkbox" checked> 统计相似性
+                                    </label>
+                                    <small>均值、标准差、分位数比较</small>
+                                </div>
+                                <div class="option-group">
+                                    <label>
+                                        <input type="checkbox" checked> 分布相似性
+                                    </label>
+                                    <small>KS检验、卡方检验</small>
+                                </div>
+                                <div class="option-group">
+                                    <label>
+                                        <input type="checkbox" checked> 相关性分析
+                                    </label>
+                                    <small>皮尔逊、斯皮尔曼相关系数</small>
+                                </div>
+                                <div class="option-group">
+                                    <label>
+                                        <input type="checkbox" checked> 分类变量分析
+                                    </label>
+                                    <small>频次分布、类别比例</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="evaluation-actions">
+                            <button class="btn btn-primary btn-large" onclick="startEvaluation()" id="evaluation-btn">
+                                <i class="fas fa-play"></i> 开始评估
+                            </button>
+                            <button class="btn btn-outline" onclick="viewDataPreview()">
+                                <i class="fas fa-eye"></i> 数据预览
+                            </button>
+                        </div>
+                        
+                        <!-- 评估进度 -->
+                        <div class="evaluation-progress" id="evaluation-progress" style="display: none;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="eval-progress-fill"></div>
+                            </div>
+                            <div class="progress-text" id="eval-progress-text">准备评估...</div>
+                        </div>
+                        
+                        <!-- 评估结果 -->
+                        <div class="evaluation-results" id="evaluation-results" style="display: none;">
+                            <h4>评估结果</h4>
+                            <div class="quality-score">
+                                <div class="score-circle">
+                                    <div class="score-value" id="quality-score-value">-</div>
+                                    <div class="score-label">分</div>
+                                </div>
+                                <div class="score-description" id="quality-score-desc">-</div>
+                            </div>
+                            
+                            <div class="quality-metrics">
+                                <div class="metric-item">
+                                    <label>统计相似性:</label>
+                                    <span id="statistical-score">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <label>分布相似性:</label>
+                                    <span id="distribution-score">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <label>相关性保持:</label>
+                                    <span id="correlation-score">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <label>隐私保护:</label>
+                                    <span id="privacy-score">-</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 可视化图表 -->
+                            <div class="evaluation-charts" id="evaluation-charts">
+                                <!-- 图表将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="step-actions">
+                        <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+                        <button class="btn btn-primary" onclick="nextStep()" id="next-btn-4" disabled>下一步</button>
+                    </div>
+                </div>
+
+                <!-- 步骤5: 下载结果 -->
+                <div class="step-content" id="step-5">
+                    <h3>步骤5: 下载结果</h3>
+                    <div class="download-container">
+                        <div class="download-summary">
+                            <div class="summary-item">
+                                <div class="summary-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="summary-info">
+                                    <h4>数据生成完成</h4>
+                                    <p id="final-result-stats">已生成 1000 条合成数据</p>
+                                    <p class="text-muted" id="data-source-info">使用SDG模型生成</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 质量评估结果摘要 -->
+                        <div class="quality-summary" id="quality-summary">
+                            <h4>质量评估结果</h4>
+                            <div class="quality-badge" id="quality-badge">
+                                <span class="badge-text">等待评估...</span>
+                            </div>
+                        </div>
+                        
+                        <div class="download-options">
+                            <h4>下载选项</h4>
+                            <div class="download-format">
+                                <label>文件格式:</label>
+                                <select id="download-format">
+                                    <option value="csv">CSV</option>
+                                    <option value="xlsx">Excel</option>
+                                    <option value="json">JSON</option>
+                                </select>
+                            </div>
+                            
+                            <div class="download-content">
+                                <label>
+                                    <input type="checkbox" checked> 合成数据
+                                </label>
+                                <label>
+                                    <input type="checkbox"> 质量评估报告
+                                </label>
+                                <label>
+                                    <input type="checkbox"> 生成参数配置
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="download-actions">
+                            <button class="btn btn-primary btn-large" onclick="downloadResults()" id="download-btn">
+                                <i class="fas fa-download"></i> 下载结果
+                            </button>
+                            <button class="btn btn-secondary" onclick="viewFinalPreview()">
+                                <i class="fas fa-eye"></i> 最终预览
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="step-actions">
+                        <button class="btn btn-secondary" onclick="prevStep()">上一步</button>
+                        <button class="btn btn-primary" onclick="restartWizard()">重新开始</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentStep = 1;
+let wizardData = {
+    dataSource: null,
+    model: null,
+    modelConfig: null,
+    modelType: null,
+    params: {},
+    originalData: null,
+    syntheticData: null,
+    dataInfo: null,
+    evaluationResults: null,
+    selectedDataSource: null,
+    selectedTable: null,
+    demoDataType: null
+};
+
+// 步骤导航
+function goToStep(step) {
+    if (step < 1 || step > 5) return;
+    
+    // 更新步骤指示器
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.querySelector(`[data-step="${step}"]`).classList.add('active');
+    
+    // 更新内容
+    document.querySelectorAll('.step-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`step-${step}`).classList.add('active');
+    
+    currentStep = step;
+    
+    // 在步骤2时重新加载已配置的模型
+    if (step === 2) {
+        loadConfiguredModels();
+    }
+    
+    // 更新数据信息显示
+    if (step >= 4) {
+        updateDataInfoDisplay();
+    }
+    
+    // 更新最终结果统计
+    if (step === 5) {
+        updateFinalResults();
+    }
+    
+    // 在步骤3时初始化字段配置和更新摘要
+    if (step === 3) {
+        console.log('=== 进入步骤3 ===');
+        console.log('当前wizardData状态:', JSON.stringify(wizardData, null, 2));
+        initializeFieldConfig();
+        updateSummary();
+        console.log('=== 步骤3处理完成 ===');
+    }
+}
+
+function nextStep() {
+    if (currentStep < 5) {
+        goToStep(currentStep + 1);
+        // updateSummary() 已经在 goToStep 中调用了，不需要重复调用
+    }
+}
+
+function prevStep() {
+    if (currentStep > 1) {
+        goToStep(currentStep - 1);
+    }
+}
+
+// 数据源选择
+function selectDataSource(type) {
+    wizardData.dataSource = type;
+    console.log('选择数据源:', type, 'wizardData:', wizardData);
+    
+    // 移除所有卡片的选中状态
+    document.querySelectorAll('.option-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // 添加当前选中卡片的选中状态
+    event.currentTarget.classList.add('selected');
+    
+    // 隐藏所有配置区域
+    document.getElementById('upload-area').style.display = 'none';
+    document.getElementById('datasource-config').style.display = 'none';
+    document.getElementById('demo-data-selection').style.display = 'none';
+    
+    // 显示对应的配置区域
+    if (type === 'upload') {
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea.style.setProperty('display', 'block', 'important');
+        document.getElementById('next-btn-1').disabled = false;
+    } else if (type === 'datasource') {
+        const datasourceConfig = document.getElementById('datasource-config');
+        datasourceConfig.style.setProperty('display', 'block', 'important');
+        document.getElementById('next-btn-1').disabled = false;
+    } else if (type === 'demo') {
+        const demoDataSelection = document.getElementById('demo-data-selection');
+        demoDataSelection.style.setProperty('display', 'block', 'important');
+        document.getElementById('next-btn-1').disabled = true; // 需要先选择全新合成数据类型
+    }
+}
+
+// 选择全新合成数据类型
+function selectDemoData(type) {
+    console.log('=== selectDemoData 开始 ===');
+    console.log('输入参数 type:', type);
+    console.log('调用前 wizardData:', JSON.stringify(wizardData, null, 2));
+    
+    wizardData.dataSource = 'demo'; // 确保数据源类型正确设置
+    wizardData.demoDataType = type;
+    
+    console.log('设置后 wizardData:', JSON.stringify(wizardData, null, 2));
+    
+    // 移除所有选中状态
+    document.querySelectorAll('.demo-category-horizontal').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // 添加选中状态
+    event.currentTarget.classList.add('selected');
+    
+    // 根据类型加载对应的全新合成数据
+    loadDemoData(type);
+    
+    console.log('loadDemoData 完成后 wizardData:', JSON.stringify(wizardData, null, 2));
+    
+    // 启用下一步按钮
+    document.getElementById('next-btn-1').disabled = false;
+    
+    console.log('=== selectDemoData 结束 ===');
+}
+
+// 显示数据源标签页
+function showDataSourceTab(tab) {
+    // 隐藏所有标签页内容
+    document.querySelectorAll('#datasource-config .tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // 移除所有标签按钮的active类
+    document.querySelectorAll('#datasource-config .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 显示选中的标签页
+    if (tab === 'existing') {
+        document.getElementById('existing-datasource-tab').classList.add('active');
+        document.querySelector('#datasource-config .tab-btn[onclick="showDataSourceTab(\'existing\')"]').classList.add('active');
+        loadExistingDataSources();
+    } else {
+        document.getElementById('new-datasource-tab').classList.add('active');
+        document.querySelector('#datasource-config .tab-btn[onclick="showDataSourceTab(\'new\')"]').classList.add('active');
+    }
+}
+
+// 加载已配置的数据源
+function loadExistingDataSources() {
+    const dataSources = JSON.parse(localStorage.getItem('data_sources') || '[]');
+    const container = document.getElementById('existing-datasources');
+    
+    if (dataSources.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-database"></i>
+                <h4>暂无已配置的数据源</h4>
+                <p>请先在数据源管理页面添加数据源</p>
+                <button class="btn btn-primary" onclick="window.open('/data_source', '_blank')">
+                    <i class="fas fa-external-link-alt"></i> 前往数据源管理
+                </button>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = dataSources.map(ds => `
+        <div class="datasource-item" onclick="selectExistingDataSource('${ds.id}')">
+            <div class="datasource-icon">
+                <i class="fas fa-${getDataSourceIcon(ds.type)}"></i>
+            </div>
+            <div class="datasource-info">
+                <h5>${ds.name}</h5>
+                <p>${getDataSourceTypeName(ds.type)} - ${ds.host}:${ds.port}</p>
+                <small>${ds.database}</small>
+            </div>
+            <div class="datasource-status">
+                <span class="status-badge ${ds.status === 'connected' ? 'success' : 'warning'}">
+                    ${ds.status === 'connected' ? '已连接' : '未连接'}
+                </span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 选择已配置的数据源
+function selectExistingDataSource(id) {
+    const dataSources = JSON.parse(localStorage.getItem('data_sources') || '[]');
+    const dataSource = dataSources.find(ds => ds.id === id);
+    
+    if (dataSource) {
+        wizardData.selectedDataSource = dataSource;
+        
+        // 移除所有选中状态
+        document.querySelectorAll('.datasource-item').forEach(item => {
+            item.classList.remove('selected');
+        });
+        
+        // 添加选中状态
+        event.currentTarget.classList.add('selected');
+        
+        // 显示表选择区域
+        showTableSelection(dataSource);
+        
+        showAlert(`已选择数据源: ${dataSource.name}`, 'success');
+    }
+}
+
+// 刷新数据源列表
+function refreshDataSources() {
+    loadExistingDataSources();
+    showAlert('数据源列表已刷新', 'info');
+}
+
+// 显示表选择区域
+function showTableSelection(dataSource) {
+    const tableSelection = document.getElementById('table-selection');
+    if (tableSelection) {
+        tableSelection.style.display = 'block';
+        loadTables(dataSource);
+    }
+}
+
+// 加载数据源中的表列表
+function loadTables(dataSource) {
+    const tableList = document.getElementById('table-list');
+    if (!tableList) return;
+    
+    // 显示加载状态
+    tableList.innerHTML = `
+        <div class="loading-state">
+            <i class="fas fa-spinner fa-spin"></i>
+            <h4>正在加载表列表...</h4>
+            <p>请稍候</p>
+        </div>
+    `;
+    
+    // 调用API获取真实的表列表
+    fetch('/api/datasource/tables', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            type: dataSource.type,
+            host: dataSource.host,
+            port: dataSource.port,
+            database: dataSource.database,
+            username: dataSource.username,
+            password: dataSource.password
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            const tables = result.tables;
+            
+            if (tables.length === 0) {
+                tableList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-table"></i>
+                        <h4>该数据源暂无表</h4>
+                        <p>请检查数据源配置或联系管理员</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            tableList.innerHTML = tables.map(table => `
+                <div class="table-item" onclick="selectTable('${table.name}')">
+                    <div class="table-icon">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <div class="table-info">
+                        <h6>${table.name}</h6>
+                        <p>${table.description}</p>
+                        <small>${table.rows} 行 × ${table.columns} 列</small>
+                    </div>
+                    <div class="table-status">
+                        <span class="status-badge success">可用</span>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            tableList.innerHTML = `
+                <div class="error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>加载表列表失败</h4>
+                    <p>${result.error}</p>
+                    <button class="btn btn-sm btn-primary" onclick="loadTables(wizardData.selectedDataSource)">
+                        <i class="fas fa-retry"></i> 重试
+                    </button>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('获取表列表失败:', error);
+        tableList.innerHTML = `
+            <div class="error-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>网络错误</h4>
+                <p>无法连接到服务器，请检查网络连接</p>
+                <button class="btn btn-sm btn-primary" onclick="loadTables(wizardData.selectedDataSource)">
+                    <i class="fas fa-retry"></i> 重试
+                </button>
+            </div>
+        `;
+    });
+}
+
+// 获取模拟表数据
+function getMockTables(dataSource) {
+    // 根据数据源类型返回不同的模拟表数据
+    const mockTables = {
+        'mysql': [
+            { name: 'users', description: '用户信息表', rows: 10000, columns: 8 },
+            { name: 'orders', description: '订单信息表', rows: 50000, columns: 12 },
+            { name: 'products', description: '产品信息表', rows: 5000, columns: 10 },
+            { name: 'transactions', description: '交易记录表', rows: 100000, columns: 15 }
+        ],
+        'postgresql': [
+            { name: 'customers', description: '客户信息表', rows: 15000, columns: 9 },
+            { name: 'sales', description: '销售记录表', rows: 75000, columns: 11 },
+            { name: 'inventory', description: '库存信息表', rows: 8000, columns: 7 }
+        ],
+        'oracle': [
+            { name: 'employee', description: '员工信息表', rows: 20000, columns: 12 },
+            { name: 'department', description: '部门信息表', rows: 100, columns: 5 },
+            { name: 'salary', description: '薪资记录表', rows: 60000, columns: 8 }
+        ]
+    };
+    
+    return mockTables[dataSource.type] || mockTables['mysql'];
+}
+
+// 选择表
+function selectTable(tableName) {
+    if (!wizardData.selectedDataSource) {
+        showAlert('请先选择数据源', 'warning');
+        return;
+    }
+    
+    wizardData.selectedTable = tableName;
+    
+    // 移除所有选中状态
+    document.querySelectorAll('.table-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    // 添加选中状态
+    event.currentTarget.classList.add('selected');
+    
+    // 启用下一步按钮
+    document.getElementById('next-btn-1').disabled = false;
+    
+    showAlert(`已选择表: ${tableName}`, 'success');
+    
+    // 加载表数据预览
+    loadTablePreview(tableName);
+}
+
+// 加载表数据预览
+function loadTablePreview(tableName) {
+    // 显示加载状态
+    showAlert('正在加载表数据...', 'info');
+    
+    // 调用API获取真实的表数据
+    fetch('/api/datasource/table-data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            type: wizardData.selectedDataSource.type,
+            host: wizardData.selectedDataSource.host,
+            port: wizardData.selectedDataSource.port,
+            database: wizardData.selectedDataSource.database,
+            username: wizardData.selectedDataSource.username,
+            password: wizardData.selectedDataSource.password,
+            table_name: tableName,
+            limit: 1000 // 限制获取1000行数据用于预览和训练
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            const data = result.data;
+            
+            wizardData.originalData = {
+                name: `${wizardData.selectedDataSource.name}.${tableName}`,
+                rows: result.rows,
+                cols: result.columns.length,
+                columns: result.columns, // 列名
+                fullData: data, // 完整数据集用于模型训练
+                sample: data.slice(1, 11), // 取前10行仅用于预览显示
+                validation: { warnings: [], errors: [], isValid: true }
+            };
+            
+            wizardData.dataInfo = {
+                original: wizardData.originalData,
+                synthetic: null
+            };
+            
+            console.log('表数据加载完成:', wizardData.originalData);
+            showAlert(`成功加载表数据: ${result.rows}行 × ${result.columns.length}列`, 'success');
+        } else {
+            console.error('加载表数据失败:', result.error);
+            showAlert(`加载表数据失败: ${result.error}`, 'error');
+            
+            // 如果API失败，使用模拟数据作为备选
+            const mockData = getMockTableData(tableName);
+            wizardData.originalData = {
+                name: `${wizardData.selectedDataSource.name}.${tableName}`,
+                rows: mockData.length,
+                cols: mockData[0].length,
+                columns: mockData[0],
+                fullData: mockData,
+                sample: mockData.slice(1, 11),
+                validation: { warnings: ['使用模拟数据'], errors: [], isValid: true }
+            };
+            
+            wizardData.dataInfo = {
+                original: wizardData.originalData,
+                synthetic: null
+            };
+            
+            showAlert('已使用模拟数据，请检查数据库连接', 'warning');
+        }
+    })
+    .catch(error => {
+        console.error('获取表数据失败:', error);
+        showAlert(`网络错误: ${error.message}`, 'error');
+        
+        // 网络错误时使用模拟数据
+        const mockData = getMockTableData(tableName);
+        wizardData.originalData = {
+            name: `${wizardData.selectedDataSource.name}.${tableName}`,
+            rows: mockData.length,
+            cols: mockData[0].length,
+            columns: mockData[0],
+            fullData: mockData,
+            sample: mockData.slice(1, 11),
+            validation: { warnings: ['使用模拟数据'], errors: [], isValid: true }
+        };
+        
+        wizardData.dataInfo = {
+            original: wizardData.originalData,
+            synthetic: null
+        };
+        
+        showAlert('网络错误，已使用模拟数据', 'warning');
+    });
+}
+
+// 获取模拟表数据
+function getMockTableData(tableName) {
+    const mockDataSets = {
+        'users': [
+            ['id', 'name', 'email', 'age', 'gender', 'city', 'salary', 'created_at'],
+            [1, '张三', 'zhangsan@example.com', 28, '男', '北京', 15000, '2023-01-15'],
+            [2, '李四', 'lisi@example.com', 35, '女', '上海', 20000, '2023-02-20'],
+            [3, '王五', 'wangwu@example.com', 42, '男', '广州', 18000, '2023-03-10']
+        ],
+        'orders': [
+            ['order_id', 'customer_id', 'product_id', 'quantity', 'price', 'order_date', 'status'],
+            ['ORD001', 'CUST001', 'PROD001', 2, 299.99, '2024-01-15', '已完成'],
+            ['ORD002', 'CUST002', 'PROD002', 1, 599.99, '2024-01-16', '处理中'],
+            ['ORD003', 'CUST003', 'PROD003', 3, 199.99, '2024-01-17', '已发货']
+        ],
+        'products': [
+            ['product_id', 'name', 'category', 'price', 'stock', 'description'],
+            ['PROD001', 'iPhone 15', '电子产品', 6999, 100, '最新款iPhone'],
+            ['PROD002', 'MacBook Pro', '电子产品', 12999, 50, '专业级笔记本'],
+            ['PROD003', 'Nike运动鞋', '服装鞋帽', 899, 200, '舒适运动鞋']
+        ]
+    };
+    
+    return mockDataSets[tableName] || mockDataSets['users'];
+}
+
+// 刷新表列表
+function refreshTables() {
+    if (wizardData.selectedDataSource) {
+        loadTables(wizardData.selectedDataSource);
+        showAlert('表列表已刷新', 'info');
+    } else {
+        showAlert('请先选择数据源', 'warning');
+    }
+}
+
+// 测试数据源连接
+function testDataSource() {
+    const type = document.getElementById('datasource-type').value;
+    const host = document.getElementById('datasource-host').value;
+    const port = document.getElementById('datasource-port').value;
+    const database = document.getElementById('datasource-database').value;
+    const username = document.getElementById('datasource-username').value;
+    const password = document.getElementById('datasource-password').value;
+    const table = document.getElementById('datasource-table').value;
+    
+    if (!host || !port || !database || !username || !password || !table) {
+        showAlert('请填写完整的数据源配置信息', 'warning');
+        return;
+    }
+    
+    showAlert('正在测试数据源连接...', 'info');
+    
+    // 模拟测试连接
+    setTimeout(() => {
+        showAlert('数据源连接测试成功！', 'success');
+        wizardData.datasourceConfig = {
+            type: type,
+            host: host,
+            port: port,
+            database: database,
+            username: username,
+            password: password,
+            table: table
+        };
+        
+        // 启用下一步按钮
+        document.getElementById('next-btn-1').disabled = false;
+    }, 2000);
+}
+
+// 获取数据源图标
+function getDataSourceIcon(type) {
+    const icons = {
+        'mysql': 'database',
+        'postgresql': 'database',
+        'mongodb': 'database',
+        'oracle': 'database',
+        'sqlserver': 'database',
+        'api': 'plug',
+        'file': 'folder'
+    };
+    return icons[type] || 'database';
+}
+
+// 获取数据源类型名称
+function getDataSourceTypeName(type) {
+    const names = {
+        'mysql': 'MySQL数据库',
+        'postgresql': 'PostgreSQL数据库',
+        'mongodb': 'MongoDB数据库',
+        'oracle': 'Oracle数据库',
+        'sqlserver': 'SQL Server数据库',
+        'api': 'API接口',
+        'file': '文件系统'
+    };
+    return names[type] || type;
+}
+
+// 加载全新合成数据
+function loadDemoData(type) {
+    console.log('=== loadDemoData 开始 ===');
+    console.log('输入参数 type:', type);
+    console.log('调用前 wizardData:', JSON.stringify(wizardData, null, 2));
+    
+    let demoData;
+    
+    switch(type) {
+        case 'customer':
+            demoData = {
+                name: '客户订单数据',
+                rows: 10000,
+                cols: 15,
+                columns: ['订单ID', '客户ID', '客户姓名', '客户年龄', '客户性别', '客户城市', '客户收入', '产品ID', '产品名称', '产品类别', '订单金额', '订单数量', '订单日期', '支付方式', '配送状态'],
+                sample: [
+                    ['ORD001', 'CUST001', '张三', 28, '男', '北京', 15000, 'PROD001', 'iPhone 15', '电子产品', 6999, 1, '2024-01-15', '支付宝', '已配送'],
+                    ['ORD002', 'CUST002', '李四', 35, '女', '上海', 20000, 'PROD002', 'MacBook Pro', '电子产品', 12999, 1, '2024-01-16', '微信支付', '配送中'],
+                    ['ORD003', 'CUST003', '王五', 42, '男', '广州', 18000, 'PROD003', 'Nike运动鞋', '服装鞋帽', 899, 2, '2024-01-17', '信用卡', '已配送']
+                ]
+            };
+            break;
+        case 'financial':
+            demoData = {
+                name: '金融数据',
+                rows: 5000,
+                cols: 12,
+                columns: ['交易ID', '账户ID', '客户姓名', '客户年龄', '客户职业', '交易类型', '交易金额', '交易日期', '交易时间', '风险等级', '账户余额', '信用评分'],
+                sample: [
+                    ['TXN001', 'ACC001', '张三', 28, '软件工程师', '转账', 5000, '2024-01-15', '14:30:25', '低风险', 25000, 750],
+                    ['TXN002', 'ACC002', '李四', 35, '产品经理', '消费', 1200, '2024-01-16', '09:15:10', '中风险', 18000, 680],
+                    ['TXN003', 'ACC003', '王五', 42, '销售经理', '投资', 10000, '2024-01-17', '16:45:30', '低风险', 50000, 820]
+                ]
+            };
+            break;
+        case 'medical':
+            demoData = {
+                name: '医疗数据',
+                rows: 8000,
+                cols: 18,
+                columns: ['患者ID', '患者姓名', '患者年龄', '患者性别', '患者职业', '就诊日期', '科室', '医生姓名', '症状描述', '诊断结果', '治疗方案', '药物名称', '药物剂量', '检查项目', '检查结果', '住院天数', '费用', '保险类型'],
+                sample: [
+                    ['PAT001', '张三', 28, '男', '软件工程师', '2024-01-15', '内科', '李医生', '发热咳嗽', '感冒', '药物治疗', '阿莫西林', '500mg', '血常规', '正常', 0, 150, '医保'],
+                    ['PAT002', '李四', 35, '女', '产品经理', '2024-01-16', '妇科', '王医生', '腹痛', '胃炎', '药物治疗', '奥美拉唑', '20mg', '胃镜', '轻度炎症', 0, 300, '商业保险'],
+                    ['PAT003', '王五', 42, '男', '销售经理', '2024-01-17', '骨科', '赵医生', '腰痛', '腰椎间盘突出', '物理治疗', '布洛芬', '400mg', 'CT检查', 'L4-L5突出', 3, 2000, '医保']
+                ]
+            };
+            break;
+        default:
+            demoData = {
+                name: '默认演示数据',
+                rows: 1000,
+                cols: 8,
+                columns: ['ID', '姓名', '年龄', '性别', '城市', '收入', '消费金额', '注册时间'],
+                sample: [
+                    ['001', '张三', 28, '男', '北京', 15000, 2500, '2023-01-15'],
+                    ['002', '李四', 35, '女', '上海', 20000, 3200, '2023-02-20'],
+                    ['003', '王五', 42, '男', '广州', 18000, 2800, '2023-03-10']
+                ]
+            };
+    }
+    
+    // 为演示数据添加fullData字段
+    // 演示数据需要将columns作为表头，sample作为数据行
+    demoData.fullData = [demoData.columns, ...demoData.sample];
+    
+    console.log('演示数据加载完成:', demoData);
+    console.log('字段数量:', demoData.columns.length);
+    console.log('字段列表:', demoData.columns);
+    
+    wizardData.originalData = demoData;
+    
+    wizardData.dataInfo = {
+        original: wizardData.originalData,
+        synthetic: null // 将在生成后填充
+    };
+    
+    console.log('演示数据设置完成，wizardData:', JSON.stringify(wizardData, null, 2));
+    console.log('=== loadDemoData 结束 ===');
+}
+
+// 加载已配置的模型
+function loadConfiguredModels() {
+    const modelsList = document.getElementById('configured-models-list');
+    const noModelsMessage = document.getElementById('no-models-message');
+    
+    // 从localStorage获取已配置的模型
+    const openaiConfig = JSON.parse(localStorage.getItem('openai_config') || '{}');
+    const glmConfig = JSON.parse(localStorage.getItem('glm_config') || '{}');
+    const localConfig = JSON.parse(localStorage.getItem('local_config') || '{}');
+    
+    const configuredModels = [];
+    
+    // 检查OpenAI配置
+    if (openaiConfig.key && openaiConfig.url) {
+        configuredModels.push({
+            id: 'openai',
+            name: `OpenAI ${openaiConfig.model || 'GPT'}`,
+            type: 'gpt',
+            description: `基于OpenAI ${openaiConfig.model || 'GPT'}的文本数据生成`,
+            config: openaiConfig,
+            status: '已配置'
+        });
+    }
+    
+    // 检查GLM配置
+    if (glmConfig.key && glmConfig.url) {
+        configuredModels.push({
+            id: 'glm',
+            name: `GLM ${glmConfig.model || '4'}`,
+            type: 'gpt',
+            description: `基于GLM ${glmConfig.model || '4'}的文本数据生成`,
+            config: glmConfig,
+            status: '已配置'
+        });
+    }
+    
+    // 检查本地配置
+    if (localConfig.url) {
+        configuredModels.push({
+            id: 'local',
+            name: `本地模型 ${localConfig.model || 'DeepSeek'}`,
+            type: 'gpt',
+            description: `基于本地部署的${localConfig.model || 'DeepSeek'}模型`,
+            config: localConfig,
+            status: '已配置'
+        });
+    }
+    
+    // 添加CTGAN作为默认选项
+    configuredModels.push({
+        id: 'ctgan',
+        name: 'CTGAN',
+        type: 'ctgan',
+        description: '基于生成对抗网络的表格数据生成模型',
+        config: {},
+        status: '推荐'
+    });
+    
+    // 添加GaussianCopula作为快速选项
+    configuredModels.push({
+        id: 'gaussian_copula',
+        name: 'GaussianCopula',
+        type: 'statistical',
+        description: '基于统计方法的高斯Copula模型',
+        config: {},
+        status: '快速'
+    });
+    
+    if (configuredModels.length === 0) {
+        modelsList.style.display = 'none';
+        noModelsMessage.style.display = 'block';
+    } else {
+        modelsList.style.display = 'block';
+        noModelsMessage.style.display = 'none';
+        
+        modelsList.innerHTML = '';
+        configuredModels.forEach(model => {
+            const modelCard = document.createElement('div');
+            modelCard.className = 'model-option';
+            modelCard.onclick = () => selectConfiguredModel(model);
+            
+            let statusClass = 'configured';
+            if (model.status === '推荐') {
+                statusClass = 'recommended';
+            } else if (model.status === '快速') {
+                statusClass = 'quick';
+            } else if (model.status === '已配置') {
+                statusClass = 'configured';
+            }
+            
+            modelCard.innerHTML = `
+                <input type="radio" name="model" value="${model.id}" id="model-${model.id}">
+                <label for="model-${model.id}">
+                    <div class="model-info">
+                        <h4>${model.name}</h4>
+                        <p>${model.description}</p>
+                        <span class="model-tag ${statusClass}">${model.status}</span>
+                    </div>
+                </label>
+            `;
+            
+            modelsList.appendChild(modelCard);
+        });
+    }
+}
+
+// 选择已配置的模型
+function selectConfiguredModel(model) {
+    wizardData.model = model.id;
+    wizardData.modelConfig = model.config;
+    wizardData.modelType = model.type;
+    console.log('选择已配置模型:', model, 'wizardData:', wizardData);
+    
+    // 显示参数配置面板
+    document.getElementById('model-params').style.display = 'block';
+    document.getElementById('no-model-selected').style.display = 'none';
+    
+    // 显示模型特定参数
+    document.querySelectorAll('.param-group').forEach(g => g.style.display = 'none');
+    document.getElementById('num-samples').parentElement.style.display = 'block';
+    
+    if (model.type === 'ctgan') {
+        document.getElementById('ctgan-params').style.display = 'block';
+    } else if (model.type === 'statistical') {
+        // GaussianCopula模型不需要额外参数
+        document.getElementById('ctgan-params').style.display = 'none';
+        document.getElementById('gpt-params').style.display = 'none';
+        document.getElementById('gpt-params-2').style.display = 'none';
+    } else if (model.type === 'gpt') {
+        document.getElementById('gpt-params').style.display = 'block';
+        document.getElementById('gpt-params-2').style.display = 'block';
+    }
+    
+    document.getElementById('next-btn-2').disabled = false;
+}
+
+// 模型选择（保留原函数以兼容）
+function selectModel(model) {
+    selectConfiguredModel({
+        id: model,
+        name: model === 'ctgan' ? 'CTGAN' : 'GPT',
+        type: model,
+        description: model === 'ctgan' ? '基于生成对抗网络的表格数据生成模型' : '基于大语言模型的文本数据生成',
+        config: {},
+        status: model === 'ctgan' ? '推荐' : '需要配置'
+    });
+}
+
+// 更新摘要
+function updateSummary() {
+    if (currentStep === 3) {
+        console.log('更新步骤3摘要，wizardData:', wizardData);
+        console.log('数据源类型:', wizardData.dataSource);
+        console.log('模型信息:', wizardData.model, wizardData.modelType, wizardData.modelConfig);
+        console.log('原始数据:', wizardData.originalData);
+        console.log('演示数据类型:', wizardData.demoDataType);
+        
+        // 更新数据源信息
+        let dataSourceText = '-';
+        if (wizardData.dataSource === 'demo') {
+            if (wizardData.demoDataType) {
+                const demoTypeNames = {
+                    'customer': '客户订单数据',
+                    'financial': '金融数据',
+                    'medical': '医疗数据'
+                };
+                dataSourceText = demoTypeNames[wizardData.demoDataType] || '全新合成数据';
+            } else {
+                dataSourceText = '全新合成数据';
+            }
+        } else if (wizardData.dataSource === 'upload') {
+            if (wizardData.originalData && wizardData.originalData.name) {
+                dataSourceText = wizardData.originalData.name;
+            } else {
+                dataSourceText = '上传文件';
+            }
+        } else if (wizardData.dataSource === 'datasource') {
+            if (wizardData.selectedDataSource) {
+                if (wizardData.selectedTable) {
+                    dataSourceText = `${wizardData.selectedDataSource.name}.${wizardData.selectedTable}`; // 显示数据源.表名
+                } else {
+                    dataSourceText = wizardData.selectedDataSource.name; // 显示数据源名称
+                }
+            } else {
+                dataSourceText = '数据源';
+            }
+        }
+        
+        document.getElementById('summary-data-source').textContent = dataSourceText;
+        
+        // 根据模型类型显示模型名称
+        let modelName = 'CTGAN';
+        if (wizardData.model === 'openai' && wizardData.modelConfig) {
+            modelName = `OpenAI ${wizardData.modelConfig.model || 'GPT'}`;
+        } else if (wizardData.model === 'glm' && wizardData.modelConfig) {
+            modelName = `GLM ${wizardData.modelConfig.model || '4'}`;
+        } else if (wizardData.model === 'local' && wizardData.modelConfig) {
+            modelName = `本地模型 ${wizardData.modelConfig.model || 'DeepSeek'}`;
+        } else if (wizardData.model === 'gaussian_copula' || wizardData.modelType === 'statistical') {
+            modelName = 'GaussianCopula';
+        } else if (wizardData.model === 'gpt' || wizardData.modelType === 'gpt') {
+            modelName = 'GPT';
+        } else if (wizardData.model === 'ctgan' || wizardData.modelType === 'ctgan') {
+            modelName = 'CTGAN';
+        } else if (wizardData.model) {
+            // 如果是已配置的模型，尝试从localStorage获取模型信息
+            const configuredModels = JSON.parse(localStorage.getItem('configured_models') || '[]');
+            const model = configuredModels.find(m => m.id === wizardData.model);
+            if (model) {
+                modelName = model.name;
+            } else {
+                modelName = wizardData.model;
+            }
+        }
+        
+        document.getElementById('summary-model').textContent = modelName;
+        
+        // 更新生成数量
+        const numSamplesElement = document.getElementById('num-samples');
+        const samples = numSamplesElement ? numSamplesElement.value : '100';
+        document.getElementById('summary-samples').textContent = samples + ' 条';
+        
+        console.log('摘要更新完成:', { dataSourceText, modelName, samples });
+        console.log('DOM元素检查:', {
+            dataSourceElement: document.getElementById('summary-data-source'),
+            modelElement: document.getElementById('summary-model'),
+            samplesElement: document.getElementById('summary-samples')
+        });
+        console.log('当前wizardData完整状态:', JSON.stringify(wizardData, null, 2));
+    }
+}
+
+// 开始生成
+function startGeneration() {
+    const btn = document.getElementById('generate-btn');
+    const progress = document.getElementById('generation-progress');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 生成中...';
+    progress.style.display = 'block';
+    
+    // 模拟生成过程
+    let progressValue = 0;
+    const totalSteps = 20; // 总共20步
+    const stepSize = 100 / totalSteps; // 每步5%
+    let currentStep = 0;
+    
+    const interval = setInterval(() => {
+        currentStep++;
+        progressValue = Math.min(currentStep * stepSize, 100);
+        
+        // 更新进度条
+        document.getElementById('progress-fill').style.width = progressValue + '%';
+        document.getElementById('progress-text').textContent = `生成中... ${Math.round(progressValue)}%`;
+        
+        if (progressValue >= 100) {
+            clearInterval(interval);
+            
+            // 生成完成，创建合成数据
+            generateSyntheticData();
+            
+            document.getElementById('progress-text').textContent = '生成完成！';
+            document.getElementById('next-btn-3').disabled = false;
+            btn.innerHTML = '<i class="fas fa-check"></i> 生成完成';
+        }
+    }, 300); // 每300ms更新一次，总共6秒完成
+}
+
+// 检查数据完整性
+function validateDataIntegrity(originalData) {
+    if (!originalData) {
+        return { isValid: false, message: '原始数据不存在' };
+    }
+    
+    if (!originalData.fullData) {
+        return { isValid: false, message: '原始数据不完整，缺少完整数据集' };
+    }
+    
+    if (!originalData.fullData.length || originalData.fullData.length < 2) {
+        return { isValid: false, message: '原始数据行数不足，至少需要2行数据（包含表头）' };
+    }
+    
+    if (!originalData.columns || originalData.columns.length === 0) {
+        return { isValid: false, message: '原始数据缺少列名信息' };
+    }
+    
+    return { isValid: true, message: '数据完整性检查通过' };
+}
+
+// 生成合成数据
+function generateSyntheticData() {
+    try {
+        console.log('开始生成合成数据...');
+        
+        const totalSamples = parseInt(document.getElementById('num-samples').value);
+        const originalData = wizardData.originalData;
+        const selectedModel = wizardData.model;
+        
+        console.log('生成参数:', { totalSamples, originalData, selectedModel });
+        
+        // 数据完整性检查
+        const integrityCheck = validateDataIntegrity(originalData);
+        if (!integrityCheck.isValid) {
+            throw new Error(integrityCheck.message);
+        }
+        
+        if (!selectedModel) {
+            throw new Error('未选择模型');
+        }
+        
+        // 根据字段配置处理数据
+        const processedData = processDataWithFieldConfig(originalData.fullData, fieldConfig);
+        
+        const dataForAPI = {
+            data: processedData, // 使用处理后的数据
+            model_type: selectedModel.type,
+            model_config: getModelConfig(selectedModel),
+            num_samples: totalSamples,
+            field_config: fieldConfig, // 传递字段配置
+            field_types: fieldTypes // 传递字段类型配置
+        };
+        
+        console.log('调用SDG API生成数据:', dataForAPI);
+        console.log(`使用完整数据集进行训练，共${originalData.fullData.length}行数据`);
+        
+        // 调用SDG API生成真实数据
+        fetch('/api/synthesis/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataForAPI)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                console.log('SDG生成成功:', result);
+                
+                // 使用SDG生成的真实数据
+                wizardData.syntheticData = {
+                    name: '合成数据',
+                    rows: totalSamples,
+                    cols: originalData.cols,
+                    columns: originalData.columns,
+                    sample: result.synthetic_data.slice(0, 10) // 取前10行作为预览
+                };
+                
+                // 更新数据信息
+                if (!wizardData.dataInfo) {
+                    wizardData.dataInfo = {};
+                }
+                wizardData.dataInfo.original = wizardData.originalData;
+                wizardData.dataInfo.synthetic = wizardData.syntheticData;
+                
+        // 更新结果统计
+        const resultStatsElement = document.getElementById('result-stats');
+        if (resultStatsElement) {
+            resultStatsElement.textContent = `已生成 ${totalSamples} 条合成数据`;
+        }
+        
+        // 更新数据来源信息
+        const dataSourceInfo = document.getElementById('data-source-info');
+        if (dataSourceInfo) {
+            dataSourceInfo.textContent = `使用SDG模型生成（基于${originalData.fullData.length}行完整数据）`;
+        }
+                
+                // 更新数据信息显示
+                updateDataInfoDisplay();
+                
+                console.log('合成数据生成完成');
+                showAlert('数据生成成功！', 'success');
+            } else {
+                throw new Error(result.error || '生成失败');
+            }
+        })
+        .catch(error => {
+            console.error('SDG API调用失败:', error);
+            console.log('回退到模拟数据生成...');
+            
+            // 如果SDG调用失败，回退到模拟数据
+            wizardData.syntheticData = {
+                name: '合成数据（模拟）',
+                rows: totalSamples,
+                cols: originalData.cols,
+                columns: originalData.columns,
+                sample: generateSampleData(originalData.columns, totalSamples, originalData.fullData)
+            };
+            
+            // 更新数据信息
+            if (!wizardData.dataInfo) {
+                wizardData.dataInfo = {};
+            }
+            wizardData.dataInfo.original = wizardData.originalData;
+            wizardData.dataInfo.synthetic = wizardData.syntheticData;
+            
+            // 更新结果统计
+            const resultStatsElement = document.getElementById('result-stats');
+            if (resultStatsElement) {
+                resultStatsElement.textContent = `已生成 ${totalSamples} 条合成数据（模拟）`;
+            }
+            
+            // 更新数据来源信息
+            const dataSourceInfo = document.getElementById('data-source-info');
+            if (dataSourceInfo) {
+                dataSourceInfo.textContent = `使用模拟数据生成（SDG服务不可用，基于${originalData.fullData.length}行完整数据）`;
+            }
+            
+            // 更新数据信息显示
+            updateDataInfoDisplay();
+            
+            showAlert('使用模拟数据生成（SDG服务不可用）', 'warning');
+        });
+        
+    } catch (error) {
+        console.error('生成合成数据时出错:', error);
+        alert('生成数据时出错: ' + error.message);
+    }
+}
+
+// 获取模型配置
+function getModelConfig(model) {
+    const config = {
+        model_type: model.type
+    };
+    
+    if (model.type === 'ctgan') {
+        config.epochs = parseInt(document.getElementById('epochs')?.value || 50);
+        config.batch_size = 500;
+        config.generator_lr = 2e-4;
+        config.discriminator_lr = 2e-4;
+    } else if (model.type === 'gpt') {
+        config.temperature = parseFloat(document.getElementById('temperature')?.value || 0.7);
+        config.max_tokens = parseInt(document.getElementById('max-tokens')?.value || 1000);
+        
+        // 从localStorage获取API配置
+        if (model.id === 'openai') {
+            const openaiConfig = JSON.parse(localStorage.getItem('openai_config') || '{}');
+            config.openai_API_key = openaiConfig.key;
+            config.openai_API_url = openaiConfig.url;
+            config.gpt_model = openaiConfig.model || 'gpt-3.5-turbo';
+        } else if (model.id === 'glm') {
+            const glmConfig = JSON.parse(localStorage.getItem('glm_config') || '{}');
+            config.openai_API_key = glmConfig.key;
+            config.openai_API_url = glmConfig.url;
+            config.gpt_model = glmConfig.model || 'glm-4';
+        } else if (model.id === 'local') {
+            const localConfig = JSON.parse(localStorage.getItem('local_config') || '{}');
+            config.openai_API_key = 'dummy'; // 本地模型不需要真实key
+            config.openai_API_url = localConfig.url;
+            config.gpt_model = localConfig.model || 'deepseek-chat';
+        }
+    }
+    
+    return config;
+}
+
+// 分析数据分布
+function analyzeDataDistribution(data) {
+    if (!data || data.length <= 1) return null;
+    
+    const stats = {};
+    const headers = data[0];
+    const rows = data.slice(1);
+    
+    headers.forEach((header, colIndex) => {
+        const values = rows.map(row => row[colIndex]).filter(val => val !== null && val !== undefined && val !== '');
+        
+        if (values.length === 0) return;
+        
+        // 尝试判断数据类型
+        const numericValues = values.filter(val => !isNaN(parseFloat(val)) && isFinite(val));
+        const textValues = values.filter(val => isNaN(parseFloat(val)) || !isFinite(val));
+        
+        if (numericValues.length > textValues.length) {
+            // 数值型数据
+            const nums = numericValues.map(Number);
+            stats[header] = {
+                type: 'numeric',
+                min: Math.min(...nums),
+                max: Math.max(...nums),
+                mean: nums.reduce((a, b) => a + b, 0) / nums.length,
+                values: nums
+            };
+        } else {
+            // 文本型数据
+            const uniqueValues = [...new Set(textValues)];
+            const valueCounts = {};
+            textValues.forEach(val => {
+                valueCounts[val] = (valueCounts[val] || 0) + 1;
+            });
+            
+            stats[header] = {
+                type: 'text',
+                uniqueValues: uniqueValues,
+                valueCounts: valueCounts,
+                totalCount: textValues.length
+            };
+        }
+    });
+    
+    return stats;
+}
+
+// 生成示例数据
+function generateSampleData(columns, totalSamples, originalData = null) {
+    const sample = [];
+    const sampleSize = Math.min(10, totalSamples); // 最多显示10行
+    
+    // 如果有原始数据，分析数据分布用于生成更真实的数据
+    let dataStats = null;
+    if (originalData && originalData.length > 1) {
+        dataStats = analyzeDataDistribution(originalData);
+    }
+    
+    for (let i = 0; i < sampleSize; i++) {
+        const row = [];
+        columns.forEach((col, index) => {
+            let value;
+            
+            // 如果有原始数据统计，基于统计信息生成数据
+            if (dataStats && dataStats[col]) {
+                const stat = dataStats[col];
+                if (stat.type === 'numeric') {
+                    // 基于原始数据的数值范围生成数据
+                    const range = stat.max - stat.min;
+                    const variance = range * 0.1; // 10%的方差
+                    value = Math.max(stat.min, Math.min(stat.max, 
+                        stat.mean + (Math.random() - 0.5) * variance));
+                    value = Math.round(value * 100) / 100; // 保留2位小数
+                } else if (stat.type === 'text') {
+                    // 基于原始数据的文本分布生成数据
+                    const values = Object.keys(stat.valueCounts);
+                    const weights = Object.values(stat.valueCounts);
+                    const totalWeight = weights.reduce((a, b) => a + b, 0);
+                    
+                    let random = Math.random() * totalWeight;
+                    for (let j = 0; j < values.length; j++) {
+                        random -= weights[j];
+                        if (random <= 0) {
+                            value = values[j];
+                            break;
+                        }
+                    }
+                    if (!value) value = values[0]; // 备用值
+                }
+            }
+            
+            // 如果没有统计信息或生成失败，使用默认逻辑
+            if (value === undefined) {
+                // 通用字段
+                if (col === 'ID' || col === '订单ID' || col === '交易ID' || col === '患者ID') {
+                    value = String(i + 1).padStart(3, '0');
+                } else if (col === '姓名' || col === '客户姓名' || col === '患者姓名') {
+                    const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十'];
+                    value = names[i % names.length];
+                } else if (col === '年龄' || col === '客户年龄' || col === '患者年龄') {
+                    value = Math.floor(Math.random() * 40) + 20;
+                } else if (col === '性别' || col === '客户性别' || col === '患者性别') {
+                    value = Math.random() > 0.5 ? '男' : '女';
+                } else if (col === '城市' || col === '客户城市') {
+                    const cities = ['北京', '上海', '广州', '深圳', '杭州', '南京', '成都', '武汉'];
+                    value = cities[Math.floor(Math.random() * cities.length)];
+                } else if (col === '收入' || col === '客户收入') {
+                    value = Math.floor(Math.random() * 20000) + 5000;
+                } else if (col === '消费金额' || col === '订单金额' || col === '交易金额') {
+                    value = Math.floor(Math.random() * 5000) + 500;
+                } else if (col === '注册时间' || col === '订单日期' || col === '交易日期' || col === '就诊日期') {
+                    const date = new Date();
+                    date.setDate(date.getDate() - Math.floor(Math.random() * 365));
+                    value = date.toISOString().split('T')[0];
+                }
+                // 金融数据特定字段
+                else if (col === '账户ID') {
+                    value = `ACC${String(i + 1).padStart(3, '0')}`;
+                } else if (col === '客户职业') {
+                    const jobs = ['软件工程师', '产品经理', '销售经理', '财务分析师', '市场专员', '设计师', '运营专员', '数据分析师'];
+                    value = jobs[Math.floor(Math.random() * jobs.length)];
+                } else if (col === '交易类型') {
+                    const types = ['转账', '消费', '投资', '提现', '充值', '理财'];
+                    value = types[Math.floor(Math.random() * types.length)];
+                } else if (col === '交易时间') {
+                    const hour = Math.floor(Math.random() * 24);
+                    const minute = Math.floor(Math.random() * 60);
+                    const second = Math.floor(Math.random() * 60);
+                    value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`;
+                } else if (col === '风险等级') {
+                    const risks = ['低风险', '中风险', '高风险'];
+                    value = risks[Math.floor(Math.random() * risks.length)];
+                } else if (col === '账户余额') {
+                    value = Math.floor(Math.random() * 100000) + 10000;
+                } else if (col === '信用评分') {
+                    value = Math.floor(Math.random() * 300) + 500;
+                }
+                // 订单数据特定字段
+                else if (col === '客户ID') {
+                    value = `CUST${String(i + 1).padStart(3, '0')}`;
+                } else if (col === '产品ID') {
+                    value = `PROD${String(i + 1).padStart(3, '0')}`;
+                } else if (col === '产品名称') {
+                    const products = ['iPhone 15', 'MacBook Pro', 'Nike运动鞋', '小米手机', '华为笔记本', '阿迪达斯T恤', '联想平板', '戴尔显示器'];
+                    value = products[Math.floor(Math.random() * products.length)];
+                } else if (col === '产品类别') {
+                    const categories = ['电子产品', '服装鞋帽', '家居用品', '运动器材', '图书文具', '美妆护肤', '食品饮料', '汽车用品'];
+                    value = categories[Math.floor(Math.random() * categories.length)];
+                } else if (col === '订单数量') {
+                    value = Math.floor(Math.random() * 5) + 1;
+                } else if (col === '支付方式') {
+                    const payments = ['支付宝', '微信支付', '信用卡', '银行转账', '现金', '花呗'];
+                    value = payments[Math.floor(Math.random() * payments.length)];
+                } else if (col === '配送状态') {
+                    const statuses = ['已配送', '配送中', '待配送', '已签收', '配送失败'];
+                    value = statuses[Math.floor(Math.random() * statuses.length)];
+                }
+                // 医疗数据特定字段
+                else if (col === '患者职业') {
+                    const jobs = ['软件工程师', '产品经理', '销售经理', '财务分析师', '市场专员', '设计师', '运营专员', '数据分析师'];
+                    value = jobs[Math.floor(Math.random() * jobs.length)];
+                } else if (col === '科室') {
+                    const departments = ['内科', '外科', '妇科', '儿科', '骨科', '眼科', '耳鼻喉科', '皮肤科'];
+                    value = departments[Math.floor(Math.random() * departments.length)];
+                } else if (col === '医生姓名') {
+                    const doctors = ['李医生', '王医生', '张医生', '赵医生', '陈医生', '刘医生', '杨医生', '黄医生'];
+                    value = doctors[Math.floor(Math.random() * doctors.length)];
+                } else if (col === '症状描述') {
+                    const symptoms = ['发热咳嗽', '腹痛', '腰痛', '头痛', '胸闷', '失眠', '乏力', '食欲不振'];
+                    value = symptoms[Math.floor(Math.random() * symptoms.length)];
+                } else if (col === '诊断结果') {
+                    const diagnoses = ['感冒', '胃炎', '腰椎间盘突出', '高血压', '糖尿病', '失眠', '焦虑', '颈椎病'];
+                    value = diagnoses[Math.floor(Math.random() * diagnoses.length)];
+                } else if (col === '治疗方案') {
+                    const treatments = ['药物治疗', '物理治疗', '手术治疗', '心理治疗', '康复训练', '饮食调理', '休息观察', '定期复查'];
+                    value = treatments[Math.floor(Math.random() * treatments.length)];
+                } else if (col === '药物名称') {
+                    const medicines = ['阿莫西林', '奥美拉唑', '布洛芬', '阿司匹林', '头孢', '维生素C', '钙片', '感冒灵'];
+                    value = medicines[Math.floor(Math.random() * medicines.length)];
+                } else if (col === '药物剂量') {
+                    const doses = ['500mg', '20mg', '400mg', '100mg', '250mg', '50mg', '200mg', '300mg'];
+                    value = doses[Math.floor(Math.random() * doses.length)];
+                } else if (col === '检查项目') {
+                    const checks = ['血常规', '胃镜', 'CT检查', 'X光', 'B超', '心电图', '尿常规', '肝功能'];
+                    value = checks[Math.floor(Math.random() * checks.length)];
+                } else if (col === '检查结果') {
+                    const results = ['正常', '轻度炎症', 'L4-L5突出', '未见异常', '轻微异常', '需要复查', '正常范围', '偏高'];
+                    value = results[Math.floor(Math.random() * results.length)];
+                } else if (col === '住院天数') {
+                    value = Math.floor(Math.random() * 10);
+                } else if (col === '费用') {
+                    value = Math.floor(Math.random() * 5000) + 100;
+                } else if (col === '保险类型') {
+                    const insurances = ['医保', '商业保险', '自费', '公费医疗', '新农合', '职工医保', '居民医保', '大病保险'];
+                    value = insurances[Math.floor(Math.random() * insurances.length)];
+                } else {
+                    // 默认值
+                    value = `数据${i + 1}`;
+                }
+            }
+            
+            // 将值添加到行中
+            row.push(value);
+        });
+        sample.push(row);
+    }
+    
+    return sample;
+}
+
+// 更新数据信息显示
+function updateDataInfoDisplay() {
+    try {
+        if (wizardData.dataInfo) {
+            // 更新原始数据信息
+            const originalDataInfoElement = document.getElementById('original-data-info');
+            if (originalDataInfoElement && wizardData.dataInfo.original) {
+                originalDataInfoElement.textContent = 
+                    `${wizardData.dataInfo.original.name} (${wizardData.dataInfo.original.rows}行 × ${wizardData.dataInfo.original.cols}列)`;
+            }
+            
+            // 更新合成数据信息
+            const syntheticDataInfoElement = document.getElementById('synthetic-data-info');
+            if (syntheticDataInfoElement && wizardData.dataInfo.synthetic) {
+                syntheticDataInfoElement.textContent = 
+                    `${wizardData.dataInfo.synthetic.name} (${wizardData.dataInfo.synthetic.rows}行 × ${wizardData.dataInfo.synthetic.cols}列)`;
+            }
+            
+            // 根据模型类型显示模型名称
+            let modelName = 'CTGAN';
+            if (wizardData.model === 'openai' && wizardData.modelConfig) {
+                modelName = `OpenAI ${wizardData.modelConfig.model || 'GPT'}`;
+            } else if (wizardData.model === 'glm' && wizardData.modelConfig) {
+                modelName = `GLM ${wizardData.modelConfig.model || '4'}`;
+            } else if (wizardData.model === 'local' && wizardData.modelConfig) {
+                modelName = `本地模型 ${wizardData.modelConfig.model || 'DeepSeek'}`;
+            } else if (wizardData.model === 'gaussian_copula') {
+                modelName = 'GaussianCopula';
+            } else if (wizardData.model === 'ctgan') {
+                modelName = 'CTGAN';
+            } else if (wizardData.model === 'gpt') {
+                modelName = 'GPT';
+            }
+            
+            const modelInfoElement = document.getElementById('model-info');
+            if (modelInfoElement) {
+                modelInfoElement.textContent = modelName;
+            }
+        }
+    } catch (error) {
+        console.error('更新数据信息显示时出错:', error);
+    }
+}
+
+// 下载结果
+function downloadResults() {
+    if (!wizardData.dataInfo || !wizardData.dataInfo.synthetic) {
+        showAlert('暂无合成数据可下载', 'warning');
+        return;
+    }
+    
+    try {
+        // 创建CSV内容
+        const headers = wizardData.dataInfo.synthetic.columns;
+        const rows = wizardData.dataInfo.synthetic.sample;
+        
+        // 构建CSV内容
+        let csvContent = headers.join(',') + '\n';
+        rows.forEach(row => {
+            csvContent += row.map(cell => `"${cell}"`).join(',') + '\n';
+        });
+        
+        // 创建下载链接
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `synthetic_data_${new Date().getTime()}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showAlert('合成数据下载成功！', 'success');
+    } catch (error) {
+        console.error('下载失败:', error);
+        showAlert('下载失败: ' + error.message, 'error');
+    }
+}
+
+// 显示预览数据
+function showPreviewData(type) {
+    // 移除所有活动状态
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.preview-tab').forEach(tab => tab.classList.remove('active'));
+    
+    // 添加活动状态
+    if (type === 'original') {
+        document.querySelector('.tab-btn[onclick="showPreviewData(\'original\')"]').classList.add('active');
+        document.getElementById('original-preview').classList.add('active');
+    } else if (type === 'synthetic') {
+        document.querySelector('.tab-btn[onclick="showPreviewData(\'synthetic\')"]').classList.add('active');
+        document.getElementById('synthetic-preview').classList.add('active');
+    }
+}
+
+// 开始质量评估
+function startEvaluation() {
+    // 检查是否有数据
+    if (!wizardData.dataInfo || !wizardData.dataInfo.original || !wizardData.dataInfo.synthetic) {
+        showAlert('请先完成数据生成', 'warning');
+        return;
+    }
+    
+    const btn = document.getElementById('evaluation-btn');
+    const progress = document.getElementById('evaluation-progress');
+    const results = document.getElementById('evaluation-results');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 评估中...';
+    progress.style.display = 'block';
+    
+    // 模拟评估过程
+    let progressValue = 0;
+    const totalSteps = 15; // 总共15步
+    const stepSize = 100 / totalSteps; // 每步约6.67%
+    let currentStep = 0;
+    
+    const interval = setInterval(() => {
+        currentStep++;
+        progressValue = Math.min(currentStep * stepSize, 100);
+        
+        // 更新进度条
+        document.getElementById('eval-progress-fill').style.width = progressValue + '%';
+        document.getElementById('eval-progress-text').textContent = `评估中... ${Math.round(progressValue)}%`;
+        
+        if (progressValue >= 100) {
+            clearInterval(interval);
+            
+            // 评估完成
+            document.getElementById('eval-progress-text').textContent = '评估完成！';
+            progress.style.display = 'none';
+            results.style.display = 'block';
+            
+            // 生成评估结果
+            generateEvaluationResults();
+            
+            // 更新按钮状态
+            btn.innerHTML = '<i class="fas fa-check"></i> 评估完成';
+            btn.disabled = false;
+            
+            // 启用下一步按钮
+            document.getElementById('next-btn-4').disabled = false;
+        }
+    }, 300); // 每300ms更新一次，总共4.5秒完成
+}
+
+// 生成评估结果
+function generateEvaluationResults() {
+    // 模拟评估结果
+    const results = {
+        overallScore: Math.floor(Math.random() * 20) + 80, // 80-100分
+        statisticalScore: Math.floor(Math.random() * 15) + 85,
+        distributionScore: Math.floor(Math.random() * 15) + 80,
+        correlationScore: Math.floor(Math.random() * 15) + 85,
+        privacyScore: Math.floor(Math.random() * 10) + 90
+    };
+    
+    // 更新评估结果显示
+    document.getElementById('quality-score-value').textContent = results.overallScore;
+    document.getElementById('statistical-score').textContent = results.statisticalScore + '%';
+    document.getElementById('distribution-score').textContent = results.distributionScore + '%';
+    document.getElementById('correlation-score').textContent = results.correlationScore + '%';
+    document.getElementById('privacy-score').textContent = results.privacyScore + '%';
+    
+    // 更新质量描述
+    let description = '';
+    if (results.overallScore >= 90) {
+        description = '合成数据质量优秀，各项指标表现良好';
+    } else if (results.overallScore >= 80) {
+        description = '合成数据质量良好，可用于实际应用';
+    } else if (results.overallScore >= 70) {
+        description = '合成数据质量一般，建议调整参数';
+    } else {
+        description = '合成数据质量较差，需要重新生成';
+    }
+    document.getElementById('quality-score-desc').textContent = description;
+    
+    // 存储评估结果
+    wizardData.evaluationResults = results;
+    
+    // 更新质量徽章
+    updateQualityBadge(results.overallScore);
+    
+    // 生成可视化图表
+    generateVisualizationCharts(results);
+}
+
+// 生成可视化图表
+function generateVisualizationCharts(results) {
+    // 创建图表容器
+    const chartsContainer = document.getElementById('evaluation-charts');
+    if (!chartsContainer) {
+        console.log('图表容器不存在，跳过图表生成');
+        return;
+    }
+    
+    chartsContainer.innerHTML = `
+        <div class="charts-grid">
+            <div class="chart-item">
+                <h5>质量评分雷达图</h5>
+                <canvas id="radar-chart" width="300" height="300"></canvas>
+            </div>
+            <div class="chart-item">
+                <h5>指标对比柱状图</h5>
+                <canvas id="bar-chart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-item">
+                <h5>数据分布对比</h5>
+                <canvas id="distribution-chart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-item">
+                <h5>相关性热力图</h5>
+                <canvas id="heatmap-chart" width="300" height="300"></canvas>
+            </div>
+        </div>
+        <div class="chart-actions">
+            <button class="btn btn-primary" onclick="downloadCharts()">
+                <i class="fas fa-download"></i> 下载所有图表
+            </button>
+            <button class="btn btn-secondary" onclick="viewChartsFullscreen()">
+                <i class="fas fa-expand"></i> 全屏查看
+            </button>
+        </div>
+    `;
+    
+    // 生成各种图表
+    generateRadarChart(results);
+    generateBarChart(results);
+    generateDistributionChart();
+    generateHeatmapChart();
+}
+
+// 生成雷达图
+function generateRadarChart(results) {
+    const canvas = document.getElementById('radar-chart');
+    const ctx = canvas.getContext('2d');
+    
+    // 清空画布
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 100;
+    const labels = ['统计相似性', '分布一致性', '相关性保持', '隐私保护'];
+    const values = [results.statisticalScore, results.distributionScore, results.correlationScore, results.privacyScore];
+    
+    // 绘制网格
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    for (let i = 1; i <= 5; i++) {
+        const r = (radius * i) / 5;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, r, 0, 2 * Math.PI);
+        ctx.stroke();
+    }
+    
+    // 绘制轴线
+    ctx.strokeStyle = '#ccc';
+    for (let i = 0; i < labels.length; i++) {
+        const angle = (i * 2 * Math.PI) / labels.length - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle);
+        const y = centerY + radius * Math.sin(angle);
+        
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        
+        // 绘制标签
+        ctx.fillStyle = '#333';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        const labelX = centerX + (radius + 20) * Math.cos(angle);
+        const labelY = centerY + (radius + 20) * Math.sin(angle);
+        ctx.fillText(labels[i], labelX, labelY);
+    }
+    
+    // 绘制数据多边形
+    ctx.strokeStyle = '#007bff';
+    ctx.fillStyle = 'rgba(0, 123, 255, 0.2)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    for (let i = 0; i < values.length; i++) {
+        const angle = (i * 2 * Math.PI) / values.length - Math.PI / 2;
+        const value = values[i] / 100;
+        const x = centerX + radius * value * Math.cos(angle);
+        const y = centerY + radius * value * Math.sin(angle);
+        
+        if (i === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+}
+
+// 生成柱状图
+function generateBarChart(results) {
+    const canvas = document.getElementById('bar-chart');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    const labels = ['统计相似性', '分布一致性', '相关性保持', '隐私保护', '综合评分'];
+    const values = [results.statisticalScore, results.distributionScore, results.correlationScore, results.privacyScore, results.overallScore];
+    const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1'];
+    
+    const barWidth = 60;
+    const barSpacing = 20;
+    const startX = 50;
+    const maxHeight = 200;
+    const baseY = canvas.height - 50;
+    
+    // 绘制坐标轴
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(30, 30);
+    ctx.lineTo(30, baseY);
+    ctx.lineTo(canvas.width - 30, baseY);
+    ctx.stroke();
+    
+    // 绘制Y轴标签
+    ctx.fillStyle = '#333';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 100; i += 20) {
+        const y = baseY - (i / 100) * maxHeight;
+        ctx.fillText(i.toString(), 25, y + 4);
+    }
+    
+    // 绘制柱状图
+    values.forEach((value, index) => {
+        const x = startX + index * (barWidth + barSpacing);
+        const height = (value / 100) * maxHeight;
+        const y = baseY - height;
+        
+        // 绘制柱子
+        ctx.fillStyle = colors[index];
+        ctx.fillRect(x, y, barWidth, height);
+        
+        // 绘制数值
+        ctx.fillStyle = '#333';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(value.toString(), x + barWidth / 2, y - 5);
+        
+        // 绘制标签
+        ctx.save();
+        ctx.translate(x + barWidth / 2, baseY + 20);
+        ctx.rotate(-Math.PI / 4);
+        ctx.fillText(labels[index], 0, 0);
+        ctx.restore();
+    });
+}
+
+// 生成分布对比图
+function generateDistributionChart() {
+    const canvas = document.getElementById('distribution-chart');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 模拟原始数据和合成数据的分布
+    const originalData = generateRandomData(100, 0, 100);
+    const syntheticData = generateRandomData(100, 5, 95);
+    
+    // 绘制直方图
+    const bins = 20;
+    const binWidth = (canvas.width - 100) / bins;
+    const maxCount = 20;
+    
+    // 原始数据分布（蓝色）
+    ctx.fillStyle = 'rgba(0, 123, 255, 0.6)';
+    for (let i = 0; i < bins; i++) {
+        const count = originalData.filter(x => x >= i * 5 && x < (i + 1) * 5).length;
+        const height = (count / maxCount) * 150;
+        const x = 50 + i * binWidth;
+        const y = canvas.height - 50 - height;
+        ctx.fillRect(x, y, binWidth - 2, height);
+    }
+    
+    // 合成数据分布（绿色）
+    ctx.fillStyle = 'rgba(40, 167, 69, 0.6)';
+    for (let i = 0; i < bins; i++) {
+        const count = syntheticData.filter(x => x >= i * 5 && x < (i + 1) * 5).length;
+        const height = (count / maxCount) * 150;
+        const x = 50 + i * binWidth;
+        const y = canvas.height - 50 - height;
+        ctx.fillRect(x, y, binWidth - 2, height);
+    }
+    
+    // 添加图例
+    ctx.fillStyle = '#333';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText('原始数据', 50, 30);
+    ctx.fillStyle = 'rgba(0, 123, 255, 0.6)';
+    ctx.fillRect(120, 20, 20, 10);
+    
+    ctx.fillStyle = '#333';
+    ctx.fillText('合成数据', 200, 30);
+    ctx.fillStyle = 'rgba(40, 167, 69, 0.6)';
+    ctx.fillRect(270, 20, 20, 10);
+}
+
+// 生成热力图
+function generateHeatmapChart() {
+    const canvas = document.getElementById('heatmap-chart');
+    const ctx = canvas.getContext('2d');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 模拟相关性矩阵
+    const size = 8;
+    const cellSize = 30;
+    const startX = 50;
+    const startY = 50;
+    
+    const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    
+    // 绘制热力图
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const correlation = Math.random() * 2 - 1; // -1 到 1
+            const intensity = Math.abs(correlation);
+            const color = correlation > 0 ? 
+                `rgba(0, 123, 255, ${intensity})` : 
+                `rgba(220, 53, 69, ${intensity})`;
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(
+                startX + j * cellSize, 
+                startY + i * cellSize, 
+                cellSize - 2, 
+                cellSize - 2
+            );
+            
+            // 绘制数值
+            ctx.fillStyle = intensity > 0.5 ? '#fff' : '#333';
+            ctx.font = '10px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(
+                correlation.toFixed(2), 
+                startX + j * cellSize + cellSize / 2, 
+                startY + i * cellSize + cellSize / 2 + 3
+            );
+        }
+    }
+    
+    // 绘制标签
+    ctx.fillStyle = '#333';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    for (let i = 0; i < size; i++) {
+        ctx.fillText(labels[i], startX - 20, startY + i * cellSize + cellSize / 2 + 3);
+        ctx.fillText(labels[i], startX + i * cellSize + cellSize / 2, startY - 10);
+    }
+}
+
+// 生成随机数据
+function generateRandomData(count, min, max) {
+    const data = [];
+    for (let i = 0; i < count; i++) {
+        data.push(Math.random() * (max - min) + min);
+    }
+    return data;
+}
+
+// 下载图表
+function downloadCharts() {
+    const charts = ['radar-chart', 'bar-chart', 'distribution-chart', 'heatmap-chart'];
+    charts.forEach((chartId, index) => {
+        const canvas = document.getElementById(chartId);
+        if (canvas) {
+            const link = document.createElement('a');
+            link.download = `quality_evaluation_chart_${index + 1}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    });
+    showAlert('所有图表已下载', 'success');
+}
+
+// 全屏查看图表
+function viewChartsFullscreen() {
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'chartsModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-fullscreen">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">质量评估可视化图表</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="charts-grid-fullscreen">
+                        <div class="chart-item-fullscreen">
+                            <h5>质量评分雷达图</h5>
+                            <canvas id="radar-chart-fullscreen" width="500" height="500"></canvas>
+                        </div>
+                        <div class="chart-item-fullscreen">
+                            <h5>指标对比柱状图</h5>
+                            <canvas id="bar-chart-fullscreen" width="600" height="400"></canvas>
+                        </div>
+                        <div class="chart-item-fullscreen">
+                            <h5>数据分布对比</h5>
+                            <canvas id="distribution-chart-fullscreen" width="600" height="400"></canvas>
+                        </div>
+                        <div class="chart-item-fullscreen">
+                            <h5>相关性热力图</h5>
+                            <canvas id="heatmap-chart-fullscreen" width="500" height="500"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="downloadCharts()">
+                        <i class="fas fa-download"></i> 下载所有图表
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // 生成全屏图表
+    setTimeout(() => {
+        generateRadarChartFullscreen();
+        generateBarChartFullscreen();
+        generateDistributionChartFullscreen();
+        generateHeatmapChartFullscreen();
+    }, 100);
+    
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 更新质量徽章
+function updateQualityBadge(score) {
+    const badge = document.getElementById('quality-badge');
+    const badgeText = document.querySelector('.badge-text');
+    
+    let badgeClass = '';
+    let badgeTextContent = '';
+    
+    if (score >= 90) {
+        badgeClass = 'excellent';
+        badgeTextContent = '优秀';
+    } else if (score >= 80) {
+        badgeClass = 'good';
+        badgeTextContent = '良好';
+    } else if (score >= 70) {
+        badgeClass = 'fair';
+        badgeTextContent = '一般';
+    } else {
+        badgeClass = 'poor';
+        badgeTextContent = '较差';
+    }
+    
+    badge.className = `quality-badge ${badgeClass}`;
+    badgeText.textContent = `${badgeTextContent} (${score}分)`;
+}
+
+// 更新最终结果
+function updateFinalResults() {
+    if (wizardData.dataInfo && wizardData.dataInfo.synthetic) {
+        document.getElementById('final-result-stats').textContent = 
+            `已生成 ${wizardData.dataInfo.synthetic.rows} 条合成数据`;
+    }
+    
+    if (wizardData.evaluationResults) {
+        updateQualityBadge(wizardData.evaluationResults.overallScore);
+    }
+}
+
+// 最终预览
+function viewFinalPreview() {
+    if (!wizardData.dataInfo) {
+        showAlert('暂无数据可预览', 'warning');
+        return;
+    }
+    
+    // 创建最终预览模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'finalPreviewModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">最终结果预览</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-tabs">
+                        <button class="tab-btn active" onclick="showFinalPreview('synthetic')">合成数据</button>
+                        <button class="tab-btn" onclick="showFinalPreview('evaluation')">评估结果</button>
+                    </div>
+                    <div class="preview-content">
+                        <div class="preview-tab active" id="synthetic-final-preview">
+                            <h6>合成数据 (${wizardData.dataInfo.synthetic.rows}行 × ${wizardData.dataInfo.synthetic.cols}列)</h6>
+                            <div class="table-container">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            ${wizardData.dataInfo.synthetic.columns.map(col => `<th>${col}</th>`).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${wizardData.dataInfo.synthetic.sample.map(row => 
+                                            `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
+                                        ).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="preview-tab" id="evaluation-final-preview">
+                            <h6>质量评估结果</h6>
+                            <div class="evaluation-summary-final">
+                                <div class="score-display">
+                                    <div class="score-circle">
+                                        <div class="score-value">${wizardData.evaluationResults.overallScore}</div>
+                                        <div class="score-label">分</div>
+                                    </div>
+                                </div>
+                                <div class="metrics-summary">
+                                    <div class="metric-item">
+                                        <label>统计相似性:</label>
+                                        <span>${wizardData.evaluationResults.statisticalScore}%</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <label>分布相似性:</label>
+                                        <span>${wizardData.evaluationResults.distributionScore}%</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <label>相关性保持:</label>
+                                        <span>${wizardData.evaluationResults.correlationScore}%</span>
+                                    </div>
+                                    <div class="metric-item">
+                                        <label>隐私保护:</label>
+                                        <span>${wizardData.evaluationResults.privacyScore}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // 模态框关闭时移除元素
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 显示最终预览数据
+function showFinalPreview(type) {
+    // 移除所有活动状态
+    document.querySelectorAll('#finalPreviewModal .tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('#finalPreviewModal .preview-tab').forEach(tab => tab.classList.remove('active'));
+    
+    // 添加活动状态
+    if (type === 'synthetic') {
+        document.querySelector('#finalPreviewModal .tab-btn[onclick="showFinalPreview(\'synthetic\')"]').classList.add('active');
+        document.getElementById('synthetic-final-preview').classList.add('active');
+    } else if (type === 'evaluation') {
+        document.querySelector('#finalPreviewModal .tab-btn[onclick="showFinalPreview(\'evaluation\')"]').classList.add('active');
+        document.getElementById('evaluation-final-preview').classList.add('active');
+    }
+}
+
+// 数据预览
+function viewDataPreview() {
+    if (!wizardData.dataInfo) {
+        showAlert('暂无数据可预览', 'warning');
+        return;
+    }
+    
+    // 创建预览模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'dataPreviewModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">数据预览</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="preview-tabs">
+                        <button class="tab-btn active" onclick="showPreviewData('original')">原始数据</button>
+                        <button class="tab-btn" onclick="showPreviewData('synthetic')">合成数据</button>
+                    </div>
+                    <div class="preview-content">
+                        <div class="preview-tab active" id="original-preview">
+                            <h6>原始数据 (${wizardData.dataInfo.original.rows}行 × ${wizardData.dataInfo.original.cols}列)</h6>
+                            <div class="table-container">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            ${wizardData.dataInfo.original.columns.map(col => `<th>${col}</th>`).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${wizardData.dataInfo.original.sample.map(row => 
+                                            `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
+                                        ).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="preview-tab" id="synthetic-preview">
+                            <h6>合成数据 (${wizardData.dataInfo.synthetic.rows}行 × ${wizardData.dataInfo.synthetic.cols}列)</h6>
+                            <div class="table-container">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            ${wizardData.dataInfo.synthetic.columns.map(col => `<th>${col}</th>`).join('')}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${wizardData.dataInfo.synthetic.sample.map(row => 
+                                            `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
+                                        ).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // 模态框关闭时移除元素
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 重新开始
+function restartWizard() {
+    // 确认对话框
+    if (!confirm('确定要重新开始吗？这将清除所有已输入的数据和进度。')) {
+        return;
+    }
+    
+    console.log('开始重置向导...');
+    
+    // 重置全局变量
+    currentStep = 1;
+    wizardData = { 
+        currentStep: 0,
+        dataSource: null, 
+        model: null, 
+        modelConfig: null,
+        modelType: null,
+        params: {},
+        originalData: null,
+        syntheticData: null,
+        dataInfo: null,
+        evaluationResults: null,
+        selectedDataSource: null,
+        selectedTable: null,
+        demoDataType: null
+    };
+    
+    // 重置字段配置
+    fieldConfig = {};
+    fieldTypes = {};
+    
+    // 重置所有步骤状态
+    resetAllSteps();
+    
+    // 重置步骤指示器
+    document.querySelectorAll('.step').forEach(step => {
+        step.classList.remove('active', 'completed');
+    });
+    document.querySelector('[data-step="1"]').classList.add('active');
+    
+    // 重置步骤内容显示
+    document.querySelectorAll('.step-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById('step-1').classList.add('active');
+    
+    // 重置所有表单元素
+    document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+    document.querySelectorAll('input[type="text"]').forEach(input => input.value = '');
+    document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+    document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+    
+    // 重置所有功能区域显示状态
+    const areasToHide = [
+        'upload-area', 'datasource-config', 'demo-data-selection', 
+        'model-params', 'generation-progress', 'generation-results',
+        'evaluation-results', 'evaluation-charts', 'file-info', 'upload-progress',
+        'field-config-section'
+    ];
+    
+    areasToHide.forEach(areaId => {
+        const element = document.getElementById(areaId);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+    
+    // 重置文件上传状态
+    selectedFile = null;
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+    
+    // 重置所有选择状态
+    document.querySelectorAll('.option-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    document.querySelectorAll('.datasource-item').forEach(item => {
+        item.classList.remove('selected');
+    });
+    
+    document.querySelectorAll('.model-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    document.querySelectorAll('.demo-category-horizontal').forEach(category => {
+        category.classList.remove('selected');
+    });
+    
+    // 重置所有按钮状态
+    const buttonsToDisable = [
+        'next-btn-1', 'next-btn-2', 'next-btn-3', 'next-btn-4',
+        'generate-btn', 'evaluate-btn', 'download-btn'
+    ];
+    
+    buttonsToDisable.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = btn.innerHTML.replace(/<i class="fas fa-spinner fa-spin"><\/i>/, '');
+        }
+    });
+    
+    // 重置进度条
+    const progressBars = document.querySelectorAll('.progress-bar');
+    progressBars.forEach(bar => {
+        bar.style.width = '0%';
+        bar.setAttribute('aria-valuenow', '0');
+    });
+    
+    // 重置文本内容
+    const elementsToReset = [
+        { id: 'final-result-stats', text: '等待生成数据...' },
+        { id: 'data-source-info', text: '' },
+        { id: 'result-stats', text: '' }
+    ];
+    
+    elementsToReset.forEach(item => {
+        const element = document.getElementById(item.id);
+        if (element) {
+            element.textContent = item.text;
+        }
+    });
+    
+    // 重置质量徽章
+    const badge = document.getElementById('quality-badge');
+    if (badge) {
+        badge.className = 'quality-badge';
+        const badgeText = badge.querySelector('.badge-text');
+        if (badgeText) {
+            badgeText.textContent = '等待评估...';
+        }
+    }
+    
+    // 清空所有图表和结果
+    const chartsContainer = document.getElementById('evaluation-charts');
+    if (chartsContainer) {
+        chartsContainer.innerHTML = '';
+    }
+    
+    // 清空预览表格
+    const previewTables = document.querySelectorAll('.preview-table tbody');
+    previewTables.forEach(tbody => {
+        tbody.innerHTML = '';
+    });
+    
+    // 清空所有警告和提示
+    const alertContainer = document.getElementById('alert-container');
+    if (alertContainer) {
+        alertContainer.innerHTML = '';
+    }
+    
+    // 重新加载已配置的模型（如果需要）
+    if (typeof loadConfiguredModels === 'function') {
+        loadConfiguredModels();
+    }
+    
+    console.log('向导重置完成');
+    showAlert('向导已完全重置，可以重新开始', 'success');
+}
+
+// 重置所有步骤状态
+function resetAllSteps() {
+    console.log('重置所有步骤状态...');
+    
+    // 重置步骤1 - 数据源选择
+    const step1Elements = [
+        'data-source-upload', 'data-source-datasource', 'data-source-demo'
+    ];
+    step1Elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.checked = false;
+        }
+    });
+    
+    // 重置步骤2 - 模型配置
+    const step2Elements = [
+        'model-ctgan', 'model-gaussian', 'model-openai', 'model-glm', 'model-local'
+    ];
+    step2Elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.checked = false;
+        }
+    });
+    
+    // 重置步骤3 - 生成数据
+    const step3Elements = [
+        'generation-progress', 'generation-results', 'data-preview-tabs'
+    ];
+    step3Elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+    
+    // 重置步骤4 - 质量评估
+    const step4Elements = [
+        'eval-progress', 'evaluation-results', 'evaluation-charts'
+    ];
+    step4Elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.style.display = 'none';
+            if (id === 'evaluation-charts') {
+                element.innerHTML = '';
+            }
+        }
+    });
+    
+    // 重置步骤5 - 下载结果
+    const step5Elements = [
+        { id: 'final-result-stats', text: '等待生成数据...' },
+        { id: 'data-source-info', text: '' },
+        { id: 'result-stats', text: '' }
+    ];
+    step5Elements.forEach(item => {
+        const element = document.getElementById(item.id);
+        if (element) {
+            element.textContent = item.text;
+        }
+    });
+    
+    // 重置质量徽章
+    const badge = document.getElementById('quality-badge');
+    if (badge) {
+        badge.className = 'quality-badge';
+        const badgeText = badge.querySelector('.badge-text');
+        if (badgeText) {
+            badgeText.textContent = '等待评估...';
+        }
+    }
+    
+    // 重置所有输入框和选择框
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+        if (input.id === 'num-samples') {
+            input.value = '100'; // 重置为默认值
+        } else {
+            input.value = '';
+        }
+    });
+    
+    // 重置所有文本输入框
+    document.querySelectorAll('input[type="text"]').forEach(input => {
+        input.value = '';
+    });
+    
+    // 重置所有下拉选择框
+    document.querySelectorAll('select').forEach(select => {
+        select.selectedIndex = 0;
+    });
+    
+    // 重置所有复选框
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    console.log('所有步骤状态重置完成');
+}
+
+// 文件上传相关变量
+let selectedFile = null;
+
+// 字段配置相关变量
+let fieldConfig = {};
+let fieldTypes = {}; // 存储字段类型配置
+
+// 初始化字段配置
+function initializeFieldConfig() {
+    const originalData = wizardData.originalData;
+    console.log('初始化字段配置，wizardData:', wizardData);
+    console.log('原始数据:', originalData);
+    
+    if (!originalData || !originalData.columns) {
+        console.log('原始数据或字段列表不存在');
+        return;
+    }
+    
+    console.log('字段列表存在，字段数量:', originalData.columns.length);
+    
+    // 显示字段配置区域
+    const fieldConfigSection = document.getElementById('field-config-section');
+    if (fieldConfigSection) {
+        fieldConfigSection.style.display = 'block';
+        console.log('字段配置区域已显示');
+    } else {
+        console.log('字段配置区域元素不存在');
+    }
+    
+    // 生成字段配置项
+    generateFieldConfigItems(originalData);
+}
+
+// 生成字段配置项
+function generateFieldConfigItems(originalData) {
+    const fieldList = document.getElementById('field-list');
+    if (!fieldList) return;
+    
+    console.log('生成字段配置项，原始数据:', originalData);
+    console.log('字段列表:', originalData.columns);
+    console.log('字段数量:', originalData.columns.length);
+    
+    fieldList.innerHTML = '';
+    
+    originalData.columns.forEach((column, index) => {
+        // 分析字段类型
+        const fieldType = analyzeFieldType(originalData.fullData, index);
+        
+        // 初始化字段类型配置
+        if (!fieldTypes[column]) {
+            fieldTypes[column] = fieldType;
+        }
+        
+        // 默认配置：保留原样
+        if (!fieldConfig[column]) {
+            fieldConfig[column] = 'keep';
+        }
+        
+        const fieldItem = document.createElement('div');
+        fieldItem.className = 'field-item';
+        fieldItem.innerHTML = `
+            <div class="field-info">
+                <div class="field-name">${column}</div>
+                <div class="field-type-controls">
+                    <select class="field-type-select" onchange="setFieldType('${column}', this.value)">
+                        <option value="numeric" ${fieldType === 'numeric' ? 'selected' : ''}>数值型</option>
+                        <option value="text" ${fieldType === 'text' ? 'selected' : ''}>文本型</option>
+                        <option value="date" ${fieldType === 'date' ? 'selected' : ''}>日期型</option>
+                        <option value="id" ${fieldType === 'id' ? 'selected' : ''}>ID型</option>
+                        <option value="pii" ${fieldType === 'pii' ? 'selected' : ''}>敏感信息</option>
+                    </select>
+                    <div class="field-type-badge ${fieldType}">${getFieldTypeLabel(fieldType)}</div>
+                </div>
+            </div>
+            <div class="field-actions">
+                <select class="field-action-select" onchange="setFieldAction('${column}', this.value)">
+                    <option value="keep" ${fieldConfig[column] === 'keep' ? 'selected' : ''}>维持原数据</option>
+                    <option value="regenerate" ${fieldConfig[column] === 'regenerate' ? 'selected' : ''}>重新脱敏合成</option>
+                    <option value="remove" ${fieldConfig[column] === 'remove' ? 'selected' : ''}>删除字段</option>
+                </select>
+            </div>
+        `;
+        
+        fieldList.appendChild(fieldItem);
+    });
+}
+
+// 分析字段类型
+function analyzeFieldType(data, columnIndex) {
+    if (!data || data.length < 2) return 'text';
+    
+    // 跳过表头，分析数据
+    const sampleValues = data.slice(1, Math.min(11, data.length)).map(row => row[columnIndex]);
+    const columnName = data[0][columnIndex];
+    
+    // 确保columnName是字符串
+    if (!columnName || typeof columnName !== 'string') {
+        console.warn(`列名无效: ${columnName}, 索引: ${columnIndex}`);
+        return 'text';
+    }
+    
+    // 检查是否为ID类型
+    if (isIDField(columnName, sampleValues)) {
+        return 'id';
+    }
+    
+    // 检查是否为PII（敏感信息）类型
+    if (isPIIField(columnName, sampleValues)) {
+        return 'pii';
+    }
+    
+    // 检查是否为数值类型
+    const numericCount = sampleValues.filter(val => {
+        if (val === null || val === undefined || val === '') return false;
+        return !isNaN(parseFloat(val)) && isFinite(val);
+    }).length;
+    
+    if (numericCount / sampleValues.length > 0.8) {
+        return 'numeric';
+    }
+    
+    // 检查是否为日期类型
+    const dateCount = sampleValues.filter(val => {
+        if (val === null || val === undefined || val === '') return false;
+        return !isNaN(Date.parse(val));
+    }).length;
+    
+    if (dateCount / sampleValues.length > 0.8) {
+        return 'date';
+    }
+    
+    return 'text';
+}
+
+// 判断是否为ID字段
+function isIDField(columnName, sampleValues) {
+    if (!columnName || typeof columnName !== 'string') {
+        return false;
+    }
+    
+    const idKeywords = ['id', 'ID', 'Id', '编号', '序号', '流水号', '交易号', '订单号'];
+    const nameLower = columnName.toLowerCase();
+    
+    // 检查列名是否包含ID关键词
+    if (idKeywords.some(keyword => nameLower.includes(keyword.toLowerCase()))) {
+        return true;
+    }
+    
+    // 检查数据是否像ID（唯一、递增等）
+    if (sampleValues.length > 1) {
+        const uniqueCount = new Set(sampleValues).size;
+        if (uniqueCount / sampleValues.length > 0.9) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// 判断是否为PII（敏感信息）字段
+function isPIIField(columnName, sampleValues) {
+    if (!columnName || typeof columnName !== 'string') {
+        return false;
+    }
+    
+    const piiKeywords = ['姓名', 'name', 'Name', '电话', 'phone', 'Phone', '手机', 'mobile', 
+                        '邮箱', 'email', 'Email', '地址', 'address', 'Address', '身份证', 
+                        'idcard', '银行卡', 'bank', '密码', 'password', 'Password'];
+    const nameLower = columnName.toLowerCase();
+    
+    return piiKeywords.some(keyword => nameLower.includes(keyword.toLowerCase()));
+}
+
+// 获取字段类型标签
+function getFieldTypeLabel(type) {
+    const labels = {
+        'numeric': '数值型',
+        'text': '文本型',
+        'date': '日期型',
+        'id': 'ID型',
+        'pii': '敏感信息'
+    };
+    return labels[type] || '未知';
+}
+
+// 设置字段类型
+function setFieldType(fieldName, type) {
+    fieldTypes[fieldName] = type;
+    
+    // 更新字段类型徽章
+    const fieldItem = event.target.closest('.field-item');
+    const badge = fieldItem.querySelector('.field-type-badge');
+    if (badge) {
+        badge.className = `field-type-badge ${type}`;
+        badge.textContent = getFieldTypeLabel(type);
+    }
+    
+    console.log(`字段 ${fieldName} 类型设置为: ${type}`);
+}
+
+// 设置单个字段的操作
+function setFieldAction(fieldName, action) {
+    fieldConfig[fieldName] = action;
+    
+    // 更新按钮状态
+    const fieldItem = event.target.closest('.field-item');
+    const buttons = fieldItem.querySelectorAll('.field-action-btn');
+    
+    buttons.forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    event.target.classList.add('active');
+    
+    console.log(`字段 ${fieldName} 设置为: ${action}`);
+}
+
+// 批量设置所有字段
+function setAllFields(action) {
+    const originalData = wizardData.originalData;
+    if (!originalData || !originalData.columns) {
+        return;
+    }
+    
+    // 更新配置
+    originalData.columns.forEach(column => {
+        fieldConfig[column] = action;
+    });
+    
+    // 重新生成字段配置项
+    generateFieldConfigItems(originalData);
+    
+    console.log(`所有字段设置为: ${action}`);
+}
+
+// 根据字段配置处理数据
+function processDataWithFieldConfig(data, config) {
+    if (!data || !config) {
+        return data;
+    }
+    
+    const columns = data[0]; // 表头
+    const processedData = [columns]; // 保留表头
+    
+    // 处理数据行
+    for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const processedRow = [];
+        
+        columns.forEach((column, index) => {
+            const action = config[column] || 'keep';
+            
+            switch (action) {
+                case 'keep':
+                    // 保留原样
+                    processedRow.push(row[index]);
+                    break;
+                case 'regenerate':
+                    // 重新生成（这里先保留原值，实际生成在API端处理）
+                    processedRow.push(row[index]);
+                    break;
+                case 'remove':
+                    // 删除字段（不添加到处理后的行中）
+                    break;
+                default:
+                    processedRow.push(row[index]);
+            }
+        });
+        
+        processedData.push(processedRow);
+    }
+    
+    console.log('字段配置处理结果:', {
+        原始列数: columns.length,
+        处理后列数: processedData[0].length,
+        配置: config
+    });
+    
+    return processedData;
+}
+
+// 处理文件选择
+function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        processFile(file);
+    }
+}
+
+// 处理拖拽上传
+function handleFileDrop(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        processFile(files[0]);
+    }
+}
+
+function handleDragOver(event) {
+    event.preventDefault();
+    event.currentTarget.classList.add('drag-over');
+}
+
+function handleDragLeave(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+}
+
+// 处理文件
+function processFile(file) {
+    // 检查文件类型
+    const allowedTypes = ['.csv', '.xlsx', '.xls'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    
+    if (!allowedTypes.includes(fileExtension)) {
+        showAlert('不支持的文件格式，请上传CSV或Excel文件', 'error');
+        return;
+    }
+    
+    // 检查文件大小 (50MB)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+        showAlert('文件大小超过50MB限制', 'error');
+        return;
+    }
+    
+    selectedFile = file;
+    displayFileInfo(file);
+    uploadFile(file);
+}
+
+// 显示文件信息
+function displayFileInfo(file) {
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const fileType = document.getElementById('file-type');
+    const fileIcon = document.querySelector('.file-icon i');
+    
+    fileName.textContent = file.name;
+    fileSize.textContent = formatFileSize(file.size);
+    fileType.textContent = getFileTypeName(file.name);
+    
+    // 设置文件图标
+    const extension = file.name.split('.').pop().toLowerCase();
+    if (extension === 'csv') {
+        fileIcon.className = 'fas fa-file-csv';
+    } else if (['xlsx', 'xls'].includes(extension)) {
+        fileIcon.className = 'fas fa-file-excel';
+    } else {
+        fileIcon.className = 'fas fa-file';
+    }
+    
+    fileInfo.style.display = 'block';
+}
+
+// 上传文件
+function uploadFile(file) {
+    const progressContainer = document.getElementById('upload-progress');
+    const progressFill = document.getElementById('upload-progress-fill');
+    const progressText = document.getElementById('upload-progress-text');
+    
+    progressContainer.style.display = 'block';
+    
+    // 模拟上传进度
+    let progress = 0;
+    const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            
+            // 上传完成，解析文件
+            parseFile(file);
+        }
+        
+        progressFill.style.width = progress + '%';
+        progressText.textContent = `上传中... ${Math.round(progress)}%`;
+    }, 200);
+}
+
+// 尝试多种编码格式读取文件
+function tryMultipleEncodings(file, reader) {
+    const encodings = ['UTF-8', 'GBK', 'GB2312', 'Big5', 'ISO-8859-1'];
+    let currentIndex = 0;
+    
+    function tryNextEncoding() {
+        if (currentIndex >= encodings.length) {
+            showAlert('无法识别文件编码，请尝试将文件转换为UTF-8格式', 'danger');
+            return;
+        }
+        
+        const encoding = encodings[currentIndex];
+        console.log(`尝试使用 ${encoding} 编码读取文件`);
+        
+        try {
+            reader.readAsText(file, encoding);
+        } catch (error) {
+            console.warn(`${encoding} 编码失败，尝试下一个编码`);
+            currentIndex++;
+            tryNextEncoding();
+        }
+    }
+    
+    tryNextEncoding();
+}
+
+// 解析文件
+function parseFile(file) {
+    const reader = new FileReader();
+    
+    if (file.name.toLowerCase().endsWith('.csv')) {
+        // CSV文件用文本方式读取
+        reader.onload = function(e) {
+            try {
+                const csvText = e.target.result;
+                const parsedData = parseCSV(csvText);
+                
+                if (parsedData && parsedData.length > 0) {
+                    // 验证数据质量
+                    const validationResult = validateParsedData(parsedData);
+                    
+                    // 将解析的数据存储到wizardData中
+                    wizardData.originalData = {
+                        name: file.name,
+                        rows: parsedData.length,
+                        cols: parsedData[0].length,
+                        columns: parsedData[0], // 第一行作为列名
+                        fullData: parsedData, // 完整数据集用于模型训练
+                        sample: parsedData.slice(1, 11), // 取前10行仅用于预览显示
+                        validation: validationResult
+                    };
+                    
+                    displayFileInfo(file);
+                    showAlert('CSV文件解析成功！', 'success');
+                } else {
+                    throw new Error('CSV文件内容为空或格式不正确');
+                }
+            } catch (error) {
+                console.error('CSV解析错误:', error);
+                showAlert('CSV文件解析失败: ' + error.message, 'danger');
+            }
+        };
+        
+        // 尝试多种编码格式
+        tryMultipleEncodings(file, reader);
+    } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+        // Excel文件用二进制方式读取并解析
+        reader.onload = function(e) {
+            try {
+                console.log('开始解析Excel文件:', file.name);
+                const arrayBuffer = e.target.result;
+                console.log('文件大小:', arrayBuffer.byteLength, 'bytes');
+                
+                const parsedData = parseExcelFile(arrayBuffer);
+                console.log('解析结果:', parsedData);
+                
+                if (parsedData && parsedData.length > 0) {
+                    // 验证数据质量
+                    const validationResult = validateParsedData(parsedData);
+                    console.log('数据验证结果:', validationResult);
+                    
+                    // 将解析的数据存储到wizardData中
+                    wizardData.originalData = {
+                        name: file.name,
+                        rows: parsedData.length,
+                        cols: parsedData[0].length,
+                        columns: parsedData[0], // 第一行作为列名
+                        fullData: parsedData, // 完整数据集用于模型训练
+                        sample: parsedData.slice(1, 11), // 取前10行仅用于预览显示
+                        validation: validationResult,
+                        isMockData: false
+                    };
+                    
+                    displayFileInfo(file);
+                    showAlert(`Excel文件解析成功！共${parsedData.length}行数据，${parsedData[0].length}列。`, 'success');
+                } else {
+                    throw new Error('Excel文件内容为空或格式不正确');
+                }
+            } catch (error) {
+                console.error('Excel解析错误:', error);
+                
+                // 如果解析失败，提供更详细的错误信息和建议
+                let errorMessage = 'Excel文件解析失败: ' + error.message;
+                if (error.message.includes('无法解析Excel文件格式')) {
+                    errorMessage += '\n\n建议解决方案：\n1. 将Excel文件另存为CSV格式\n2. 检查文件是否损坏\n3. 确保文件格式为.xlsx或.xls';
+                }
+                
+                showAlert(errorMessage, 'danger');
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    } else {
+        // 其他文件类型
+        reader.onload = function(e) {
+            try {
+                const data = e.target.result;
+                const parsedData = parseExcel(data);
+                
+                if (parsedData && parsedData.length > 0) {
+                    // 验证数据质量
+                    const validationResult = validateParsedData(parsedData);
+                    
+                    // 将解析的数据存储到wizardData中
+                    wizardData.originalData = {
+                        name: file.name,
+                        rows: parsedData.length,
+                        cols: parsedData[0].length,
+                        columns: parsedData[0], // 第一行作为列名
+                        fullData: parsedData, // 完整数据集用于模型训练
+                        sample: parsedData.slice(1, 11), // 取前10行仅用于预览显示
+                        validation: validationResult
+                    };
+                    
+                    displayFileInfo(file);
+                    showAlert('文件解析成功！', 'success');
+                } else {
+                    throw new Error('文件内容为空或格式不正确');
+                }
+            } catch (error) {
+                console.error('文件解析错误:', error);
+                showAlert('文件解析失败: ' + error.message, 'danger');
+            }
+        };
+        
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+// 验证解析后的数据
+function validateParsedData(data) {
+    const warnings = [];
+    const errors = [];
+    
+    if (!data || data.length === 0) {
+        errors.push('文件为空');
+        return { warnings, errors, isValid: false };
+    }
+    
+    // 检查列数一致性
+    const expectedCols = data[0].length;
+    const inconsistentRows = [];
+    
+    for (let i = 1; i < data.length; i++) {
+        if (data[i].length !== expectedCols) {
+            inconsistentRows.push(i + 1);
+        }
+    }
+    
+    if (inconsistentRows.length > 0) {
+        warnings.push(`${inconsistentRows.length}行数据列数不一致`);
+    }
+    
+    // 检查空值
+    let emptyCells = 0;
+    let totalCells = 0;
+    
+    for (let row of data) {
+        for (let cell of row) {
+            totalCells++;
+            if (!cell || cell.trim() === '') {
+                emptyCells++;
+            }
+        }
+    }
+    
+    const emptyRatio = emptyCells / totalCells;
+    if (emptyRatio > 0.1) {
+        warnings.push(`${Math.round(emptyRatio * 100)}%的单元格为空`);
+    }
+    
+    // 检查是否包含乱码字符
+    let hasGarbledText = false;
+    let garbledCells = [];
+    
+    for (let i = 0; i < data.length; i++) {
+        for (let j = 0; j < data[i].length; j++) {
+            const cell = data[i][j];
+            if (cell && (cell.includes('\uFFFD') || 
+                        /[\u0001-\u0008\u000B\u000C\u000E-\u001F]/.test(cell) ||
+                        /[^\x20-\x7E\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]/.test(cell))) {
+                hasGarbledText = true;
+                garbledCells.push(`第${i+1}行第${j+1}列`);
+            }
+        }
+    }
+    
+    if (hasGarbledText) {
+        if (garbledCells.length <= 5) {
+            warnings.push(`检测到可能的乱码字符: ${garbledCells.join(', ')}`);
+        } else {
+            warnings.push(`检测到可能的乱码字符，影响${garbledCells.length}个单元格`);
+        }
+    }
+    
+    return {
+        warnings,
+        errors,
+        isValid: errors.length === 0,
+        emptyRatio,
+        inconsistentRows: inconsistentRows.length
+    };
+}
+
+// 解析CSV文件
+function parseCSV(csvText) {
+    // 检测和清理文本
+    const cleanText = cleanTextEncoding(csvText);
+    const lines = cleanText.split('\n').filter(line => line.trim());
+    const result = [];
+    
+    for (let line of lines) {
+        // 改进的CSV解析，正确处理引号和逗号
+        const row = parseCSVLine(line);
+        if (row.length > 0) {
+            // 进一步清理每个字段的乱码
+            const cleanRow = row.map(field => cleanFieldEncoding(field));
+            result.push(cleanRow);
+        }
+    }
+    
+    return result;
+}
+
+// 转义正则表达式特殊字符
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 清理文本编码
+function cleanTextEncoding(text) {
+    if (!text) return '';
+    
+    // 移除BOM标记
+    if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+    }
+    
+    // 简单的字符替换
+    let cleanText = text
+        .replace(/\uFFFD/g, '') // Unicode替换字符
+        .replace(/\u0000/g, '') // 空字符
+        .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/g, '') // 控制字符
+        .replace(/\n\s*\n/g, '\n'); // 移除多余的空行
+    
+    return cleanText;
+}
+
+// 清理字段级别的编码问题
+function cleanFieldEncoding(field) {
+    if (!field) return '';
+    
+    // 移除常见的乱码字符
+    let cleanField = field
+        .replace(/\uFFFD/g, '') // Unicode替换字符
+        .replace(/\u0000/g, '') // 空字符
+        .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F]/g, '') // 控制字符
+        .replace(/\u00A0/g, ' ') // 不间断空格替换为普通空格
+        .replace(/\u201C|\u201D/g, '"') // 智能引号替换为普通引号
+        .replace(/\u2018|\u2019/g, "'") // 智能单引号替换为普通单引号
+        .replace(/\u2013|\u2014/g, '-') // 长破折号替换为短破折号
+        .trim();
+    
+    return cleanField;
+}
+
+// 解析CSV行
+function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+            if (inQuotes && line[i + 1] === '"') {
+                // 转义的引号
+                current += '"';
+                i++; // 跳过下一个引号
+            } else {
+                // 切换引号状态
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            // 字段分隔符
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
+    }
+    
+    // 添加最后一个字段
+    result.push(current.trim());
+    
+    return result;
+}
+
+// 解析Excel文件（使用SheetJS库）
+function parseExcelFile(arrayBuffer) {
+    try {
+        // 检查是否加载了SheetJS库
+        if (typeof XLSX === 'undefined') {
+            console.warn('SheetJS库未加载，尝试基础解析');
+            return parseExcelBasic(arrayBuffer);
+        }
+        
+        // 使用SheetJS解析Excel文件
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0]; // 使用第一个工作表
+        const worksheet = workbook.Sheets[sheetName];
+        
+        // 将工作表转换为JSON数组
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        // 过滤空行
+        const filteredData = jsonData.filter(row => row && row.length > 0 && row.some(cell => cell !== null && cell !== undefined && cell !== ''));
+        
+        if (filteredData.length === 0) {
+            throw new Error('Excel文件为空或没有有效数据');
+        }
+        
+        // 确保所有行都有相同的列数
+        const maxCols = Math.max(...filteredData.map(row => row.length));
+        const normalizedData = filteredData.map(row => {
+            const normalizedRow = new Array(maxCols).fill('');
+            for (let i = 0; i < row.length; i++) {
+                normalizedRow[i] = row[i] !== null && row[i] !== undefined ? String(row[i]) : '';
+            }
+            return normalizedRow;
+        });
+        
+        return normalizedData;
+        
+    } catch (error) {
+        console.error('SheetJS解析失败，尝试基础解析:', error);
+        return parseExcelBasic(arrayBuffer);
+    }
+}
+
+// 基础Excel解析（备用方案）
+function parseExcelBasic(arrayBuffer) {
+    try {
+        // 尝试使用简单的文本解析（适用于某些Excel格式）
+        const text = new TextDecoder('utf-8').decode(arrayBuffer);
+        
+        // 如果包含制表符，按制表符分割
+        if (text.includes('\t')) {
+            const lines = text.split('\n').filter(line => line.trim());
+            const result = [];
+            
+            for (let line of lines) {
+                const row = line.split('\t').map(cell => cell.trim());
+                if (row.length > 0) {
+                    result.push(row);
+                }
+            }
+            
+            if (result.length > 0) {
+                return result;
+            }
+        }
+        
+        // 如果无法解析，抛出错误
+        throw new Error('无法解析Excel文件格式');
+        
+    } catch (error) {
+        console.error('基础Excel解析错误:', error);
+        throw new Error('Excel文件解析失败，请使用CSV格式或确保文件格式正确');
+    }
+}
+
+// 兼容性函数（保留原函数名）
+function parseExcel(arrayBuffer) {
+    return parseExcelFile(arrayBuffer);
+}
+
+// 预览文件
+function previewFile() {
+    if (!selectedFile || !wizardData.originalData) {
+        showAlert('没有可预览的文件', 'warning');
+        return;
+    }
+    
+    const data = wizardData.originalData;
+    
+    // 验证数据完整性
+    if (!data.columns || !data.sample || data.columns.length === 0) {
+        showAlert('文件数据格式不正确，无法预览', 'error');
+        return;
+    }
+    
+    // 检查列数和行数是否匹配
+    const expectedCols = data.columns.length;
+    const invalidRows = data.sample.filter(row => row.length !== expectedCols);
+    
+    if (invalidRows.length > 0) {
+        console.warn(`发现 ${invalidRows.length} 行数据列数不匹配`);
+    }
+    
+    // 创建预览模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'filePreviewModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">文件预览 - ${selectedFile.name}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="file-preview-info">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>文件名:</strong> ${selectedFile.name}</p>
+                                <p><strong>文件大小:</strong> ${formatFileSize(selectedFile.size)}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>数据行数:</strong> ${data.rows}</p>
+                                <p><strong>数据列数:</strong> ${data.cols}</p>
+                            </div>
+                        </div>
+                        ${data.validation ? `
+                        <div class="data-validation-info">
+                            ${data.validation.warnings.length > 0 ? `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>数据质量警告:</strong>
+                                <ul class="mb-0 mt-2">
+                                    ${data.validation.warnings.map(warning => `<li>${warning}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+                            ${data.validation.errors.length > 0 ? `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-times-circle"></i>
+                                <strong>数据错误:</strong>
+                                <ul class="mb-0 mt-2">
+                                    ${data.validation.errors.map(error => `<li>${error}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+                            ${data.validation.warnings.length === 0 && data.validation.errors.length === 0 ? `
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle"></i>
+                                数据格式正确，无质量问题
+                            </div>
+                            ` : ''}
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    ${data.columns.map((col, index) => 
+                                        `<th title="列 ${index + 1}">${col || `列${index + 1}`}</th>`
+                                    ).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.sample.map((row, rowIndex) => 
+                                    `<tr title="第 ${rowIndex + 2} 行">
+                                        ${row.map((cell, cellIndex) => 
+                                            `<td title="${data.columns[cellIndex] || `列${cellIndex + 1}`}: ${cell}">
+                                                ${cell || '<span class="text-muted">空值</span>'}
+                                            </td>`
+                                        ).join('')}
+                                    </tr>`
+                                ).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="preview-footer mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i>
+                            显示前 ${data.sample.length} 行数据，共 ${data.rows} 行
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="downloadPreviewData()">
+                        <i class="fas fa-download"></i> 下载预览数据
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 下载预览数据
+function downloadPreviewData() {
+    if (!wizardData.originalData) {
+        showAlert('没有可下载的数据', 'warning');
+        return;
+    }
+    
+    const data = wizardData.originalData;
+    const csvContent = [
+        data.columns.join(','),
+        ...data.sample.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `preview_${selectedFile.name}`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showAlert('预览数据下载成功！', 'success');
+}
+
+// 移除文件
+function removeFile() {
+    selectedFile = null;
+    wizardData.originalData = null;
+    wizardData.dataInfo = null;
+    
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('file-input').value = '';
+    
+    showAlert('文件已移除', 'info');
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 获取文件类型名称
+function getFileTypeName(filename) {
+    const extension = filename.split('.').pop().toLowerCase();
+    const typeNames = {
+        'csv': 'CSV文件',
+        'xlsx': 'Excel文件',
+        'xls': 'Excel文件'
+    };
+    return typeNames[extension] || '未知文件类型';
+}
+
+// 显示提示
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.style.position = 'fixed';
+    alert.style.top = '20px';
+    alert.style.right = '20px';
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
+}
+
+// 页面初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 确保wizardData包含所有必要字段
+    if (!wizardData.selectedDataSource) wizardData.selectedDataSource = null;
+    if (!wizardData.selectedTable) wizardData.selectedTable = null;
+    if (!wizardData.demoDataType) wizardData.demoDataType = null;
+    
+    console.log('页面加载完成，wizardData状态:', wizardData);
+    
+    // 加载已配置的模型
+    loadConfiguredModels();
+    
+    // 显示第一步
+    goToStep(1);
+});
+</script>
+{% endblock %}

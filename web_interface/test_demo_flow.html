@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演示数据流程测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .test-button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .test-button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; }
+        .status { padding: 5px 10px; margin: 5px; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>演示数据流程测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 初始化测试</h2>
+        <button class="test-button" onclick="testInitialization()">初始化wizardData</button>
+        <div id="init-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. 选择演示数据测试</h2>
+        <button class="test-button" onclick="testSelectDemoData('customer')">选择客户订单数据</button>
+        <button class="test-button" onclick="testSelectDemoData('financial')">选择金融数据</button>
+        <button class="test-button" onclick="testSelectDemoData('medical')">选择医疗数据</button>
+        <div id="demo-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. 模拟第二步模型选择</h2>
+        <button class="test-button" onclick="testSelectModel()">选择CTGAN模型</button>
+        <div id="model-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. 模拟第三步摘要更新</h2>
+        <button class="test-button" onclick="testUpdateSummary()">更新摘要</button>
+        <div id="summary-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. 完整流程测试</h2>
+        <button class="test-button" onclick="testFullFlow()">完整流程测试</button>
+        <div id="full-log" class="log"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>当前状态</h2>
+        <div id="current-status" class="log"></div>
+    </div>
+
+    <script>
+        // 模拟wizardData对象
+        let wizardData = {
+            dataSource: null,
+            model: null,
+            modelConfig: null,
+            modelType: null,
+            params: {},
+            originalData: null,
+            syntheticData: null,
+            dataInfo: null,
+            evaluationResults: null,
+            selectedDataSource: null,
+            selectedTable: null,
+            demoDataType: null
+        };
+        
+        let currentStep = 1;
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<div class="status ${className}">[${timestamp}] ${message}</div>`;
+        }
+        
+        function testInitialization() {
+            log('init-log', '开始初始化测试...');
+            log('init-log', `初始wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+            log('init-log', '初始化完成', 'success');
+        }
+        
+        function testSelectDemoData(type) {
+            log('demo-log', `开始选择演示数据类型: ${type}`);
+            
+            // 模拟selectDemoData函数
+            wizardData.dataSource = 'demo';
+            wizardData.demoDataType = type;
+            log('demo-log', `设置wizardData.dataSource = 'demo'`);
+            log('demo-log', `设置wizardData.demoDataType = '${type}'`);
+            
+            // 模拟loadDemoData函数
+            let demoData;
+            switch(type) {
+                case 'customer':
+                    demoData = {
+                        name: '客户订单数据',
+                        rows: 10000,
+                        cols: 15,
+                        columns: ['订单ID', '客户ID', '客户姓名', '客户年龄', '客户性别', '客户城市', '客户收入', '产品ID', '产品名称', '产品类别', '订单金额', '订单数量', '订单日期', '支付方式', '配送状态'],
+                        sample: [
+                            ['ORD001', 'CUST001', '张三', 28, '男', '北京', 15000, 'PROD001', 'iPhone 15', '电子产品', 6999, 1, '2024-01-15', '支付宝', '已配送']
+                        ]
+                    };
+                    break;
+                case 'financial':
+                    demoData = {
+                        name: '金融数据',
+                        rows: 5000,
+                        cols: 12,
+                        columns: ['交易ID', '账户ID', '客户姓名', '客户年龄', '客户职业', '交易类型', '交易金额', '交易日期', '交易时间', '风险等级', '账户余额', '信用评分'],
+                        sample: [
+                            ['TXN001', 'ACC001', '张三', 28, '软件工程师', '转账', 5000, '2024-01-15', '14:30:25', '低风险', 25000, 750]
+                        ]
+                    };
+                    break;
+                case 'medical':
+                    demoData = {
+                        name: '医疗数据',
+                        rows: 8000,
+                        cols: 18,
+                        columns: ['患者ID', '患者姓名', '患者年龄', '患者性别', '患者职业', '就诊日期', '科室', '医生姓名', '症状描述', '诊断结果', '治疗方案', '药物名称', '药物剂量', '检查项目', '检查结果', '住院天数', '费用', '保险类型'],
+                        sample: [
+                            ['PAT001', '张三', 28, '男', '软件工程师', '2024-01-15', '内科', '李医生', '发热咳嗽', '感冒', '药物治疗', '阿莫西林', '500mg', '血常规', '正常', 0, 150, '医保']
+                        ]
+                    };
+                    break;
+            }
+            
+            demoData.fullData = demoData.sample;
+            wizardData.originalData = demoData;
+            wizardData.dataInfo = {
+                original: wizardData.originalData,
+                synthetic: null
+            };
+            
+            log('demo-log', `演示数据加载完成: ${demoData.name}`);
+            log('demo-log', `字段数量: ${demoData.columns.length}`);
+            log('demo-log', `wizardData.originalData已设置`);
+            log('demo-log', `当前wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+            log('demo-log', '演示数据选择完成', 'success');
+            
+            updateCurrentStatus();
+        }
+        
+        function testSelectModel() {
+            log('model-log', '开始选择模型...');
+            
+            // 模拟选择CTGAN模型
+            wizardData.model = 'ctgan';
+            wizardData.modelConfig = {};
+            wizardData.modelType = 'ctgan';
+            
+            log('model-log', `设置wizardData.model = 'ctgan'`);
+            log('model-log', `设置wizardData.modelType = 'ctgan'`);
+            log('model-log', `当前wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+            log('model-log', '模型选择完成', 'success');
+            
+            updateCurrentStatus();
+        }
+        
+        function testUpdateSummary() {
+            log('summary-log', '开始更新摘要...');
+            log('summary-log', `当前步骤: ${currentStep}`);
+            log('summary-log', `当前wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+            
+            // 模拟updateSummary函数逻辑
+            if (currentStep === 3) {
+                log('summary-log', '在步骤3，开始更新摘要');
+                
+                // 更新数据源信息
+                let dataSourceText = '-';
+                if (wizardData.dataSource === 'demo') {
+                    if (wizardData.demoDataType) {
+                        const demoTypeNames = {
+                            'customer': '客户订单数据',
+                            'financial': '金融数据',
+                            'medical': '医疗数据'
+                        };
+                        dataSourceText = demoTypeNames[wizardData.demoDataType] || '全新合成数据';
+                        log('summary-log', `数据源文本: ${dataSourceText}`);
+                    } else {
+                        dataSourceText = '全新合成数据';
+                        log('summary-log', '演示数据类型为空，使用默认文本');
+                    }
+                }
+                
+                // 更新模型信息
+                let modelName = 'CTGAN';
+                if (wizardData.model === 'ctgan' || wizardData.modelType === 'ctgan') {
+                    modelName = 'CTGAN';
+                }
+                log('summary-log', `模型名称: ${modelName}`);
+                
+                // 更新生成数量
+                const samples = '1000';
+                log('summary-log', `生成数量: ${samples} 条`);
+                
+                log('summary-log', `摘要更新完成: 数据源=${dataSourceText}, 模型=${modelName}, 数量=${samples}`, 'success');
+            } else {
+                log('summary-log', `当前不在步骤3，跳过摘要更新`, 'error');
+            }
+            
+            updateCurrentStatus();
+        }
+        
+        function testFullFlow() {
+            log('full-log', '开始完整流程测试...');
+            
+            // 重置状态
+            wizardData = {
+                dataSource: null,
+                model: null,
+                modelConfig: null,
+                modelType: null,
+                params: {},
+                originalData: null,
+                syntheticData: null,
+                dataInfo: null,
+                evaluationResults: null,
+                selectedDataSource: null,
+                selectedTable: null,
+                demoDataType: null
+            };
+            currentStep = 1;
+            
+            log('full-log', '1. 重置状态完成');
+            
+            // 步骤1：选择演示数据
+            testSelectDemoData('customer');
+            log('full-log', '2. 选择演示数据完成');
+            
+            // 步骤2：选择模型
+            testSelectModel();
+            log('full-log', '3. 选择模型完成');
+            
+            // 步骤3：更新摘要
+            currentStep = 3;
+            testUpdateSummary();
+            log('full-log', '4. 更新摘要完成');
+            
+            log('full-log', '完整流程测试完成', 'success');
+            updateCurrentStatus();
+        }
+        
+        function updateCurrentStatus() {
+            const statusElement = document.getElementById('current-status');
+            statusElement.innerHTML = `
+                <strong>当前状态:</strong>
+                <br>步骤: ${currentStep}
+                <br>数据源: ${wizardData.dataSource}
+                <br>演示数据类型: ${wizardData.demoDataType}
+                <br>模型: ${wizardData.model}
+                <br>模型类型: ${wizardData.modelType}
+                <br>原始数据: ${wizardData.originalData ? wizardData.originalData.name : 'null'}
+                <br>
+                <br><strong>完整wizardData:</strong>
+                <br>${JSON.stringify(wizardData, null, 2)}
+            `;
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            testInitialization();
+            updateCurrentStatus();
+        };
+    </script>
+</body>
+</html>

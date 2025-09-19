@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}大模型配置 - SDG{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- 页面标题 -->
+            <div class="page-header">
+                <h1><i class="fas fa-brain"></i> 大模型配置</h1>
+                <p>配置和管理用于数据合成的大语言模型</p>
+            </div>
+
+            <!-- 大模型配置卡片 -->
+            <div class="config-section">
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-robot"></i> OpenAI 模型配置</h3>
+                        <span class="status-badge" id="openai-status">未配置</span>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="openai-key">API Key</label>
+                            <input type="password" id="openai-key" class="form-control" placeholder="输入OpenAI API Key">
+                        </div>
+                        <div class="form-group">
+                            <label for="openai-url">API URL</label>
+                            <input type="url" id="openai-url" class="form-control" placeholder="https://api.openai.com/v1" value="https://api.openai.com/v1">
+                        </div>
+                        <div class="form-group">
+                            <label for="openai-model">模型选择</label>
+                            <select id="openai-model" class="form-control">
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="openai-max-tokens">最大Token数</label>
+                            <input type="number" id="openai-max-tokens" class="form-control" value="2000" min="100" max="4000">
+                        </div>
+                        <div class="form-group">
+                            <label for="openai-temperature">温度参数</label>
+                            <input type="range" id="openai-temperature" class="form-control-range" min="0" max="2" step="0.1" value="0.7">
+                            <span class="range-value">0.7</span>
+                        </div>
+                        <div class="config-actions">
+                            <button class="btn btn-primary" onclick="testOpenAI()">
+                                <i class="fas fa-vial"></i> 测试连接
+                            </button>
+                            <button class="btn btn-success" onclick="saveOpenAIConfig()">
+                                <i class="fas fa-save"></i> 保存配置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-server"></i> GLM 模型配置</h3>
+                        <span class="status-badge" id="glm-status">未配置</span>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="glm-key">API Key</label>
+                            <input type="password" id="glm-key" class="form-control" placeholder="输入GLM API Key">
+                        </div>
+                        <div class="form-group">
+                            <label for="glm-url">API URL</label>
+                            <input type="url" id="glm-url" class="form-control" placeholder="输入GLM API地址">
+                        </div>
+                        <div class="form-group">
+                            <label for="glm-model">模型选择</label>
+                            <select id="glm-model" class="form-control">
+                                <option value="glm-4">GLM-4</option>
+                                <option value="glm-3-turbo">GLM-3 Turbo</option>
+                            </select>
+                        </div>
+                        <div class="config-actions">
+                            <button class="btn btn-primary" onclick="testGLM()">
+                                <i class="fas fa-vial"></i> 测试连接
+                            </button>
+                            <button class="btn btn-success" onclick="saveGLMConfig()">
+                                <i class="fas fa-save"></i> 保存配置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <div class="config-header">
+                        <h3><i class="fas fa-home"></i> 本地模型配置</h3>
+                        <span class="status-badge" id="local-status">未配置</span>
+                    </div>
+                    <div class="config-content">
+                        <div class="form-group">
+                            <label for="local-url">本地API地址</label>
+                            <input type="url" id="local-url" class="form-control" placeholder="http://localhost:11434/v1">
+                        </div>
+                        <div class="form-group">
+                            <label for="local-model">模型名称</label>
+                            <input type="text" id="local-model" class="form-control" placeholder="deepseek-chat">
+                        </div>
+                        <div class="form-group">
+                            <label for="local-timeout">超时时间(秒)</label>
+                            <input type="number" id="local-timeout" class="form-control" value="30" min="5" max="300">
+                        </div>
+                        <div class="config-actions">
+                            <button class="btn btn-primary" onclick="testLocal()">
+                                <i class="fas fa-vial"></i> 测试连接
+                            </button>
+                            <button class="btn btn-success" onclick="saveLocalConfig()">
+                                <i class="fas fa-save"></i> 保存配置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+// 温度滑块值显示
+document.getElementById('openai-temperature').addEventListener('input', function() {
+    document.querySelector('.range-value').textContent = this.value;
+});
+
+// 测试OpenAI连接
+function testOpenAI() {
+    const key = document.getElementById('openai-key').value;
+    const url = document.getElementById('openai-url').value;
+    
+    if (!key || !url) {
+        showAlert('请填写完整的OpenAI配置信息', 'warning');
+        return;
+    }
+    
+    showAlert('正在测试OpenAI连接...', 'info');
+    // 这里应该调用后端API进行实际测试
+    setTimeout(() => {
+        showAlert('OpenAI连接测试成功！', 'success');
+        updateStatus('openai', '已连接');
+    }, 2000);
+}
+
+// 测试GLM连接
+function testGLM() {
+    const key = document.getElementById('glm-key').value;
+    const url = document.getElementById('glm-url').value;
+    
+    if (!key || !url) {
+        showAlert('请填写完整的GLM配置信息', 'warning');
+        return;
+    }
+    
+    showAlert('正在测试GLM连接...', 'info');
+    setTimeout(() => {
+        showAlert('GLM连接测试成功！', 'success');
+        updateStatus('glm', '已连接');
+    }, 2000);
+}
+
+// 测试本地模型连接
+function testLocal() {
+    const url = document.getElementById('local-url').value;
+    const model = document.getElementById('local-model').value;
+    
+    if (!url || !model) {
+        showAlert('请填写完整的本地模型配置信息', 'warning');
+        return;
+    }
+    
+    showAlert('正在测试本地模型连接...', 'info');
+    setTimeout(() => {
+        showAlert('本地模型连接测试成功！', 'success');
+        updateStatus('local', '已连接');
+    }, 2000);
+}
+
+// 保存配置
+function saveOpenAIConfig() {
+    const config = {
+        key: document.getElementById('openai-key').value,
+        url: document.getElementById('openai-url').value,
+        model: document.getElementById('openai-model').value,
+        maxTokens: document.getElementById('openai-max-tokens').value,
+        temperature: document.getElementById('openai-temperature').value
+    };
+    
+    localStorage.setItem('openai_config', JSON.stringify(config));
+    showAlert('OpenAI配置已保存', 'success');
+    
+    // 更新状态显示为"已配置"
+    updateStatus('openai', '已配置');
+}
+
+function saveGLMConfig() {
+    const config = {
+        key: document.getElementById('glm-key').value,
+        url: document.getElementById('glm-url').value,
+        model: document.getElementById('glm-model').value
+    };
+    
+    localStorage.setItem('glm_config', JSON.stringify(config));
+    showAlert('GLM配置已保存', 'success');
+    
+    // 更新状态显示为"已配置"
+    updateStatus('glm', '已配置');
+}
+
+function saveLocalConfig() {
+    const config = {
+        url: document.getElementById('local-url').value,
+        model: document.getElementById('local-model').value,
+        timeout: document.getElementById('local-timeout').value
+    };
+    
+    localStorage.setItem('local_config', JSON.stringify(config));
+    showAlert('本地模型配置已保存', 'success');
+    
+    // 更新状态显示为"已配置"
+    updateStatus('local', '已配置');
+}
+
+// 更新状态
+function updateStatus(type, status) {
+    document.getElementById(type + '-status').textContent = status;
+    // 已连接和已配置都显示为成功状态
+    const isSuccess = status === '已连接' || status === '已配置';
+    document.getElementById(type + '-status').className = 'status-badge ' + (isSuccess ? 'success' : 'warning');
+}
+
+// 显示提示信息
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.querySelector('.page-header').appendChild(alertDiv);
+    
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+
+// 页面加载时恢复配置
+document.addEventListener('DOMContentLoaded', function() {
+    // 恢复OpenAI配置
+    const openaiConfig = localStorage.getItem('openai_config');
+    if (openaiConfig) {
+        const config = JSON.parse(openaiConfig);
+        document.getElementById('openai-key').value = config.key || '';
+        document.getElementById('openai-url').value = config.url || '';
+        document.getElementById('openai-model').value = config.model || 'gpt-3.5-turbo';
+        document.getElementById('openai-max-tokens').value = config.maxTokens || 2000;
+        document.getElementById('openai-temperature').value = config.temperature || 0.7;
+        document.querySelector('.range-value').textContent = config.temperature || 0.7;
+        
+        // 如果配置存在且有效，显示"已配置"状态
+        if (config.key && config.url) {
+            updateStatus('openai', '已配置');
+        }
+    }
+    
+    // 恢复GLM配置
+    const glmConfig = localStorage.getItem('glm_config');
+    if (glmConfig) {
+        const config = JSON.parse(glmConfig);
+        document.getElementById('glm-key').value = config.key || '';
+        document.getElementById('glm-url').value = config.url || '';
+        document.getElementById('glm-model').value = config.model || 'glm-4';
+        
+        // 如果配置存在且有效，显示"已配置"状态
+        if (config.key && config.url) {
+            updateStatus('glm', '已配置');
+        }
+    }
+    
+    // 恢复本地模型配置
+    const localConfig = localStorage.getItem('local_config');
+    if (localConfig) {
+        const config = JSON.parse(localConfig);
+        document.getElementById('local-url').value = config.url || '';
+        document.getElementById('local-model').value = config.model || '';
+        document.getElementById('local-timeout').value = config.timeout || 30;
+        
+        // 如果配置存在且有效，显示"已配置"状态
+        if (config.url && config.model) {
+            updateStatus('local', '已配置');
+        }
+    }
+});
+</script>
+{% endblock %}

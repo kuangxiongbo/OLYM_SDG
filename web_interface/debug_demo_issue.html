@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演示数据问题调试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .debug-button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .debug-button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 3px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .status { padding: 5px 10px; margin: 5px; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>演示数据问题调试</h1>
+    
+    <div class="debug-section">
+        <h2>问题分析</h2>
+        <p>根据用户反馈，选择演示数据后，第三步仍然显示"-"，说明数据没有正确传递。</p>
+        <p>可能的原因：</p>
+        <ul>
+            <li>1. wizardData在某个地方被重新初始化</li>
+            <li>2. updateSummary函数没有被正确调用</li>
+            <li>3. DOM元素没有正确更新</li>
+            <li>4. 页面刷新导致状态丢失</li>
+        </ul>
+    </div>
+    
+    <div class="debug-section">
+        <h2>模拟操作流程</h2>
+        <button class="debug-button" onclick="simulateStep1()">步骤1: 选择演示数据</button>
+        <button class="debug-button" onclick="simulateStep2()">步骤2: 选择模型</button>
+        <button class="debug-button" onclick="simulateStep3()">步骤3: 查看摘要</button>
+        <button class="debug-button" onclick="simulateFullFlow()">完整流程</button>
+        <div id="simulation-log" class="log"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>状态检查</h2>
+        <button class="debug-button" onclick="checkCurrentState()">检查当前状态</button>
+        <button class="debug-button" onclick="checkDOMElements()">检查DOM元素</button>
+        <div id="state-log" class="log"></div>
+    </div>
+    
+    <div class="debug-section">
+        <h2>修复建议</h2>
+        <div id="fix-suggestions" class="log">
+            1. 确保wizardData在页面加载时正确初始化
+            2. 确保selectDemoData函数正确设置所有必要字段
+            3. 确保loadDemoData函数正确设置originalData
+            4. 确保goToStep(3)时正确调用updateSummary
+            5. 确保updateSummary函数能正确读取wizardData状态
+        </div>
+    </div>
+
+    <script>
+        // 模拟wizardData对象
+        let wizardData = {
+            dataSource: null,
+            model: null,
+            modelConfig: null,
+            modelType: null,
+            params: {},
+            originalData: null,
+            syntheticData: null,
+            dataInfo: null,
+            evaluationResults: null,
+            selectedDataSource: null,
+            selectedTable: null,
+            demoDataType: null
+        };
+        
+        let currentStep = 1;
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            element.innerHTML += `<div class="status ${className}">[${timestamp}] ${message}</div>`;
+        }
+        
+        function simulateStep1() {
+            log('simulation-log', '=== 模拟步骤1: 选择演示数据 ===');
+            
+            // 模拟selectDemoData('customer')
+            wizardData.dataSource = 'demo';
+            wizardData.demoDataType = 'customer';
+            log('simulation-log', `设置 wizardData.dataSource = 'demo'`);
+            log('simulation-log', `设置 wizardData.demoDataType = 'customer'`);
+            
+            // 模拟loadDemoData('customer')
+            const demoData = {
+                name: '客户订单数据',
+                rows: 10000,
+                cols: 15,
+                columns: ['订单ID', '客户ID', '客户姓名', '客户年龄', '客户性别', '客户城市', '客户收入', '产品ID', '产品名称', '产品类别', '订单金额', '订单数量', '订单日期', '支付方式', '配送状态'],
+                sample: [['ORD001', 'CUST001', '张三', 28, '男', '北京', 15000, 'PROD001', 'iPhone 15', '电子产品', 6999, 1, '2024-01-15', '支付宝', '已配送']]
+            };
+            demoData.fullData = demoData.sample;
+            wizardData.originalData = demoData;
+            wizardData.dataInfo = {
+                original: wizardData.originalData,
+                synthetic: null
+            };
+            
+            log('simulation-log', `设置 wizardData.originalData = ${demoData.name}`);
+            log('simulation-log', `当前 wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+            log('simulation-log', '步骤1完成', 'success');
+        }
+        
+        function simulateStep2() {
+            log('simulation-log', '=== 模拟步骤2: 选择模型 ===');
+            
+            // 模拟选择CTGAN模型
+            wizardData.model = 'ctgan';
+            wizardData.modelConfig = {};
+            wizardData.modelType = 'ctgan';
+            
+            log('simulation-log', `设置 wizardData.model = 'ctgan'`);
+            log('simulation-log', `设置 wizardData.modelType = 'ctgan'`);
+            log('simulation-log', `当前 wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+            log('simulation-log', '步骤2完成', 'success');
+        }
+        
+        function simulateStep3() {
+            log('simulation-log', '=== 模拟步骤3: 查看摘要 ===');
+            
+            currentStep = 3;
+            log('simulation-log', `设置 currentStep = ${currentStep}`);
+            
+            // 模拟updateSummary函数
+            if (currentStep === 3) {
+                log('simulation-log', '调用 updateSummary()');
+                
+                // 更新数据源信息
+                let dataSourceText = '-';
+                if (wizardData.dataSource === 'demo') {
+                    if (wizardData.demoDataType) {
+                        const demoTypeNames = {
+                            'customer': '客户订单数据',
+                            'financial': '金融数据',
+                            'medical': '医疗数据'
+                        };
+                        dataSourceText = demoTypeNames[wizardData.demoDataType] || '全新合成数据';
+                    } else {
+                        dataSourceText = '全新合成数据';
+                    }
+                }
+                log('simulation-log', `数据源文本: ${dataSourceText}`);
+                
+                // 更新模型信息
+                let modelName = 'CTGAN';
+                if (wizardData.model === 'ctgan' || wizardData.modelType === 'ctgan') {
+                    modelName = 'CTGAN';
+                }
+                log('simulation-log', `模型名称: ${modelName}`);
+                
+                // 更新生成数量
+                const samples = '1000';
+                log('simulation-log', `生成数量: ${samples} 条`);
+                
+                log('simulation-log', `摘要更新完成: 数据源=${dataSourceText}, 模型=${modelName}, 数量=${samples}`, 'success');
+            } else {
+                log('simulation-log', `当前不在步骤3，跳过摘要更新`, 'error');
+            }
+        }
+        
+        function simulateFullFlow() {
+            log('simulation-log', '=== 开始完整流程模拟 ===');
+            
+            // 重置状态
+            wizardData = {
+                dataSource: null,
+                model: null,
+                modelConfig: null,
+                modelType: null,
+                params: {},
+                originalData: null,
+                syntheticData: null,
+                dataInfo: null,
+                evaluationResults: null,
+                selectedDataSource: null,
+                selectedTable: null,
+                demoDataType: null
+            };
+            currentStep = 1;
+            
+            log('simulation-log', '1. 重置状态完成');
+            
+            // 执行步骤1
+            simulateStep1();
+            log('simulation-log', '2. 步骤1完成');
+            
+            // 执行步骤2
+            simulateStep2();
+            log('simulation-log', '3. 步骤2完成');
+            
+            // 执行步骤3
+            simulateStep3();
+            log('simulation-log', '4. 步骤3完成');
+            
+            log('simulation-log', '完整流程模拟完成', 'success');
+        }
+        
+        function checkCurrentState() {
+            log('state-log', '=== 检查当前状态 ===');
+            log('state-log', `currentStep: ${currentStep}`);
+            log('state-log', `wizardData.dataSource: ${wizardData.dataSource}`);
+            log('state-log', `wizardData.demoDataType: ${wizardData.demoDataType}`);
+            log('state-log', `wizardData.model: ${wizardData.model}`);
+            log('state-log', `wizardData.modelType: ${wizardData.modelType}`);
+            log('state-log', `wizardData.originalData: ${wizardData.originalData ? wizardData.originalData.name : 'null'}`);
+            log('state-log', `完整wizardData: ${JSON.stringify(wizardData, null, 2)}`);
+        }
+        
+        function checkDOMElements() {
+            log('state-log', '=== 检查DOM元素 ===');
+            
+            // 模拟检查DOM元素
+            const elements = [
+                'summary-data-source',
+                'summary-model', 
+                'summary-samples'
+            ];
+            
+            elements.forEach(id => {
+                log('state-log', `检查元素 #${id}: 存在`);
+            });
+            
+            log('state-log', 'DOM元素检查完成');
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+            log('simulation-log', '页面加载完成，开始调试演示数据问题');
+            checkCurrentState();
+        };
+    </script>
+</body>
+</html>

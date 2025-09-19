@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配置保存测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin: 15px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .config-display {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>DeepSeek本地模型配置保存测试</h1>
+    
+    <div class="test-section">
+        <h2>配置输入</h2>
+        <div class="form-group">
+            <label for="local-url">本地API地址:</label>
+            <input type="text" id="local-url" value="http://192.168.210.209:11434/api/generate">
+        </div>
+        <div class="form-group">
+            <label for="local-model">模型名称:</label>
+            <input type="text" id="local-model" value="deepseek-r1">
+        </div>
+        <div class="form-group">
+            <label for="local-timeout">超时时间(秒):</label>
+            <input type="number" id="local-timeout" value="30">
+        </div>
+        <button onclick="saveConfig()">保存配置</button>
+        <button onclick="loadConfig()">加载配置</button>
+        <button onclick="clearConfig()">清除配置</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>当前配置显示</h2>
+        <div id="config-display" class="config-display">暂无配置</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>测试结果</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script>
+        function saveConfig() {
+            const config = {
+                url: document.getElementById('local-url').value,
+                model: document.getElementById('local-model').value,
+                timeout: document.getElementById('local-timeout').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                localStorage.setItem('local_config', JSON.stringify(config));
+                showResult('配置保存成功！', 'success');
+                displayConfig();
+            } catch (error) {
+                showResult('配置保存失败: ' + error.message, 'error');
+            }
+        }
+        
+        function loadConfig() {
+            try {
+                const config = localStorage.getItem('local_config');
+                if (config) {
+                    const parsedConfig = JSON.parse(config);
+                    document.getElementById('local-url').value = parsedConfig.url || '';
+                    document.getElementById('local-model').value = parsedConfig.model || '';
+                    document.getElementById('local-timeout').value = parsedConfig.timeout || 30;
+                    showResult('配置加载成功！', 'success');
+                    displayConfig();
+                } else {
+                    showResult('没有找到保存的配置', 'error');
+                }
+            } catch (error) {
+                showResult('配置加载失败: ' + error.message, 'error');
+            }
+        }
+        
+        function clearConfig() {
+            localStorage.removeItem('local_config');
+            document.getElementById('local-url').value = '';
+            document.getElementById('local-model').value = '';
+            document.getElementById('local-timeout').value = '30';
+            showResult('配置已清除', 'success');
+            displayConfig();
+        }
+        
+        function displayConfig() {
+            const config = localStorage.getItem('local_config');
+            if (config) {
+                const parsedConfig = JSON.parse(config);
+                document.getElementById('config-display').textContent = JSON.stringify(parsedConfig, null, 2);
+            } else {
+                document.getElementById('config-display').textContent = '暂无配置';
+            }
+        }
+        
+        function showResult(message, type) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultElement = document.createElement('div');
+            resultElement.className = type;
+            resultElement.textContent = message;
+            resultsDiv.appendChild(resultElement);
+            
+            // 3秒后移除结果
+            setTimeout(() => {
+                resultElement.remove();
+            }, 3000);
+        }
+        
+        // 页面加载时显示当前配置
+        window.onload = function() {
+            displayConfig();
+        };
+    </script>
+</body>
+</html>

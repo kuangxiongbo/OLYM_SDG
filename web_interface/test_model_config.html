@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型配置测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .config-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .config-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.configured {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.not-configured {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>模型配置测试页面</h1>
+    
+    <div class="config-section">
+        <h2>当前配置状态</h2>
+        <div id="config-status"></div>
+    </div>
+    
+    <div class="config-section">
+        <h2>测试配置</h2>
+        <button class="btn-primary" onclick="setTestConfigs()">设置测试配置</button>
+        <button class="btn-secondary" onclick="clearConfigs()">清除所有配置</button>
+        <button class="btn-primary" onclick="loadConfigs()">重新加载配置</button>
+    </div>
+    
+    <div class="config-section">
+        <h2>快速向导模型选择测试</h2>
+        <div id="wizard-models"></div>
+    </div>
+
+    <script>
+        // 设置测试配置
+        function setTestConfigs() {
+            // 设置OpenAI配置
+            const openaiConfig = {
+                key: 'sk-test-openai-key-12345',
+                url: 'https://api.openai.com/v1',
+                model: 'gpt-4',
+                maxTokens: 2000,
+                temperature: 0.7
+            };
+            localStorage.setItem('openai_config', JSON.stringify(openaiConfig));
+            
+            // 设置GLM配置
+            const glmConfig = {
+                key: 'glm-test-key-67890',
+                url: 'https://open.bigmodel.cn/api/paas/v4',
+                model: 'glm-4'
+            };
+            localStorage.setItem('glm_config', JSON.stringify(glmConfig));
+            
+            // 设置本地配置
+            const localConfig = {
+                url: 'http://localhost:11434/v1',
+                model: 'deepseek-coder',
+                timeout: 30
+            };
+            localStorage.setItem('local_config', JSON.stringify(localConfig));
+            
+            alert('测试配置已设置');
+            loadConfigs();
+        }
+        
+        // 清除所有配置
+        function clearConfigs() {
+            localStorage.removeItem('openai_config');
+            localStorage.removeItem('glm_config');
+            localStorage.removeItem('local_config');
+            alert('所有配置已清除');
+            loadConfigs();
+        }
+        
+        // 加载配置状态
+        function loadConfigs() {
+            const statusDiv = document.getElementById('config-status');
+            const wizardDiv = document.getElementById('wizard-models');
+            
+            // 获取配置
+            const openaiConfig = JSON.parse(localStorage.getItem('openai_config') || '{}');
+            const glmConfig = JSON.parse(localStorage.getItem('glm_config') || '{}');
+            const localConfig = JSON.parse(localStorage.getItem('local_config') || '{}');
+            
+            // 显示配置状态
+            let statusHTML = '';
+            
+            // OpenAI配置状态
+            const openaiConfigured = openaiConfig.key && openaiConfig.url;
+            statusHTML += `
+                <div class="config-item">
+                    <strong>OpenAI配置:</strong>
+                    <span class="status ${openaiConfigured ? 'configured' : 'not-configured'}">
+                        ${openaiConfigured ? '已配置' : '未配置'}
+                    </span>
+                    ${openaiConfigured ? `<br>模型: ${openaiConfig.model || 'GPT'}` : ''}
+                </div>
+            `;
+            
+            // GLM配置状态
+            const glmConfigured = glmConfig.key && glmConfig.url;
+            statusHTML += `
+                <div class="config-item">
+                    <strong>GLM配置:</strong>
+                    <span class="status ${glmConfigured ? 'configured' : 'not-configured'}">
+                        ${glmConfigured ? '已配置' : '未配置'}
+                    </span>
+                    ${glmConfigured ? `<br>模型: ${glmConfig.model || 'GLM'}` : ''}
+                </div>
+            `;
+            
+            // 本地配置状态
+            const localConfigured = localConfig.url;
+            statusHTML += `
+                <div class="config-item">
+                    <strong>本地模型配置:</strong>
+                    <span class="status ${localConfigured ? 'configured' : 'not-configured'}">
+                        ${localConfigured ? '已配置' : '未配置'}
+                    </span>
+                    ${localConfigured ? `<br>模型: ${localConfig.model || 'DeepSeek'}` : ''}
+                </div>
+            `;
+            
+            statusDiv.innerHTML = statusHTML;
+            
+            // 显示快速向导模型选择
+            const configuredModels = [];
+            
+            // 检查OpenAI配置
+            if (openaiConfig.key && openaiConfig.url) {
+                configuredModels.push({
+                    id: 'openai',
+                    name: `OpenAI ${openaiConfig.model || 'GPT'}`,
+                    type: 'gpt',
+                    description: `基于OpenAI ${openaiConfig.model || 'GPT'}的文本数据生成`,
+                    config: openaiConfig,
+                    status: '已配置'
+                });
+            }
+            
+            // 检查GLM配置
+            if (glmConfig.key && glmConfig.url) {
+                configuredModels.push({
+                    id: 'glm',
+                    name: `GLM ${glmConfig.model || '4'}`,
+                    type: 'gpt',
+                    description: `基于GLM ${glmConfig.model || '4'}的文本数据生成`,
+                    config: glmConfig,
+                    status: '已配置'
+                });
+            }
+            
+            // 检查本地配置
+            if (localConfig.url) {
+                configuredModels.push({
+                    id: 'local',
+                    name: `本地模型 ${localConfig.model || 'DeepSeek'}`,
+                    type: 'gpt',
+                    description: `基于本地部署的${localConfig.model || 'DeepSeek'}模型`,
+                    config: localConfig,
+                    status: '已配置'
+                });
+            }
+            
+            // 添加CTGAN作为默认选项
+            configuredModels.push({
+                id: 'ctgan',
+                name: 'CTGAN',
+                type: 'ctgan',
+                description: '基于生成对抗网络的表格数据生成模型',
+                config: {},
+                status: '推荐'
+            });
+            
+            let wizardHTML = '';
+            if (configuredModels.length === 0) {
+                wizardHTML = '<p>暂无已配置的模型</p>';
+            } else {
+                wizardHTML = '<h3>可选择的模型:</h3>';
+                configuredModels.forEach(model => {
+                    const statusClass = model.status === '推荐' ? 'recommended' : 'configured';
+                    wizardHTML += `
+                        <div class="config-item">
+                            <strong>${model.name}</strong>
+                            <span class="status ${statusClass}">${model.status}</span>
+                            <br><small>${model.description}</small>
+                        </div>
+                    `;
+                });
+            }
+            
+            wizardDiv.innerHTML = wizardHTML;
+        }
+        
+        // 页面加载时显示配置状态
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfigs();
+        });
+    </script>
+</body>
+</html>
