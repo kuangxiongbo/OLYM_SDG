@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>邮件配置测试</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>邮件配置功能测试</h2>
+        <p>点击下面的按钮测试邮件配置模态框</p>
+        
+        <button class="btn btn-outline-info" onclick="showEmailConfig()">
+            <i class="fas fa-envelope me-2"></i>邮件配置
+        </button>
+        
+        <div class="mt-4">
+            <h4>测试步骤：</h4>
+            <ol>
+                <li>点击"邮件配置"按钮</li>
+                <li>查看模态框是否正确显示</li>
+                <li>检查邮件配置信息是否正确加载</li>
+                <li>测试邮件发送功能</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- 邮件配置模态框 -->
+    <div id="emailConfigModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-envelope me-2"></i>邮件服务器配置
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="emailConfigContent">
+                        <div class="text-center py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                            <p class="mt-2 text-muted">加载邮件配置中...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-paper-plane me-2"></i>测试邮件发送</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="input-group">
+                                <input type="email" class="form-control" id="testEmailInput" placeholder="输入测试邮箱地址">
+                                <button class="btn btn-primary test-email-btn" onclick="sendTestEmail()">
+                                    <i class="fas fa-paper-plane me-2"></i>发送测试邮件
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    // 显示邮件配置
+    async function showEmailConfig() {
+        console.log('开始加载邮件配置...');
+        
+        // 加载邮件配置
+        try {
+            const response = await fetch('/api/admin/email/config');
+            const result = await response.json();
+            
+            console.log('邮件配置响应:', result);
+            
+            if (result.success) {
+                displayEmailConfig(result.email_config);
+                // 使用Bootstrap方式显示模态框
+                const modal = new bootstrap.Modal(document.getElementById('emailConfigModal'));
+                modal.show();
+                console.log('模态框已显示');
+            } else {
+                const content = document.getElementById('emailConfigContent');
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>加载邮件配置失败</p>
+                        <p>${result.message}</p>
+                    </div>
+                `;
+                const modal = new bootstrap.Modal(document.getElementById('emailConfigModal'));
+                modal.show();
+            }
+        } catch (error) {
+            console.error('加载邮件配置失败:', error);
+            const content = document.getElementById('emailConfigContent');
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #dc3545;">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <p>加载邮件配置失败</p>
+                    <p>网络错误或服务器异常</p>
+                    <p>错误详情: ${error.message}</p>
+                </div>
+            `;
+            const modal = new bootstrap.Modal(document.getElementById('emailConfigModal'));
+            modal.show();
+        }
+    }
+
+    // 显示邮件配置内容
+    function displayEmailConfig(config) {
+        const content = document.getElementById('emailConfigContent');
+        
+        content.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-server me-2"></i>服务器配置</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <strong>邮件服务器:</strong>
+                                <span class="text-muted">${config.mail_server || '未配置'}</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>端口:</strong>
+                                <span class="text-muted">${config.mail_port || '未配置'}</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>用户名:</strong>
+                                <span class="text-muted">${config.mail_username || '未配置'}</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>密码:</strong>
+                                <span class="text-muted">${config.mail_password || '未配置'}</span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>默认发送者:</strong>
+                                <span class="text-muted">${config.mail_default_sender || '未配置'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-shield-alt me-2"></i>安全配置</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <strong>SSL加密:</strong>
+                                <span class="badge ${config.mail_use_ssl ? 'bg-success' : 'bg-secondary'}">
+                                    ${config.mail_use_ssl ? '已启用' : '未启用'}
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>TLS加密:</strong>
+                                <span class="badge ${config.mail_use_tls ? 'bg-success' : 'bg-secondary'}">
+                                    ${config.mail_use_tls ? '已启用' : '未启用'}
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>调试模式:</strong>
+                                <span class="badge ${config.mail_debug ? 'bg-warning' : 'bg-secondary'}">
+                                    ${config.mail_debug ? '已启用' : '未启用'}
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>抑制发送:</strong>
+                                <span class="badge ${config.mail_suppress_send ? 'bg-warning' : 'bg-secondary'}">
+                                    ${config.mail_suppress_send ? '已启用' : '未启用'}
+                                </span>
+                            </div>
+                            <div class="mb-2">
+                                <strong>最大邮件数:</strong>
+                                <span class="text-muted">${config.mail_max_emails || '无限制'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <h6><i class="fas fa-info-circle me-2"></i>配置说明</h6>
+                <ul class="mb-0">
+                    <li>邮件服务器配置在应用启动时加载，修改后需要重启服务</li>
+                    <li>密码已隐藏显示，实际配置中包含完整的认证信息</li>
+                    <li>SSL/TLS加密用于保护邮件传输安全</li>
+                    <li>调试模式会输出详细的邮件发送日志</li>
+                    <li>抑制发送模式用于测试，不会实际发送邮件</li>
+                </ul>
+            </div>
+        `;
+    }
+
+    // 发送测试邮件
+    async function sendTestEmail() {
+        const testEmailInput = document.getElementById('testEmailInput');
+        const testEmail = testEmailInput.value.trim();
+        const btn = document.querySelector('.test-email-btn');
+        
+        if (!testEmail) {
+            alert('请输入测试邮箱地址');
+            return;
+        }
+        
+        // 验证邮箱格式
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(testEmail)) {
+            alert('请输入有效的邮箱地址');
+            return;
+        }
+        
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>发送中...';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/admin/email/test', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    test_email: testEmail
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('成功: ' + result.message);
+            } else {
+                alert('失败: ' + result.message);
+            }
+        } catch (error) {
+            console.error('发送测试邮件失败:', error);
+            alert('发送测试邮件失败，请检查网络连接');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+    </script>
+</body>
+</html>
+

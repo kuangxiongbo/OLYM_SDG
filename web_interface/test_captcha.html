@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>验证码测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .captcha-container { margin: 20px 0; }
+        .captcha-image { border: 1px solid #ddd; margin: 10px 0; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>验证码测试页面</h1>
+    
+    <div class="captcha-container">
+        <h3>验证码显示测试</h3>
+        <img id="captcha_image" class="captcha-image" src="" alt="验证码" style="display: none;">
+        <div id="captcha_loading">加载中...</div>
+        <div id="captcha_error" class="error" style="display: none;">加载失败</div>
+        <button onclick="loadCaptcha()">加载验证码</button>
+        <button onclick="testDirectImage()">直接测试图片</button>
+    </div>
+    
+    <div id="debug_info"></div>
+
+    <script>
+        // 加载验证码
+        async function loadCaptcha() {
+            const imageEl = document.getElementById('captcha_image');
+            const loadingEl = document.getElementById('captcha_loading');
+            const errorEl = document.getElementById('captcha_error');
+            const debugEl = document.getElementById('debug_info');
+            
+            try {
+                loadingEl.style.display = 'block';
+                imageEl.style.display = 'none';
+                errorEl.style.display = 'none';
+                
+                console.log('开始加载验证码...');
+                const response = await fetch('/api/captcha/generate');
+                console.log('API响应状态:', response.status);
+                
+                const result = await response.json();
+                console.log('API返回结果:', result);
+                
+                debugEl.innerHTML = `
+                    <h4>调试信息:</h4>
+                    <p>API状态: ${response.status}</p>
+                    <p>返回成功: ${result.success}</p>
+                    <p>图片数据长度: ${result.image ? result.image.length : 0}</p>
+                    <p>Session ID: ${result.session_id || '无'}</p>
+                    <p>图片前缀: ${result.image ? result.image.substring(0, 50) + '...' : '无'}</p>
+                `;
+                
+                if (result.success && result.image) {
+                    // 直接使用API返回的完整URL
+                    imageEl.src = result.image;
+                    imageEl.style.display = 'block';
+                    loadingEl.style.display = 'none';
+                    console.log('验证码加载成功');
+                } else {
+                    throw new Error('API返回数据不完整');
+                }
+            } catch (error) {
+                console.error('验证码加载错误:', error);
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = '加载失败: ' + error.message;
+            }
+        }
+        
+        // 直接测试图片
+        function testDirectImage() {
+            const imageEl = document.getElementById('captcha_image');
+            const testUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+            imageEl.src = testUrl;
+            imageEl.style.display = 'block';
+            console.log('直接测试图片URL:', testUrl);
+        }
+        
+        // 页面加载时自动测试
+        window.onload = function() {
+            console.log('页面加载完成，开始测试验证码...');
+            loadCaptcha();
+        };
+    </script>
+</body>
+</html>
+

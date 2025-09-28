@@ -1,0 +1,302 @@
+{% extends "base_new.html" %}
+
+{% block title %}首页 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 欢迎区域 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <h1 class="display-4 mb-3">
+                        <i class="fas fa-database text-primary me-3"></i>
+                        欢迎使用SDG多账号控制系统
+                    </h1>
+                    <p class="lead text-muted mb-4">
+                        提供合成数据生成、质量评估和敏感字段发现三大核心功能
+                    </p>
+                    {% if current_user.is_authenticated %}
+                        <p class="text-success">
+                            <i class="fas fa-user-check me-2"></i>
+                            欢迎回来，{{ current_user.username }}！
+                        </p>
+                    {% else %}
+                        <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg me-3">
+                            <i class="fas fa-user-plus me-2"></i>立即注册
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>登录
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <!-- 欢迎区域 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="text-center">
+                <h2 class="mb-3">
+                    <i class="fas fa-user-circle text-primary me-2"></i>
+                    欢迎回来，{{ current_user.username }}！
+                </h2>
+                <p class="lead text-muted">选择您需要的工具开始工作</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 三大工具卡片 -->
+    <div class="row mb-5">
+        {% if current_user.is_authenticated %}
+        <!-- 合成数据生成 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="tool-card-main">
+                <div class="tool-icon-main">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3 class="tool-title-main">合成数据生成</h3>
+                <p class="tool-description-main">
+                    使用先进的生成对抗网络(GAN)技术，生成高质量的合成数据，
+                    保护原始数据隐私的同时保持数据特征。
+                </p>
+                <div class="d-grid">
+                    <a href="{{ url_for('synthetic_data') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-play me-2"></i>开始生成
+                    </a>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-check me-1"></i>支持CTGAN、TVAE、Gaussian Copula
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 质量评估 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="tool-card-main">
+                <div class="tool-icon-main">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="tool-title-main">质量评估</h3>
+                <p class="tool-description-main">
+                    全面评估合成数据质量，包括统计相似度、分布对比、
+                    相关性保持等多个维度的质量指标。
+                </p>
+                <div class="d-grid">
+                    <a href="{{ url_for('quality_evaluation') }}" class="btn btn-success btn-lg">
+                        <i class="fas fa-play me-2"></i>开始评估
+                    </a>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-check me-1"></i>多维度质量指标分析
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 敏感字段发现 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="tool-card-main">
+                <div class="tool-icon-main">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3 class="tool-title-main">敏感字段发现</h3>
+                <p class="tool-description-main">
+                    智能识别数据中的敏感字段，提供风险评估和建议，
+                    帮助您更好地保护数据隐私。
+                </p>
+                <div class="d-grid">
+                    <a href="{{ url_for('sensitive_detection') }}" class="btn btn-warning btn-lg">
+                        <i class="fas fa-play me-2"></i>开始检测
+                    </a>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-check me-1"></i>AI智能识别与风险评估
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <!-- 未登录用户显示 -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="tool-card-main">
+                <div class="tool-icon-main">
+                    <i class="fas fa-magic"></i>
+                </div>
+                <h3 class="tool-title-main">合成数据生成</h3>
+                <p class="tool-description-main">
+                    使用先进的生成对抗网络(GAN)技术，生成高质量的合成数据，
+                    保护原始数据隐私的同时保持数据特征。
+                </p>
+                <div class="d-grid">
+                    <button class="btn btn-outline-primary btn-lg" onclick="showLoginRequired()">
+                        <i class="fas fa-lock me-2"></i>需要登录
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-check me-1"></i>支持CTGAN、TVAE、Gaussian Copula
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="tool-card-main">
+                <div class="tool-icon-main">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="tool-title-main">质量评估</h3>
+                <p class="tool-description-main">
+                    全面评估合成数据质量，包括统计相似度、分布对比、
+                    相关性保持等多个维度的质量指标。
+                </p>
+                <div class="d-grid">
+                    <button class="btn btn-outline-success btn-lg" onclick="showLoginRequired()">
+                        <i class="fas fa-lock me-2"></i>需要登录
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-check me-1"></i>多维度质量指标分析
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="tool-card-main">
+                <div class="tool-icon-main">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3 class="tool-title-main">敏感字段发现</h3>
+                <p class="tool-description-main">
+                    智能识别数据中的敏感字段，提供风险评估和建议，
+                    帮助您更好地保护数据隐私。
+                </p>
+                <div class="d-grid">
+                    <button class="btn btn-outline-warning btn-lg" onclick="showLoginRequired()">
+                        <i class="fas fa-lock me-2"></i>需要登录
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-check me-1"></i>AI智能识别与风险评估
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <!-- 快速操作 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="text-center">
+                <h4 class="mb-4">快速操作</h4>
+                <div class="row justify-content-center">
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('data_sources') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-database me-2"></i>数据源管理
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('model_configs') }}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-cogs me-2"></i>模型配置
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('profile') }}" class="btn btn-outline-info w-100">
+                            <i class="fas fa-user-cog me-2"></i>个人资料
+                        </a>
+                    </div>
+                    {% if current_user.role == 'super_admin' %}
+                    <div class="col-md-3 mb-3">
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-user-shield me-2"></i>管理后台
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 系统特性 -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-star me-2"></i>系统特性
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-users text-primary me-3" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">多账号管理</h6>
+                                    <p class="text-muted small mb-0">支持多用户独立工作空间，数据隔离安全可靠</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-lock text-success me-3" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">数据安全</h6>
+                                    <p class="text-muted small mb-0">邮箱验证登录，数据加密存储，安全可靠</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-cogs text-info me-3" style="font-size: 1.5rem;"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">灵活配置</h6>
+                                    <p class="text-muted small mb-0">支持多种数据源，自定义模型参数</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载完成后初始化
+$(document).ready(function() {
+    // 新的首页设计不需要加载统计数据
+    console.log('首页已加载');
+});
+
+// 显示需要登录的提示
+function showLoginRequired() {
+    showMessage('请先登录以使用此功能', 'warning');
+    setTimeout(() => {
+        window.location.href = '{{ url_for("login") }}';
+    }, 1500);
+}
+</script>
+{% endblock %}

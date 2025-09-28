@@ -1,0 +1,596 @@
+{% extends "base.html" %}
+
+{% block title %}合成数据生成向导 - SDG 工具集{% endblock %}
+
+{% block content %}
+<!-- 使用公共向导布局组件 -->
+<div class="unified-wizard-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <h1 class="page-title">合成数据生成向导</h1>
+        <p class="page-description">四步完成合成数据生成，保护隐私安全</p>
+    </div>
+
+    <!-- 向导容器 -->
+    <div class="wizard-container">
+        <!-- 向导步骤指示器 -->
+        <div class="wizard-steps">
+            <div class="step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-title">数据源选择</div>
+                <div class="step-description">选择数据来源</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-title">参数配置</div>
+                <div class="step-description">配置生成参数</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-title">数据预览</div>
+                <div class="step-description">预览生成结果</div>
+            </div>
+            <div class="step" data-step="4">
+                <div class="step-number">4</div>
+                <div class="step-title">下载数据</div>
+                <div class="step-description">下载合成数据</div>
+            </div>
+        </div>
+        <!-- 向导内容区域 -->
+        <div class="wizard-content">
+            <!-- 第一步：数据源选择 -->
+            <div class="wizard-step active" id="step-1">
+                <div class="step-header">
+                    <h2><i class="fas fa-database"></i> 数据源选择</h2>
+                    <p>选择您的数据来源，支持多种数据源类型</p>
+                </div>
+                
+                <div class="data-source-options">
+                    <div class="option-card" onclick="selectDataSource('demo')">
+                        <div class="option-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="option-content">
+                            <h3>全新合成数据</h3>
+                            <p>使用内置的示例数据生成全新的合成数据</p>
+                            <div class="option-features">
+                                <span class="feature-tag">快速开始</span>
+                                <span class="feature-tag">内置示例</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card" onclick="selectDataSource('upload')">
+                        <div class="option-icon">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <div class="option-content">
+                            <h3>上传原始数据</h3>
+                            <p>上传您的原始数据文件进行合成</p>
+                            <div class="option-features">
+                                <span class="feature-tag">自定义数据</span>
+                                <span class="feature-tag">支持多种格式</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="option-card" onclick="selectDataSource('datasource')">
+                        <div class="option-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="option-content">
+                            <h3>连接数据源</h3>
+                            <p>连接到已配置的数据库或API</p>
+                            <div class="option-features">
+                                <span class="feature-tag">数据库连接</span>
+                                <span class="feature-tag">API集成</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据源选择后的详细配置 -->
+                <div class="data-source-details" id="data-source-details" style="display: none;">
+                    <!-- 全新合成数据选项 -->
+                    <div class="demo-category" id="demo-category" style="display: none;">
+                        <h3><i class="fas fa-chart-line"></i> 选择示例数据类型</h3>
+                        <div class="demo-category-horizontal">
+                            <div class="option-card" onclick="selectDemoData('customer')">
+                                <div class="option-icon">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>客户数据</h4>
+                                    <p>包含姓名、年龄、地址等客户信息</p>
+                                </div>
+                            </div>
+                            <div class="option-card" onclick="selectDemoData('financial')">
+                                <div class="option-icon">
+                                    <i class="fas fa-coins"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>金融数据</h4>
+                                    <p>包含交易记录、账户信息等金融数据</p>
+                                </div>
+                            </div>
+                            <div class="option-card" onclick="selectDemoData('medical')">
+                                <div class="option-icon">
+                                    <i class="fas fa-heartbeat"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>医疗数据</h4>
+                                    <p>包含病历、诊断、药物等医疗信息</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 文件上传选项 -->
+                    <div class="upload-section" id="upload-section" style="display: none;">
+                        <h3><i class="fas fa-upload"></i> 上传原始数据</h3>
+                        <div class="upload-area">
+                            <div class="upload-box" onclick="document.getElementById('file-input').click()" 
+                                 ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>点击或拖拽文件到此处</p>
+                                <small>支持CSV、Excel格式，最大50MB</small>
+                                <div class="upload-progress" id="upload-progress" style="display: none;">
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="progress-fill"></div>
+                                    </div>
+                                    <div class="progress-text" id="progress-text">上传中...</div>
+                                </div>
+                            </div>
+                            <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileUpload(event)">
+                            
+                            <!-- 文件信息显示 -->
+                            <div class="file-info" id="file-info" style="display: none;">
+                                <div class="file-details">
+                                    <div class="file-icon">
+                                        <i class="fas fa-file-csv"></i>
+                                    </div>
+                                    <div class="file-details-info">
+                                        <h5 id="file-name">-</h5>
+                                        <p id="file-size">-</p>
+                                        <p id="file-type">-</p>
+                                    </div>
+                                    <div class="file-actions">
+                                        <button class="btn btn-sm btn-primary" onclick="previewFile()">
+                                            <i class="fas fa-eye"></i> 预览
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="removeFile()">
+                                            <i class="fas fa-trash"></i> 移除
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据源连接选项 -->
+                    <div class="datasource-section" id="datasource-section" style="display: none;">
+                        <h3><i class="fas fa-server"></i> 连接数据源</h3>
+                        <div class="datasource-list" id="datasource-list">
+                            <p class="empty-state">暂无可用数据源，请先在系统设置中配置数据源</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二步：参数配置 -->
+            <div class="wizard-step" id="step-2">
+                <div class="step-header">
+                    <h2><i class="fas fa-cogs"></i> 参数配置</h2>
+                    <p>配置合成数据生成的各项参数</p>
+                </div>
+                
+                <div class="config-section">
+                    <div class="config-card">
+                        <h3><i class="fas fa-sliders-h"></i> 生成参数</h3>
+                        <div class="form-group">
+                            <label class="form-label">数据量</label>
+                            <input type="number" class="form-control" id="data-amount" value="1000" min="100" max="100000">
+                            <small class="form-text">生成的数据行数</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">相似度</label>
+                            <input type="range" class="form-control" id="similarity" min="0.1" max="1.0" step="0.1" value="0.8">
+                            <small class="form-text">当前值: <span id="similarity-value">0.8</span></small>
+                        </div>
+                    </div>
+                    
+                    <div class="config-card">
+                        <h3><i class="fas fa-shield-alt"></i> 隐私保护</h3>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="privacy-protection" checked>
+                                <span class="checkmark"></span>
+                                启用隐私保护
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="differential-privacy">
+                                <span class="checkmark"></span>
+                                差分隐私
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三步：数据预览 -->
+            <div class="wizard-step" id="step-3">
+                <div class="step-header">
+                    <h2><i class="fas fa-eye"></i> 数据预览</h2>
+                    <p>预览生成的合成数据</p>
+                </div>
+                
+                <div class="preview-section">
+                    <div class="preview-controls">
+                        <button class="btn btn-primary" onclick="startGeneration()">
+                            <i class="fas fa-play"></i> 开始生成
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshPreview()">
+                            <i class="fas fa-refresh"></i> 刷新预览
+                        </button>
+                    </div>
+                    
+                    <div class="preview-content" id="preview-content">
+                        <div class="empty-state">
+                            <i class="fas fa-chart-line"></i>
+                            <p>点击"开始生成"查看合成数据预览</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第四步：下载数据 -->
+            <div class="wizard-step" id="step-4">
+                <div class="step-header">
+                    <h2><i class="fas fa-download"></i> 下载数据</h2>
+                    <p>下载生成的合成数据</p>
+                </div>
+                
+                <div class="download-section">
+                    <div class="download-info">
+                        <h3>生成完成</h3>
+                        <div class="generation-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">数据行数:</span>
+                                <span class="stat-value" id="generated-rows">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">文件大小:</span>
+                                <span class="stat-value" id="file-size">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">生成时间:</span>
+                                <span class="stat-value" id="generation-time">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="download-options">
+                        <h4>下载格式</h4>
+                        <div class="download-buttons">
+                            <button class="btn btn-primary btn-lg" onclick="downloadData('csv')">
+                                <i class="fas fa-file-csv"></i> 下载CSV
+                            </button>
+                            <button class="btn btn-success btn-lg" onclick="downloadData('excel')">
+                                <i class="fas fa-file-excel"></i> 下载Excel
+                            </button>
+                            <button class="btn btn-info btn-lg" onclick="downloadData('json')">
+                                <i class="fas fa-file-code"></i> 下载JSON
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 向导导航 - 使用统一的公共组件样式 -->
+        <div class="wizard-navigation">
+            <button type="button" class="btn btn-secondary" id="prev-btn" onclick="prevStep()" disabled>
+                <i class="fas fa-arrow-left"></i> 上一步
+            </button>
+            <div class="navigation-info">
+                <span class="step-indicator">步骤 1 / 4</span>
+            </div>
+            <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
+                下一步 <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 使用统一的公共组件JavaScript -->
+<script>
+// 合成数据向导特定配置
+const syntheticDataConfig = {
+    wizardId: 'synthetic_data_unified_final',
+    totalSteps: 4,
+    currentStep: 1,
+    validationRules: {
+        1: (data) => data.dataSource !== null && (
+            (data.dataSource === 'demo' && data.demoDataType !== null) ||
+            (data.dataSource === 'upload' && data.originalData !== null) ||
+            (data.dataSource === 'datasource' && data.selectedDataSource !== null)
+        ),
+        2: (data) => data.dataAmount > 0,
+        3: (data) => data.generatedData !== null,
+        4: () => true
+    }
+};
+
+// 向导数据管理
+const wizardData = {
+    dataSource: null,
+    demoDataType: null,
+    originalData: null,
+    selectedDataSource: null,
+    selectedTable: null,
+    dataAmount: 1000,
+    similarity: 0.8,
+    privacyProtection: true,
+    differentialPrivacy: false,
+    generatedData: null
+};
+
+// 初始化向导控制器
+let wizardController;
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化向导控制器
+    wizardController = new UnifiedWizardController(syntheticDataConfig);
+    
+    // 设置全局控制器
+    setGlobalWizardController(wizardController);
+    
+    // 绑定业务特定事件
+    bindBusinessEvents();
+    
+    // 初始化配置
+    initializeConfig();
+});
+
+// 绑定业务特定事件
+function bindBusinessEvents() {
+    // 数据源选择
+    window.selectDataSource = function(type) {
+        wizardData.dataSource = type;
+        
+        // 隐藏所有详情区域
+        document.querySelectorAll('.data-source-details > div').forEach(div => {
+            div.style.display = 'none';
+        });
+        
+        // 显示对应的详情区域
+        const detailsContainer = document.getElementById('data-source-details');
+        detailsContainer.style.display = 'block';
+        
+        switch(type) {
+            case 'demo':
+                document.getElementById('demo-category').style.display = 'block';
+                break;
+            case 'upload':
+                document.getElementById('upload-section').style.display = 'block';
+                break;
+            case 'datasource':
+                document.getElementById('datasource-section').style.display = 'block';
+                loadDataSources();
+                break;
+        }
+        
+        // 重置相关数据
+        wizardData.demoDataType = null;
+        wizardData.originalData = null;
+        wizardData.selectedDataSource = null;
+        
+        wizardController.updateNavigationButtons();
+    };
+    
+    // 示例数据选择
+    window.selectDemoData = function(type) {
+        wizardData.demoDataType = type;
+        wizardController.updateNavigationButtons();
+    };
+    
+    // 文件上传处理
+    window.handleFileUpload = function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            displayFileInfo(file);
+            wizardData.originalData = file;
+            wizardController.updateNavigationButtons();
+        }
+    };
+    
+    // 文件拖拽处理
+    window.handleFileDrop = function(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+        
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            displayFileInfo(file);
+            wizardData.originalData = file;
+            wizardController.updateNavigationButtons();
+        }
+    };
+    
+    window.handleDragOver = function(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('dragover');
+    };
+    
+    window.handleDragLeave = function(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+    };
+    
+    // 文件预览
+    window.previewFile = function() {
+        if (wizardData.originalData && window.filePreviewComponent) {
+            window.filePreviewComponent.previewFile(wizardData.originalData, null, '原始数据预览');
+        }
+    };
+    
+    // 移除文件
+    window.removeFile = function() {
+        wizardData.originalData = null;
+        document.getElementById('file-info').style.display = 'none';
+        document.getElementById('file-input').value = '';
+        wizardController.updateNavigationButtons();
+    };
+    
+    // 开始生成
+    window.startGeneration = function() {
+        console.log('开始生成合成数据...');
+        // 模拟生成过程
+        setTimeout(() => {
+            wizardData.generatedData = { rows: 1000, size: '2.5MB', time: '15s' };
+            updatePreview();
+            wizardController.updateNavigationButtons();
+        }, 3000);
+    };
+    
+    // 刷新预览
+    window.refreshPreview = function() {
+        updatePreview();
+    };
+    
+    // 下载数据
+    window.downloadData = function(format) {
+        console.log(`下载${format}格式数据`);
+        // 实现下载逻辑
+    };
+    
+    // 配置参数变化
+    document.getElementById('data-amount').addEventListener('change', function() {
+        wizardData.dataAmount = parseInt(this.value);
+    });
+    
+    document.getElementById('similarity').addEventListener('input', function() {
+        wizardData.similarity = parseFloat(this.value);
+        document.getElementById('similarity-value').textContent = this.value;
+    });
+    
+    document.getElementById('privacy-protection').addEventListener('change', function() {
+        wizardData.privacyProtection = this.checked;
+    });
+    
+    document.getElementById('differential-privacy').addEventListener('change', function() {
+        wizardData.differentialPrivacy = this.checked;
+    });
+}
+
+// 显示文件信息
+function displayFileInfo(file) {
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const fileType = document.getElementById('file-type');
+    
+    if (fileInfo && fileName && fileSize && fileType) {
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileType.textContent = getFileTypeName(file.name);
+        fileInfo.style.display = 'block';
+    }
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 获取文件类型名称
+function getFileTypeName(filename) {
+    const ext = filename.toLowerCase().split('.').pop();
+    switch (ext) {
+        case 'csv':
+            return 'CSV文件';
+        case 'xlsx':
+            return 'Excel文件';
+        case 'xls':
+            return 'Excel文件';
+        default:
+            return '数据文件';
+    }
+}
+
+// 加载数据源
+function loadDataSources() {
+    // 模拟加载数据源
+    const datasourceList = document.getElementById('datasource-list');
+    datasourceList.innerHTML = '<p class="empty-state">暂无可用数据源，请先在系统设置中配置数据源</p>';
+}
+
+// 更新预览
+function updatePreview() {
+    const previewContent = document.getElementById('preview-content');
+    if (wizardData.generatedData) {
+        previewContent.innerHTML = `
+            <div class="preview-table">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>列1</th>
+                            <th>列2</th>
+                            <th>列3</th>
+                            <th>列4</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>示例数据1</td><td>示例数据2</td><td>示例数据3</td><td>示例数据4</td></tr>
+                        <tr><td>示例数据5</td><td>示例数据6</td><td>示例数据7</td><td>示例数据8</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+}
+
+// 初始化配置
+function initializeConfig() {
+    // 设置默认值
+    document.getElementById('data-amount').value = wizardData.dataAmount;
+    document.getElementById('similarity').value = wizardData.similarity;
+    document.getElementById('similarity-value').textContent = wizardData.similarity;
+    document.getElementById('privacy-protection').checked = wizardData.privacyProtection;
+    document.getElementById('differential-privacy').checked = wizardData.differentialPrivacy;
+}
+
+// 重写向导控制器的步骤变化回调
+wizardController.onStepChange = function(step) {
+    switch(step) {
+        case 2:
+            console.log('进入参数配置步骤');
+            break;
+        case 3:
+            console.log('进入数据预览步骤');
+            break;
+        case 4:
+            console.log('进入下载数据步骤');
+            updateDownloadInfo();
+            break;
+    }
+};
+
+// 更新下载信息
+function updateDownloadInfo() {
+    if (wizardData.generatedData) {
+        document.getElementById('generated-rows').textContent = wizardData.generatedData.rows;
+        document.getElementById('file-size').textContent = wizardData.generatedData.size;
+        document.getElementById('generation-time').textContent = wizardData.generatedData.time;
+    }
+}
+</script>
+{% endblock %}

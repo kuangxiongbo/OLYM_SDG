@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - SDG多账号控制系统</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- 自定义样式 -->
+    <link href="/static/css/main.css" rel="stylesheet">
+    
+    
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-database me-2"></i>SDG多账号控制系统
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="fas fa-tachometer-alt me-1"></i>仪表板
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/data-sources">
+                            <i class="fas fa-database me-1"></i>数据源
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/model-configs">
+                            <i class="fas fa-cogs me-1"></i>模型配置
+                        </a>
+                    </li>
+                    
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin">
+                            <i class="fas fa-user-shield me-1"></i>管理后台
+                        </a>
+                    </li>
+                    
+                    
+                </ul>
+                
+                <!-- 用户菜单 -->
+                <ul class="navbar-nav">
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>admin
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="/profile">
+                                <i class="fas fa-user-cog me-2"></i>个人资料
+                            </a></li>
+                            <li><a class="dropdown-item" href="/settings">
+                                <i class="fas fa-cog me-2"></i>设置
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()">
+                                <i class="fas fa-sign-out-alt me-2"></i>退出登录
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容区域 -->
+    <main class="container-fluid py-4">
+        <!-- 消息提示 -->
+        
+            
+        
+
+        
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-user-shield me-2"></i>管理后台
+                </h2>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary" onclick="refreshStats()">
+                        <i class="fas fa-sync-alt me-2"></i>刷新
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportReport()">
+                        <i class="fas fa-download me-2"></i>导出报告
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统统计 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-4 text-primary mb-2" id="totalUsers">-</div>
+                    <h6 class="text-muted">总用户数</h6>
+                    <small class="text-success">+12 本月</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-4 text-success mb-2" id="activeUsers">-</div>
+                    <h6 class="text-muted">活跃用户</h6>
+                    <small class="text-info">在线: 5</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-4 text-info mb-2" id="totalDataSources">-</div>
+                    <h6 class="text-muted">数据源总数</h6>
+                    <small class="text-warning">今日新增: 3</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="display-4 text-warning mb-2" id="totalTasks">-</div>
+                    <h6 class="text-muted">任务总数</h6>
+                    <small class="text-danger">运行中: 2</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>用户管理
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-success btn-sm" onclick="showSendInviteModal()">
+                                <i class="fas fa-envelope me-1"></i>发送邀请
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="addUser()">
+                                <i class="fas fa-user-plus me-1"></i>添加用户
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="refreshUsers()">
+                                <i class="fas fa-sync-alt me-1"></i>刷新
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>用户名</th>
+                                    <th>邮箱</th>
+                                    <th>角色</th>
+                                    <th>状态</th>
+                                    <th>注册时间</th>
+                                    <th>最后登录</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTable">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">加载中...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统监控 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>系统性能
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>CPU使用率</span>
+                            <span id="cpuUsage">45%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-info" style="width: 45%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>内存使用率</span>
+                            <span id="memoryUsage">62%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-warning" style="width: 62%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>磁盘使用率</span>
+                            <span id="diskUsage">38%</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" style="width: 38%"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between">
+                            <span>数据库连接</span>
+                            <span id="dbConnections">12/50</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar bg-primary" style="width: 24%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>任务监控
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">合成数据生成</h6>
+                                <small class="text-muted">用户: testuser</small>
+                            </div>
+                            <span class="badge bg-warning">运行中</span>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">质量评估</h6>
+                                <small class="text-muted">用户: admin</small>
+                            </div>
+                            <span class="badge bg-success">已完成</span>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">敏感字段检测</h6>
+                                <small class="text-muted">用户: testuser</small>
+                            </div>
+                            <span class="badge bg-danger">失败</span>
+                        </div>
+                        
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">数据源处理</h6>
+                                <small class="text-muted">系统任务</small>
+                            </div>
+                            <span class="badge bg-info">队列中</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 系统日志 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-alt me-2"></i>系统日志
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="downloadLogs()">
+                                <i class="fas fa-download me-1"></i>下载日志
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="clearLogs()">
+                                <i class="fas fa-trash me-1"></i>清空日志
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>时间</th>
+                                    <th>级别</th>
+                                    <th>用户</th>
+                                    <th>操作</th>
+                                    <th>详情</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTable">
+                                <tr>
+                                    <td>2025-09-27 22:15:30</td>
+                                    <td><span class="badge bg-success">INFO</span></td>
+                                    <td>testuser</td>
+                                    <td>登录</td>
+                                    <td>用户登录成功</td>
+                                </tr>
+                                <tr>
+                                    <td>2025-09-27 22:14:15</td>
+                                    <td><span class="badge bg-warning">WARN</span></td>
+                                    <td>admin</td>
+                                    <td>数据源上传</td>
+                                    <td>文件大小超过警告阈值</td>
+                                </tr>
+                                <tr>
+                                    <td>2025-09-27 22:12:45</td>
+                                    <td><span class="badge bg-info">INFO</span></td>
+                                    <td>system</td>
+                                    <td>系统启动</td>
+                                    <td>系统启动成功</td>
+                                </tr>
+                                <tr>
+                                    <td>2025-09-27 22:10:20</td>
+                                    <td><span class="badge bg-danger">ERROR</span></td>
+                                    <td>testuser</td>
+                                    <td>任务执行</td>
+                                    <td>合成数据生成失败</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 发送邀请模态框 -->
+<div class="modal fade" id="sendInviteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-envelope me-2"></i>发送邀请
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="sendInviteForm">
+                    <div class="mb-3">
+                        <label for="inviteEmail" class="form-label">邮箱地址</label>
+                        <input type="email" class="form-control" id="inviteEmail" required 
+                               placeholder="请输入被邀请人的邮箱地址">
+                        <div class="form-text">系统将向此邮箱发送邀请码和注册链接</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="submitSendInvite()">
+                    <i class="fas fa-envelope me-2"></i>发送邀请
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加用户模态框 -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>添加用户
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label for="newUsername" class="form-label">用户名</label>
+                        <input type="text" class="form-control" id="newUsername" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newEmail" class="form-label">邮箱地址</label>
+                        <input type="email" class="form-control" id="newEmail" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">密码</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newRole" class="form-label">角色</label>
+                        <select class="form-select" id="newRole" required>
+                            <option value="user">普通用户</option>
+                            <option value="super_admin">超级管理员</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddUser()">
+                    <i class="fas fa-user-plus me-2"></i>添加用户
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-light py-4 mt-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="text-muted mb-0">&copy; 2025 SDG多账号控制系统. All rights reserved.</p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="text-muted mb-0">Version 2.0.0</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- 自定义JS -->
+    <script src="/static/js/main.js"></script>
+    
+    
+<script>
+// 页面加载完成后初始化
+$(document).ready(function() {
+    loadAdminStats();
+    loadUsers();
+    updateSystemMetrics();
+    
+    // 定期更新系统指标
+    setInterval(updateSystemMetrics, 30000);
+});
+
+// 加载管理员统计数据
+async function loadAdminStats() {
+    try {
+        const response = await fetch('/api/admin/stats');
+        const result = await response.json();
+        
+        if (result.success) {
+            $('#totalUsers').text(result.stats.total_users || 0);
+            $('#activeUsers').text(result.stats.active_users || 0);
+            $('#totalDataSources').text(result.stats.total_data_sources || 0);
+            $('#totalTasks').text((result.stats.synthetic_tasks_count || 0) + 
+                               (result.stats.quality_tasks_count || 0) + 
+                               (result.stats.sensitive_tasks_count || 0));
+        }
+    } catch (error) {
+        console.error('加载统计数据失败:', error);
+    }
+}
+
+// 加载用户列表
+async function loadUsers() {
+    try {
+        const response = await fetch('/api/users');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayUsers(result.users);
+        }
+    } catch (error) {
+        console.error('加载用户列表失败:', error);
+    }
+}
+
+// 显示用户列表
+function displayUsers(users) {
+    const tbody = $('#usersTable');
+    
+    if (users.length === 0) {
+        tbody.html('<tr><td colspan="8" class="text-center text-muted">暂无用户数据</td></tr>');
+        return;
+    }
+    
+    const html = users.map(user => `
+        <tr>
+            <td>${user.id}</td>
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td>
+                <span class="badge ${user.role === 'super_admin' ? 'bg-danger' : 'bg-primary'}">
+                    ${user.role === 'super_admin' ? '超级管理员' : '普通用户'}
+                </span>
+            </td>
+            <td>
+                <span class="badge ${user.status === 'active' ? 'bg-success' : 'bg-warning'}">
+                    ${user.status === 'active' ? '活跃' : user.status}
+                </span>
+            </td>
+            <td>${formatTime(user.created_at)}</td>
+            <td>${formatTime(user.last_login)}</td>
+            <td>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary btn-sm" onclick="editUser(${user.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="toggleUserStatus(${user.id})">
+                        <i class="fas fa-${user.status === 'active' ? 'ban' : 'check'}"></i>
+                    </button>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteUser(${user.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    tbody.html(html);
+}
+
+// 更新系统指标
+function updateSystemMetrics() {
+    // 模拟系统指标更新
+    const cpu = Math.floor(Math.random() * 30) + 30;
+    const memory = Math.floor(Math.random() * 20) + 50;
+    const disk = Math.floor(Math.random() * 15) + 25;
+    const dbConnections = Math.floor(Math.random() * 10) + 10;
+    
+    $('#cpuUsage').text(cpu + '%');
+    $('#cpuUsage').siblings('.progress-bar').css('width', cpu + '%');
+    
+    $('#memoryUsage').text(memory + '%');
+    $('#memoryUsage').siblings('.progress-bar').css('width', memory + '%');
+    
+    $('#diskUsage').text(disk + '%');
+    $('#diskUsage').siblings('.progress-bar').css('width', disk + '%');
+    
+    $('#dbConnections').text(dbConnections + '/50');
+    $('#dbConnections').siblings('.progress-bar').css('width', (dbConnections/50*100) + '%');
+}
+
+// 刷新统计数据
+function refreshStats() {
+    loadAdminStats();
+    showMessage('统计数据已刷新', 'success');
+}
+
+// 导出报告
+function exportReport() {
+    showMessage('报告导出功能开发中...', 'info');
+}
+
+// 显示发送邀请模态框
+function showSendInviteModal() {
+    $('#sendInviteModal').modal('show');
+}
+
+// 提交发送邀请
+function submitSendInvite() {
+    const email = $('#inviteEmail').val();
+    
+    if (!email) {
+        showMessage('请输入邮箱地址', 'error');
+        return;
+    }
+    
+    // 邮箱格式验证
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showMessage('请输入正确的邮箱格式', 'error');
+        return;
+    }
+    
+    $.ajax({
+        url: '/api/admin/invite/send',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ email: email }),
+        success: function(response) {
+            if (response.success) {
+                showMessage('邀请发送成功！邀请码: ' + response.invite_code, 'success');
+                $('#sendInviteModal').modal('hide');
+                $('#sendInviteForm')[0].reset();
+                loadUsers(); // 重新加载用户列表
+            } else {
+                showMessage(response.message || '发送邀请失败', 'error');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showMessage(response?.message || '发送邀请失败', 'error');
+        }
+    });
+}
+
+// 添加用户
+function addUser() {
+    $('#addUserModal').modal('show');
+}
+
+// 提交添加用户
+function submitAddUser() {
+    const username = $('#newUsername').val();
+    const email = $('#newEmail').val();
+    const password = $('#newPassword').val();
+    const role = $('#newRole').val();
+    
+    if (!username || !email || !password) {
+        showMessage('请填写所有必填字段', 'error');
+        return;
+    }
+    
+    showMessage('用户添加成功', 'success');
+    $('#addUserModal').modal('hide');
+    $('#addUserForm')[0].reset();
+    loadUsers();
+}
+
+// 编辑用户
+function editUser(userId) {
+    // 获取用户信息
+    $.ajax({
+        url: `/api/admin/users`,
+        type: 'GET',
+        success: function(response) {
+            if (response.success) {
+                const user = response.users.find(u => u.id === userId);
+                if (user) {
+                    showEditUserModal(user);
+                } else {
+                    showMessage('用户不存在', 'error');
+                }
+            } else {
+                showMessage('获取用户信息失败', 'error');
+            }
+        },
+        error: function() {
+            showMessage('获取用户信息失败', 'error');
+        }
+    });
+}
+
+// 显示编辑用户模态框
+function showEditUserModal(user) {
+    const modalHtml = `
+        <div class="modal fade" id="editUserModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">编辑用户</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="editUserForm">
+                            <input type="hidden" id="editUserId" value="${user.id}">
+                            <div class="mb-3">
+                                <label for="editUsername" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="editUsername" value="${user.username}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">邮箱</label>
+                                <input type="email" class="form-control" id="editEmail" value="${user.email}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editRole" class="form-label">角色</label>
+                                <select class="form-control" id="editRole">
+                                    <option value="user" ${user.role === 'user' ? 'selected' : ''}>普通用户</option>
+                                    <option value="super_admin" ${user.role === 'super_admin' ? 'selected' : ''}>超级管理员</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="button" class="btn btn-primary" onclick="saveUserChanges()">保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 移除现有模态框
+    $('#editUserModal').remove();
+    
+    // 添加新模态框
+    $('body').append(modalHtml);
+    
+    // 显示模态框
+    const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    modal.show();
+}
+
+// 保存用户更改
+function saveUserChanges() {
+    const userId = $('#editUserId').val();
+    const username = $('#editUsername').val();
+    const email = $('#editEmail').val();
+    const role = $('#editRole').val();
+    
+    if (!username || !email) {
+        showMessage('请填写完整信息', 'error');
+        return;
+    }
+    
+    $.ajax({
+        url: `/api/admin/users/${userId}`,
+        type: 'PUT',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            username: username,
+            email: email,
+            role: role
+        }),
+        success: function(response) {
+            if (response.success) {
+                showMessage('用户信息更新成功', 'success');
+                $('#editUserModal').modal('hide');
+                loadUsers(); // 重新加载用户列表
+            } else {
+                showMessage(response.message || '更新失败', 'error');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showMessage(response?.message || '更新失败', 'error');
+        }
+    });
+}
+
+// 切换用户状态
+function toggleUserStatus(userId) {
+    $.ajax({
+        url: `/api/admin/users/${userId}/toggle`,
+        type: 'POST',
+        success: function(response) {
+            if (response.success) {
+                showMessage(response.message, 'success');
+                loadUsers(); // 重新加载用户列表
+            } else {
+                showMessage(response.message || '状态切换失败', 'error');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showMessage(response?.message || '状态切换失败', 'error');
+        }
+    });
+}
+
+// 删除用户
+function deleteUser(userId) {
+    if (!confirm('确定要删除这个用户吗？此操作不可撤销。')) {
+        return;
+    }
+    
+    $.ajax({
+        url: `/api/admin/users/${userId}`,
+        type: 'DELETE',
+        success: function(response) {
+            if (response.success) {
+                showMessage('用户删除成功', 'success');
+                loadUsers(); // 重新加载用户列表
+            } else {
+                showMessage(response.message || '删除失败', 'error');
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON;
+            showMessage(response?.message || '删除失败', 'error');
+        }
+    });
+}
+
+// 刷新用户列表
+function refreshUsers() {
+    loadUsers();
+    showMessage('用户列表已刷新', 'success');
+}
+
+// 下载日志
+function downloadLogs() {
+    showMessage('日志下载功能开发中...', 'info');
+}
+
+// 清空日志
+function clearLogs() {
+    if (!confirm('确定要清空所有系统日志吗？')) {
+        return;
+    }
+    
+    showMessage('日志清空功能开发中...', 'warning');
+}
+</script>
+
+</body>
+</html>

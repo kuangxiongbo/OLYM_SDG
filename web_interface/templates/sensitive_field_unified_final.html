@@ -1,0 +1,977 @@
+{% extends "base.html" %}
+
+{% block title %}敏感字段识别向导 - SDG 工具集{% endblock %}
+
+{% block content %}
+<!-- 使用公共向导布局组件 -->
+<div class="unified-wizard-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <h1 class="page-title">敏感字段识别向导</h1>
+        <p class="page-description">三步完成敏感字段识别，提供脱敏建议</p>
+    </div>
+
+    <!-- 向导容器 -->
+    <div class="wizard-container">
+        <!-- 向导步骤指示器 -->
+        <div class="wizard-steps">
+            <div class="step active" data-step="1">
+                <div class="step-number">1</div>
+                <div class="step-title">数据源</div>
+                <div class="step-description">上传数据文件</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-number">2</div>
+                <div class="step-title">敏感数据识别</div>
+                <div class="step-description">智能识别敏感字段</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-number">3</div>
+                <div class="step-title">脱敏建议</div>
+                <div class="step-description">查看脱敏建议</div>
+            </div>
+        </div>
+        <!-- 向导内容区域 -->
+        <div class="wizard-content">
+            <!-- 第一步：数据源 -->
+            <div class="wizard-step active" id="step-1">
+                <div class="step-header">
+                    <h2><i class="fas fa-upload"></i> 数据源</h2>
+                    <p>上传需要识别敏感字段的数据文件</p>
+                </div>
+                
+                <div class="upload-section">
+                    <div class="upload-area">
+                        <div class="upload-box" onclick="document.getElementById('file-input').click()" 
+                             ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>点击或拖拽文件到此处</p>
+                            <small>支持CSV、Excel格式，最大50MB</small>
+                            <div class="upload-progress" id="upload-progress" style="display: none;">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="progress-fill"></div>
+                                </div>
+                                <div class="progress-text" id="progress-text">上传中...</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileUpload(event)">
+                        
+                        <!-- 文件信息显示 -->
+                        <div class="file-info" id="file-info" style="display: none;">
+                            <div class="file-details">
+                                <div class="file-icon">
+                                    <i class="fas fa-file-csv"></i>
+                                </div>
+                                <div class="file-details-info">
+                                    <h5 id="file-name">-</h5>
+                                    <p id="file-size">-</p>
+                                    <p id="file-type">-</p>
+                                </div>
+                                <div class="file-actions">
+                                    <button class="btn btn-sm btn-primary" onclick="previewFile()">
+                                        <i class="fas fa-eye"></i> 预览
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="removeFile()">
+                                        <i class="fas fa-trash"></i> 移除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 数据预览表格 -->
+                    <div class="data-preview" id="data-preview" style="display: none;">
+                        <h4><i class="fas fa-table"></i> 数据预览</h4>
+                        <div class="table-container">
+                            <table class="table table-striped" id="preview-table">
+                                <thead>
+                                    <tr id="table-headers"></tr>
+                                </thead>
+                                <tbody id="table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二步：敏感数据识别 -->
+            <div class="wizard-step" id="step-2">
+                <div class="step-header">
+                    <h2><i class="fas fa-shield-alt"></i> 敏感数据识别</h2>
+                    <p>智能识别数据中的敏感字段类型</p>
+                </div>
+                
+                <div class="analysis-section">
+                    <div class="analysis-controls">
+                        <button class="btn btn-primary btn-lg" onclick="startDetection()" id="analyze-btn">
+                            <i class="fas fa-search"></i> 开始识别
+                        </button>
+                        <div class="analysis-info">
+                            <p>点击"开始识别"按钮，系统将自动分析您的数据并识别敏感字段</p>
+                        </div>
+                    </div>
+                    
+                    <!-- 分析结果 -->
+                    <div class="analysis-results" id="analysis-results" style="display: none;">
+                        <!-- 结果摘要 -->
+                        <div class="results-summary">
+                            <h3><i class="fas fa-chart-pie"></i> 识别结果摘要</h3>
+                            <div class="summary-cards">
+                                <div class="summary-card">
+                                    <div class="summary-number" id="total-fields">-</div>
+                                    <div class="summary-label">总字段数</div>
+                                </div>
+                                <div class="summary-card high-risk">
+                                    <div class="summary-number" id="high-risk-fields">-</div>
+                                    <div class="summary-label">高风险字段</div>
+                                </div>
+                                <div class="summary-card medium-risk">
+                                    <div class="summary-number" id="medium-risk-fields">-</div>
+                                    <div class="summary-label">中风险字段</div>
+                                </div>
+                                <div class="summary-card low-risk">
+                                    <div class="summary-number" id="low-risk-fields">-</div>
+                                    <div class="summary-label">低风险字段</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 字段详情 -->
+                        <div class="fields-container">
+                            <h3><i class="fas fa-list"></i> 字段详情</h3>
+                            <div class="fields-list" id="fields-list">
+                                <!-- 字段卡片将在这里动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第三步：脱敏建议 -->
+            <div class="wizard-step" id="step-3">
+                <div class="step-header">
+                    <h2><i class="fas fa-lightbulb"></i> 脱敏建议</h2>
+                    <p>查看针对每个敏感字段的脱敏建议</p>
+                </div>
+                
+                <div class="suggestions-section">
+                    <div class="suggestions-summary">
+                        <h3><i class="fas fa-chart-bar"></i> 脱敏建议摘要</h3>
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">建议重新脱敏:</span>
+                                <span class="stat-value" id="suggested-resynthesize">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">建议加密处理:</span>
+                                <span class="stat-value" id="suggested-encrypt">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">建议部分遮挡:</span>
+                                <span class="stat-value" id="suggested-mask">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">可保持原样:</span>
+                                <span class="stat-value" id="suggested-keep">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="suggestions-details">
+                        <h3><i class="fas fa-list-alt"></i> 详细建议</h3>
+                        <div class="suggestion-cards" id="suggestion-cards">
+                            <!-- 建议卡片将在这里动态生成 -->
+                        </div>
+                    </div>
+                    
+                    <div class="comparison-section">
+                        <h3><i class="fas fa-exchange-alt"></i> 脱敏前后对比</h3>
+                        <div class="comparison-container">
+                            <div class="original-data">
+                                <h4>原始数据</h4>
+                                <div class="data-sample" id="original-sample">
+                                    <!-- 原始数据样本 -->
+                                </div>
+                            </div>
+                            <div class="synthetic-data">
+                                <h4>脱敏后数据</h4>
+                                <div class="data-sample" id="synthetic-sample">
+                                    <!-- 脱敏后数据样本 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 向导导航 - 使用统一的公共组件样式 -->
+        <div class="wizard-navigation">
+            <button type="button" class="btn btn-secondary" id="prev-btn" onclick="prevStep()" disabled>
+                <i class="fas fa-arrow-left"></i> 上一步
+            </button>
+            <div class="navigation-info">
+                <span class="step-indicator">步骤 1 / 3</span>
+            </div>
+            <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
+                下一步 <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- 使用统一的公共组件JavaScript -->
+<script>
+// 敏感字段识别向导特定配置
+const sensitiveFieldConfig = {
+    wizardId: 'sensitive_field_unified_final',
+    totalSteps: 3,
+    currentStep: 1,
+    validationRules: {
+        1: (data) => data.uploadedFile !== null,
+        2: (data) => data.detectionResults !== null,
+        3: () => true
+    }
+};
+
+// 向导数据管理
+const wizardData = {
+    uploadedFile: null,
+    fileData: null,
+    detectionResults: null,
+    suggestions: null
+};
+
+// 初始化向导控制器
+let wizardController;
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化向导控制器
+    wizardController = new UnifiedWizardController(sensitiveFieldConfig);
+    
+    // 设置全局控制器
+    setGlobalWizardController(wizardController);
+    
+    // 绑定业务特定事件
+    bindBusinessEvents();
+});
+
+// 绑定业务特定事件
+function bindBusinessEvents() {
+    // 文件上传处理
+    window.handleFileUpload = function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            displayFileInfo(file);
+            loadFileData(file);
+            wizardData.uploadedFile = file;
+            wizardController.updateNavigationButtons();
+        }
+    };
+    
+    // 文件拖拽处理
+    window.handleFileDrop = function(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+        
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            displayFileInfo(file);
+            loadFileData(file);
+            wizardData.uploadedFile = file;
+            wizardController.updateNavigationButtons();
+        }
+    };
+    
+    window.handleDragOver = function(event) {
+        event.preventDefault();
+        event.currentTarget.classList.add('dragover');
+    };
+    
+    window.handleDragLeave = function(event) {
+        event.preventDefault();
+        event.currentTarget.classList.remove('dragover');
+    };
+    
+    // 文件预览
+    window.previewFile = function() {
+        if (wizardData.uploadedFile && window.filePreviewComponent) {
+            window.filePreviewComponent.previewFile(wizardData.uploadedFile, wizardData.fileData, '数据文件预览');
+        }
+    };
+    
+    // 移除文件
+    window.removeFile = function() {
+        wizardData.uploadedFile = null;
+        wizardData.fileData = null;
+        document.getElementById('file-info').style.display = 'none';
+        document.getElementById('data-preview').style.display = 'none';
+        document.getElementById('file-input').value = '';
+        wizardController.updateNavigationButtons();
+    };
+    
+    // 开始识别
+    window.startDetection = function() {
+        const analyzeBtn = document.getElementById('analyze-btn');
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 识别中...';
+        
+        // 模拟识别过程
+        setTimeout(() => {
+            // 模拟API调用
+            fetch('/api/sensitive-fields/analyze-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_data: wizardData.fileData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    wizardData.detectionResults = data;
+                    renderDetectionResults(data);
+                    wizardController.updateNavigationButtons();
+                } else {
+                    alert('识别失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('识别错误:', error);
+                alert('识别过程中发生错误');
+            })
+            .finally(() => {
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<i class="fas fa-search"></i> 开始识别';
+            });
+        }, 2000);
+    };
+}
+
+// 显示文件信息
+function displayFileInfo(file) {
+    const fileInfo = document.getElementById('file-info');
+    const fileName = document.getElementById('file-name');
+    const fileSize = document.getElementById('file-size');
+    const fileType = document.getElementById('file-type');
+    
+    if (fileInfo && fileName && fileSize && fileType) {
+        fileName.textContent = file.name;
+        fileSize.textContent = formatFileSize(file.size);
+        fileType.textContent = getFileTypeName(file.name);
+        fileInfo.style.display = 'block';
+    }
+}
+
+// 加载文件数据
+function loadFileData(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            let data;
+            if (file.name.toLowerCase().endsWith('.csv')) {
+                // 简单的CSV解析
+                const lines = e.target.result.split('\n');
+                const headers = lines[0].split(',');
+                const rows = lines.slice(1, 6).map(line => line.split(','));
+                data = { headers, rows };
+            } else {
+                // 模拟Excel数据
+                data = {
+                    headers: ['姓名', '身份证号', '手机号', '邮箱', '地址'],
+                    rows: [
+                        ['张三', '110101199001011234', '13812345678', 'zhang@example.com', '北京市朝阳区'],
+                        ['李四', '110101199002021234', '13987654321', 'li@example.com', '上海市浦东新区'],
+                        ['王五', '110101199003031234', '13611112222', 'wang@example.com', '广州市天河区']
+                    ]
+                };
+            }
+            
+            wizardData.fileData = data;
+            renderDataPreview(data);
+            
+        } catch (error) {
+            console.error('文件解析错误:', error);
+            alert('文件解析失败');
+        }
+    };
+    
+    if (file.name.toLowerCase().endsWith('.csv')) {
+        reader.readAsText(file);
+    } else {
+        // 对于Excel文件，使用模拟数据
+        const mockData = {
+            headers: ['姓名', '身份证号', '手机号', '邮箱', '地址'],
+            rows: [
+                ['张三', '110101199001011234', '13812345678', 'zhang@example.com', '北京市朝阳区'],
+                ['李四', '110101199002021234', '13987654321', 'li@example.com', '上海市浦东新区'],
+                ['王五', '110101199003031234', '13611112222', 'wang@example.com', '广州市天河区']
+            ]
+        };
+        wizardData.fileData = mockData;
+        renderDataPreview(mockData);
+    }
+}
+
+// 渲染数据预览
+function renderDataPreview(data) {
+    const preview = document.getElementById('data-preview');
+    const headersRow = document.getElementById('table-headers');
+    const bodyRows = document.getElementById('table-body');
+    
+    // 清空现有内容
+    headersRow.innerHTML = '';
+    bodyRows.innerHTML = '';
+    
+    // 添加表头
+    data.headers.forEach(header => {
+        const th = document.createElement('th');
+        th.textContent = header;
+        headersRow.appendChild(th);
+    });
+    
+    // 添加数据行
+    data.rows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => {
+            const td = document.createElement('td');
+            td.textContent = cell;
+            tr.appendChild(td);
+        });
+        bodyRows.appendChild(tr);
+    });
+    
+    preview.style.display = 'block';
+}
+
+// 渲染识别结果
+function renderDetectionResults(data) {
+    const resultsSection = document.getElementById('analysis-results');
+    const fieldsList = document.getElementById('fields-list');
+    
+    // 更新摘要
+    document.getElementById('total-fields').textContent = data.summary.total_fields;
+    document.getElementById('high-risk-fields').textContent = data.summary.high_risk_fields;
+    document.getElementById('medium-risk-fields').textContent = data.summary.medium_risk_fields;
+    document.getElementById('low-risk-fields').textContent = data.summary.low_risk_fields;
+    
+    // 清空字段列表
+    fieldsList.innerHTML = '';
+    
+    // 添加字段卡片
+    data.fields.forEach((field, index) => {
+        const fieldCard = createFieldCard(field, index);
+        fieldsList.appendChild(fieldCard);
+    });
+    
+    resultsSection.style.display = 'block';
+}
+
+// 创建字段卡片
+function createFieldCard(field, index) {
+    const card = document.createElement('div');
+    card.className = 'field-card';
+    card.innerHTML = `
+        <div class="field-header">
+            <div class="field-name">${field.field_name}</div>
+            <div class="field-meta">
+                <span class="sensitive-type">${field.sensitive_type}</span>
+                <span class="risk-level ${field.risk_level.toLowerCase()}">${field.risk_level}风险</span>
+                <span class="confidence">置信度: ${Math.round(field.confidence * 100)}%</span>
+            </div>
+        </div>
+        <div class="field-details">
+            <div class="sample-values">
+                <strong>样本值:</strong>
+                <div class="samples">
+                    ${field.sample_values.map(val => `<span class="sample-item">${val}</span>`).join('')}
+                </div>
+            </div>
+            <div class="suggestions">
+                <strong>脱敏建议:</strong>
+                <div class="suggestion-options">
+                    ${field.suggestions.map(suggestion => `
+                        <label class="suggestion-item ${suggestion === field.default_action ? 'selected' : ''}">
+                            <input type="radio" name="suggestion-${index}" value="${suggestion}" 
+                                   ${suggestion === field.default_action ? 'checked' : ''}>
+                            <span>${suggestion}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    return card;
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 获取文件类型名称
+function getFileTypeName(filename) {
+    const ext = filename.toLowerCase().split('.').pop();
+    switch (ext) {
+        case 'csv':
+            return 'CSV文件';
+        case 'xlsx':
+            return 'Excel文件';
+        case 'xls':
+            return 'Excel文件';
+        default:
+            return '数据文件';
+    }
+}
+
+// 重写向导控制器的步骤变化回调
+wizardController.onStepChange = function(step) {
+    switch(step) {
+        case 2:
+            console.log('进入敏感数据识别步骤');
+            break;
+        case 3:
+            console.log('进入脱敏建议步骤');
+            generateSuggestions();
+            break;
+    }
+};
+
+// 生成脱敏建议
+function generateSuggestions() {
+    if (wizardData.detectionResults) {
+        // 模拟生成脱敏建议
+        const suggestions = {
+            resynthesize: wizardData.detectionResults.summary.high_risk_fields,
+            encrypt: Math.floor(wizardData.detectionResults.summary.medium_risk_fields * 0.5),
+            mask: Math.floor(wizardData.detectionResults.summary.medium_risk_fields * 0.5),
+            keep: wizardData.detectionResults.summary.low_risk_fields
+        };
+        
+        // 更新建议摘要
+        document.getElementById('suggested-resynthesize').textContent = suggestions.resynthesize;
+        document.getElementById('suggested-encrypt').textContent = suggestions.encrypt;
+        document.getElementById('suggested-mask').textContent = suggestions.mask;
+        document.getElementById('suggested-keep').textContent = suggestions.keep;
+        
+        // 生成详细建议卡片
+        renderSuggestionCards();
+        
+        // 生成对比样本
+        generateComparisonSample();
+    }
+}
+
+// 渲染建议卡片
+function renderSuggestionCards() {
+    const cardsContainer = document.getElementById('suggestion-cards');
+    cardsContainer.innerHTML = '';
+    
+    wizardData.detectionResults.fields.forEach(field => {
+        const card = document.createElement('div');
+        card.className = 'suggestion-card';
+        card.innerHTML = `
+            <div class="card-header">
+                <h4>${field.field_name}</h4>
+                <span class="risk-badge ${field.risk_level.toLowerCase()}">${field.risk_level}风险</span>
+            </div>
+            <div class="card-content">
+                <p><strong>敏感类型:</strong> ${field.sensitive_type}</p>
+                <p><strong>推荐方案:</strong> ${field.default_action}</p>
+                <p><strong>说明:</strong> 该字段包含敏感信息，建议采用${field.default_action}的方式进行脱敏处理。</p>
+            </div>
+        `;
+        cardsContainer.appendChild(card);
+    });
+}
+
+// 生成对比样本
+function generateComparisonSample() {
+    const originalSample = document.getElementById('original-sample');
+    const syntheticSample = document.getElementById('synthetic-sample');
+    
+    const originalData = [
+        ['张三', '110101199001011234', '13812345678', 'zhang@example.com'],
+        ['李四', '110101199002021234', '13987654321', 'li@example.com']
+    ];
+    
+    const syntheticData = [
+        ['张*', '11010119900101****', '138****5678', 'z***@example.com'],
+        ['李*', '11010119900202****', '139****4321', 'l***@example.com']
+    ];
+    
+    originalSample.innerHTML = originalData.map(row => 
+        `<div class="sample-item">${row.join(' | ')}</div>`
+    ).join('');
+    
+    syntheticSample.innerHTML = syntheticData.map(row => 
+        `<div class="sample-item">${row.join(' | ')}</div>`
+    ).join('');
+}
+</script>
+
+<!-- 敏感字段识别页面特定样式 -->
+<style>
+.sensitive-field-wizard-page {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 2rem 0;
+}
+
+.upload-section {
+    margin-bottom: 2rem;
+}
+
+.upload-area {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.data-preview {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.analysis-section {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.analysis-controls {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.analysis-info {
+    margin-top: 1rem;
+    color: #666;
+}
+
+.results-summary {
+    margin-bottom: 2rem;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.summary-card.high-risk {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+}
+
+.summary-card.medium-risk {
+    background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+    color: white;
+}
+
+.summary-card.low-risk {
+    background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);
+    color: white;
+}
+
+.summary-number {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+
+.summary-label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.fields-container {
+    margin-top: 2rem;
+}
+
+.field-card {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #667eea;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.field-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.field-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.field-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.sensitive-type {
+    background: #667eea;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.risk-level {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.risk-level.high {
+    background: #ff6b6b;
+    color: white;
+}
+
+.risk-level.medium {
+    background: #feca57;
+    color: white;
+}
+
+.risk-level.low {
+    background: #48dbfb;
+    color: white;
+}
+
+.confidence {
+    color: #666;
+    font-size: 0.8rem;
+}
+
+.sample-values {
+    margin-bottom: 1rem;
+}
+
+.samples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.sample-item {
+    background: #f8f9fa;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid #dee2e6;
+}
+
+.suggestions {
+    margin-top: 1rem;
+}
+
+.suggestion-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.suggestion-item:hover {
+    background: #f8f9fa;
+}
+
+.suggestion-item.selected {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+}
+
+.suggestions-section {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.suggestions-summary {
+    margin-bottom: 2rem;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-item {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: bold;
+    color: #333;
+}
+
+.suggestion-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.suggestion-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border-left: 4px solid #667eea;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.card-header h4 {
+    margin: 0;
+    color: #333;
+}
+
+.risk-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.risk-badge.high {
+    background: #ff6b6b;
+    color: white;
+}
+
+.risk-badge.medium {
+    background: #feca57;
+    color: white;
+}
+
+.risk-badge.low {
+    background: #48dbfb;
+    color: white;
+}
+
+.comparison-section {
+    margin-top: 2rem;
+}
+
+.comparison-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+
+.original-data,
+.synthetic-data {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.original-data h4,
+.synthetic-data h4 {
+    margin: 0 0 1rem 0;
+    color: #333;
+}
+
+.data-sample {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sample-item {
+    background: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    border: 1px solid #dee2e6;
+}
+
+@media (max-width: 768px) {
+    .comparison-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .field-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .field-meta {
+        flex-wrap: wrap;
+    }
+}
+</style>
+{% endblock %}

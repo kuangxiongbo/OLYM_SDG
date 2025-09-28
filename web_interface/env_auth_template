@@ -1,0 +1,22 @@
+# 邮箱服务配置
+# 请根据您的邮箱服务商配置以下参数
+
+# SMTP服务器配置
+SMTP_SERVER=smtp.qq.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@qq.com
+SMTP_PASSWORD=your_email_password
+
+# 发件人信息
+FROM_EMAIL=your_email@qq.com
+FROM_NAME=SDG Web界面
+
+# 应用URL（用于生成邮件中的链接）
+APP_URL=http://localhost:5000
+
+# 数据库配置
+DATABASE_URL=sqlite:///data/users.db
+
+# 安全配置
+SECRET_KEY=your_secret_key_here
+

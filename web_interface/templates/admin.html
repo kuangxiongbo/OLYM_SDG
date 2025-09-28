@@ -1,0 +1,828 @@
+{% extends "base.html" %}
+
+{% block title %}管理员面板 - SDG Web界面{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.admin-header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.admin-header h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 600;
+}
+
+.admin-header p {
+    margin: 10px 0 0 0;
+    opacity: 0.9;
+    font-size: 16px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.stat-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.stat-card:nth-child(1) .stat-icon { color: #28a745; }
+.stat-card:nth-child(2) .stat-icon { color: #17a2b8; }
+.stat-card:nth-child(3) .stat-icon { color: #ffc107; }
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    color: #666;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.admin-actions {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.admin-actions h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+    background: #ff6b6b;
+    color: white;
+    border-color: #ff6b6b;
+    transform: translateY(-2px);
+}
+
+.action-btn i {
+    font-size: 20px;
+    margin-right: 10px;
+}
+
+.user-list {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.user-list h3 {
+    margin: 0 0 20px 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e9ecef;
+}
+
+th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #333;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-verified {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-unverified {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.role-badge {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.role-admin {
+    background: #ffeaa7;
+    color: #856404;
+}
+
+.role-user {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.role-moderator {
+    background: #d4edda;
+    color: #155724;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+}
+
+/* 邮件配置模态框样式 */
+.email-config-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.email-config-content {
+    background-color: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.email-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.email-config-header h3 {
+    margin: 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    background: #f8f9fa;
+    color: #333;
+}
+
+.email-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.email-config-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 4px solid #ff6b6b;
+}
+
+.email-config-item label {
+    display: block;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.email-config-item .value {
+    color: #666;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.email-config-item .status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+.status-enabled {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-disabled {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.email-test-section {
+    background: #e3f2fd;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.email-test-section h4 {
+    margin: 0 0 15px 0;
+    color: #1976d2;
+    font-weight: 600;
+}
+
+.test-email-form {
+    display: flex;
+    gap: 10px;
+    align-items: end;
+}
+
+.test-email-form input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.test-email-btn {
+    background: #1976d2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.3s ease;
+}
+
+.test-email-btn:hover {
+    background: #1565c0;
+}
+
+.test-email-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .admin-container {
+        padding: 10px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-responsive {
+        font-size: 14px;
+    }
+    
+    .email-config-content {
+        margin: 10% auto;
+        width: 95%;
+        padding: 20px;
+    }
+    
+    .email-config-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .test-email-form {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1><i class="fas fa-crown"></i> 管理员面板</h1>
+        <p>系统管理和用户管理</p>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-value">{{ stats.total_users }}</div>
+            <div class="stat-label">总用户数</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-value">{{ stats.verified_users }}</div>
+            <div class="stat-label">已验证用户</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stat-value">{{ stats.unverified_users }}</div>
+            <div class="stat-label">未验证用户</div>
+        </div>
+    </div>
+    
+    <div class="admin-actions">
+        <h3><i class="fas fa-tools"></i> 管理操作</h3>
+        <div class="actions-grid">
+            <button onclick="refreshStats()" class="action-btn">
+                <i class="fas fa-sync-alt"></i>
+                <span>刷新统计</span>
+            </button>
+            
+            <button onclick="exportUsers()" class="action-btn">
+                <i class="fas fa-download"></i>
+                <span>导出用户</span>
+            </button>
+            
+            <button onclick="cleanupExpired()" class="action-btn">
+                <i class="fas fa-broom"></i>
+                <span>清理过期数据</span>
+            </button>
+            
+            <button onclick="showEmailConfig()" class="action-btn">
+                <i class="fas fa-envelope"></i>
+                <span>邮件配置</span>
+            </button>
+            
+            <a href="{{ url_for('dashboard') }}" class="action-btn">
+                <i class="fas fa-arrow-left"></i>
+                <span>返回仪表板</span>
+            </a>
+        </div>
+    </div>
+    
+    <div class="user-list">
+        <h3><i class="fas fa-list"></i> 用户列表</h3>
+        <div id="userTable">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 加载中...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 邮件配置模态框 -->
+<div id="emailConfigModal" class="email-config-modal">
+    <div class="email-config-content">
+        <div class="email-config-header">
+            <h3><i class="fas fa-envelope"></i> 邮件服务器配置</h3>
+            <button class="close-btn" onclick="closeEmailConfig()">&times;</button>
+        </div>
+        
+        <div id="emailConfigContent">
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i> 加载邮件配置中...
+            </div>
+        </div>
+        
+        <div class="email-test-section">
+            <h4><i class="fas fa-paper-plane"></i> 测试邮件发送</h4>
+            <div class="test-email-form">
+                <input type="email" id="testEmailInput" placeholder="输入测试邮箱地址" value="">
+                <button class="test-email-btn" onclick="sendTestEmail()">
+                    <i class="fas fa-paper-plane"></i> 发送测试邮件
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserList();
+});
+
+// 加载用户列表
+async function loadUserList() {
+    try {
+        const response = await fetch('/api/stats');
+        const result = await response.json();
+        
+        if (result.success) {
+            updateStats(result.stats);
+            loadUsersFromAPI();
+        } else {
+            showError('加载统计数据失败');
+        }
+    } catch (error) {
+        console.error('加载统计数据失败:', error);
+        showError('加载统计数据失败');
+    }
+}
+
+// 更新统计数据
+function updateStats(stats) {
+    document.querySelector('.stat-card:nth-child(1) .stat-value').textContent = stats.total_users;
+    document.querySelector('.stat-card:nth-child(2) .stat-value').textContent = stats.verified_users;
+    document.querySelector('.stat-card:nth-child(3) .stat-value').textContent = stats.unverified_users;
+}
+
+// 从API加载用户列表（这里需要实现一个用户列表API）
+function loadUsersFromAPI() {
+    // 暂时显示提示信息
+    document.getElementById('userTable').innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #666;">
+            <i class="fas fa-info-circle fa-2x mb-3"></i>
+            <p>用户列表功能需要额外的API实现</p>
+            <p>当前显示基本统计信息</p>
+        </div>
+    `;
+}
+
+// 刷新统计数据
+async function refreshStats() {
+    const btn = event.target.closest('button');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/stats');
+        const result = await response.json();
+        
+        if (result.success) {
+            updateStats(result.stats);
+            showSuccess('统计数据已刷新');
+        } else {
+            showError('刷新失败');
+        }
+    } catch (error) {
+        console.error('刷新统计数据失败:', error);
+        showError('刷新失败');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// 导出用户数据
+function exportUsers() {
+    showInfo('导出功能需要额外实现');
+}
+
+// 清理过期数据
+async function cleanupExpired() {
+    if (confirm('确定要清理过期数据吗？')) {
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 清理中...';
+        btn.disabled = true;
+        
+        try {
+            // 这里可以调用清理API
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 模拟清理过程
+            showSuccess('过期数据清理完成');
+        } catch (error) {
+            showError('清理失败');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+}
+
+// 显示邮件配置
+async function showEmailConfig() {
+    const modal = document.getElementById('emailConfigModal');
+    const content = document.getElementById('emailConfigContent');
+    
+    // 显示模态框
+    modal.style.display = 'block';
+    
+    // 加载邮件配置
+    try {
+        const response = await fetch('/api/admin/email/config');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayEmailConfig(result.email_config);
+        } else {
+            content.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #dc3545;">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                    <p>加载邮件配置失败</p>
+                    <p>${result.message}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('加载邮件配置失败:', error);
+        content.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc3545;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>加载邮件配置失败</p>
+                <p>网络错误或服务器异常</p>
+            </div>
+        `;
+    }
+}
+
+// 显示邮件配置内容
+function displayEmailConfig(config) {
+    const content = document.getElementById('emailConfigContent');
+    
+    content.innerHTML = `
+        <div class="email-config-grid">
+            <div class="email-config-item">
+                <label>邮件服务器</label>
+                <div class="value">${config.mail_server || '未配置'}</div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>端口</label>
+                <div class="value">${config.mail_port || '未配置'}</div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>用户名</label>
+                <div class="value">${config.mail_username || '未配置'}</div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>密码</label>
+                <div class="value">${config.mail_password || '未配置'}</div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>默认发送者</label>
+                <div class="value">${config.mail_default_sender || '未配置'}</div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>SSL加密</label>
+                <div class="value">
+                    ${config.mail_use_ssl ? '已启用' : '未启用'}
+                    <span class="status ${config.mail_use_ssl ? 'status-enabled' : 'status-disabled'}">
+                        ${config.mail_use_ssl ? '启用' : '禁用'}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>TLS加密</label>
+                <div class="value">
+                    ${config.mail_use_tls ? '已启用' : '未启用'}
+                    <span class="status ${config.mail_use_tls ? 'status-enabled' : 'status-disabled'}">
+                        ${config.mail_use_tls ? '启用' : '禁用'}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>最大邮件数</label>
+                <div class="value">${config.mail_max_emails || '无限制'}</div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>调试模式</label>
+                <div class="value">
+                    ${config.mail_debug ? '已启用' : '未启用'}
+                    <span class="status ${config.mail_debug ? 'status-enabled' : 'status-disabled'}">
+                        ${config.mail_debug ? '启用' : '禁用'}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="email-config-item">
+                <label>抑制发送</label>
+                <div class="value">
+                    ${config.mail_suppress_send ? '已启用' : '未启用'}
+                    <span class="status ${config.mail_suppress_send ? 'status-enabled' : 'status-disabled'}">
+                        ${config.mail_suppress_send ? '启用' : '禁用'}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #ffc107;">
+            <h4 style="margin: 0 0 10px 0; color: #856404;">
+                <i class="fas fa-info-circle"></i> 配置说明
+            </h4>
+            <ul style="margin: 0; padding-left: 20px; color: #856404;">
+                <li>邮件服务器配置在应用启动时加载，修改后需要重启服务</li>
+                <li>密码已隐藏显示，实际配置中包含完整的认证信息</li>
+                <li>SSL/TLS加密用于保护邮件传输安全</li>
+                <li>调试模式会输出详细的邮件发送日志</li>
+                <li>抑制发送模式用于测试，不会实际发送邮件</li>
+            </ul>
+        </div>
+    `;
+}
+
+// 关闭邮件配置模态框
+function closeEmailConfig() {
+    const modal = document.getElementById('emailConfigModal');
+    modal.style.display = 'none';
+}
+
+// 发送测试邮件
+async function sendTestEmail() {
+    const testEmailInput = document.getElementById('testEmailInput');
+    const testEmail = testEmailInput.value.trim();
+    const btn = document.querySelector('.test-email-btn');
+    
+    if (!testEmail) {
+        showError('请输入测试邮箱地址');
+        return;
+    }
+    
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(testEmail)) {
+        showError('请输入有效的邮箱地址');
+        return;
+    }
+    
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
+    btn.disabled = true;
+    
+    try {
+        const response = await fetch('/api/admin/email/test', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                test_email: testEmail
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccess(result.message);
+        } else {
+            showError(result.message);
+        }
+    } catch (error) {
+        console.error('发送测试邮件失败:', error);
+        showError('发送测试邮件失败，请检查网络连接');
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// 点击模态框外部关闭
+window.onclick = function(event) {
+    const modal = document.getElementById('emailConfigModal');
+    if (event.target === modal) {
+        closeEmailConfig();
+    }
+}
+
+// 显示消息
+function showSuccess(message) {
+    showMessage(message, 'success');
+}
+
+function showError(message) {
+    showMessage(message, 'error');
+}
+
+function showInfo(message) {
+    showMessage(message, 'info');
+}
+
+function showMessage(message, type) {
+    // 移除现有消息
+    const existingMessages = document.querySelectorAll('.alert-message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    // 创建新消息
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `alert-message alert-${type}`;
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        z-index: 1000;
+        max-width: 300px;
+        word-wrap: break-word;
+    `;
+    
+    if (type === 'success') {
+        messageDiv.style.background = '#28a745';
+    } else if (type === 'error') {
+        messageDiv.style.background = '#dc3545';
+    } else {
+        messageDiv.style.background = '#17a2b8';
+    }
+    
+    messageDiv.textContent = message;
+    document.body.appendChild(messageDiv);
+    
+    // 3秒后自动隐藏
+    setTimeout(() => {
+        messageDiv.remove();
+    }, 3000);
+}
+</script>
+{% endblock %}

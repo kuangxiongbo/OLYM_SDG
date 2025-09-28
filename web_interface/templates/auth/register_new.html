@@ -1,0 +1,271 @@
+{% extends "base_new.html" %}
+
+{% block title %}注册 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg">
+                <div class="card-header text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>用户注册
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <form id="registerForm" class="ajax-form" action="/auth/register" method="POST" data-refresh="true">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-user me-1"></i>用户名
+                            </label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <div class="form-text">3-20位字母、数字或下划线</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i>邮箱地址
+                            </label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="form-text">用于登录和接收验证邮件</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock me-1"></i>密码
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
+                                    <i class="fas fa-eye" id="passwordToggle"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">至少8位，包含大小写字母、数字和特殊字符</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">
+                                <i class="fas fa-lock me-1"></i>确认密码
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirmPassword')">
+                                    <i class="fas fa-eye" id="confirmPasswordToggle"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="agreeTerms" required>
+                            <label class="form-check-label" for="agreeTerms">
+                                我已阅读并同意
+                                <a href="#" class="text-decoration-none">用户协议</a>
+                                和
+                                <a href="#" class="text-decoration-none">隐私政策</a>
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-user-plus me-2"></i>注册账号
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="text-muted mb-0">已有账号？</p>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary mt-2">
+                            <i class="fas fa-sign-in-alt me-2"></i>立即登录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 表单验证
+$(document).ready(function() {
+    // 实时验证
+    $('#username').on('blur', validateUsername);
+    $('#email').on('blur', validateEmail);
+    $('#password').on('input', validatePassword);
+    $('#confirmPassword').on('blur', validateConfirmPassword);
+    
+    // 表单提交
+    $('#registerForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // 清除之前的验证状态
+        $('.form-control').removeClass('is-invalid');
+        $('.invalid-feedback').text('');
+        
+        // 验证所有字段
+        let isValid = true;
+        
+        if (!validateUsername()) isValid = false;
+        if (!validateEmail()) isValid = false;
+        if (!validatePassword()) isValid = false;
+        if (!validateConfirmPassword()) isValid = false;
+        
+        // 验证协议同意
+        if (!$('#agreeTerms').is(':checked')) {
+            showMessage('请同意用户协议和隐私政策', 'error');
+            isValid = false;
+        }
+        
+        if (isValid) {
+            submitRegisterForm();
+        }
+    });
+});
+
+// 验证用户名
+function validateUsername() {
+    const username = $('#username').val();
+    const regex = /^[a-zA-Z0-9_]{3,20}$/;
+    
+    if (!username) {
+        showFieldError('username', '用户名不能为空');
+        return false;
+    }
+    
+    if (!regex.test(username)) {
+        showFieldError('username', '用户名格式不正确，应为3-20位字母、数字或下划线');
+        return false;
+    }
+    
+    $('#username').removeClass('is-invalid');
+    return true;
+}
+
+// 验证邮箱
+function validateEmail() {
+    const email = $('#email').val();
+    
+    if (!email) {
+        showFieldError('email', '邮箱地址不能为空');
+        return false;
+    }
+    
+    if (!validateEmail(email)) {
+        showFieldError('email', '请输入有效的邮箱地址');
+        return false;
+    }
+    
+    $('#email').removeClass('is-invalid');
+    return true;
+}
+
+// 验证密码
+function validatePassword() {
+    const password = $('#password').val();
+    
+    if (!password) {
+        showFieldError('password', '密码不能为空');
+        return false;
+    }
+    
+    if (!validatePassword(password)) {
+        showFieldError('password', '密码强度不足，需要至少8位，包含大小写字母、数字和特殊字符');
+        return false;
+    }
+    
+    $('#password').removeClass('is-invalid');
+    
+    // 重新验证确认密码
+    if ($('#confirmPassword').val()) {
+        validateConfirmPassword();
+    }
+    
+    return true;
+}
+
+// 验证确认密码
+function validateConfirmPassword() {
+    const password = $('#password').val();
+    const confirmPassword = $('#confirmPassword').val();
+    
+    if (!confirmPassword) {
+        showFieldError('confirmPassword', '请确认密码');
+        return false;
+    }
+    
+    if (password !== confirmPassword) {
+        showFieldError('confirmPassword', '两次输入的密码不一致');
+        return false;
+    }
+    
+    $('#confirmPassword').removeClass('is-invalid');
+    return true;
+}
+
+// 显示字段错误
+function showFieldError(fieldName, message) {
+    $(`#${fieldName}`).addClass('is-invalid');
+    $(`#${fieldName}`).siblings('.invalid-feedback').text(message);
+}
+
+// 提交注册表单
+async function submitRegisterForm() {
+    const form = $('#registerForm');
+    const formData = {
+        username: $('#username').val(),
+        email: $('#email').val(),
+        password: $('#password').val()
+    };
+    
+    try {
+        showLoading();
+        
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('注册成功！请查收邮箱验证邮件', 'success');
+            setTimeout(() => {
+                window.location.href = '/auth/login';
+            }, 2000);
+        } else {
+            showMessage(result.message || '注册失败', 'error');
+        }
+    } catch (error) {
+        console.error('注册失败:', error);
+        showMessage('注册失败，请稍后重试', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 切换密码显示
+function togglePassword(fieldId) {
+    const passwordField = $(`#${fieldId}`);
+    const toggleIcon = $(`#${fieldId}Toggle`);
+    
+    if (passwordField.attr('type') === 'password') {
+        passwordField.attr('type', 'text');
+        toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+    } else {
+        passwordField.attr('type', 'password');
+        toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+    }
+}
+</script>
+{% endblock %}
+

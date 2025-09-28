@@ -1,0 +1,519 @@
+/**
+ * 公共向导组件样式
+ * 提供统一的向导页面UI样式
+ */
+
+/* 向导页面基础样式 */
+.wizard-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 2rem 0;
+}
+
+.wizard-page-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.wizard-page-header h1 {
+    color: var(--charcoal, #2C2C2C);
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+}
+
+.wizard-page-header p {
+    color: #666;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* 向导步骤指示器 */
+.wizard-steps {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 3rem;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+/* 向导内容区域 */
+.wizard-content {
+    padding: 3rem;
+    min-height: 500px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    margin-bottom: 2rem;
+}
+
+/* 向导步骤内容 */
+.wizard-step {
+    display: none;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+.wizard-steps .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    opacity: 0.5;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-width: 150px;
+}
+
+.wizard-steps .step.active {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.wizard-steps .step.completed {
+    opacity: 0.8;
+}
+
+.wizard-steps .step.completed .step-number {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.wizard-steps .step-number {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+}
+
+.wizard-steps .step.active .step-number {
+    background: linear-gradient(135deg, var(--primary-gold, #D4AF37) 0%, var(--secondary-gold, #B8860B) 100%);
+    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+}
+
+.wizard-steps .step:hover .step-number {
+    transform: scale(1.1);
+}
+
+.wizard-steps .step-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--charcoal, #2C2C2C);
+    margin-bottom: 0.5rem;
+}
+
+.wizard-steps .step-description {
+    font-size: 0.9rem;
+    color: #666;
+    max-width: 150px;
+    line-height: 1.4;
+}
+
+/* 向导容器 */
+.wizard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    animation: fadeInUp 0.6s ease-out;
+    padding: 0 1rem;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 向导内容区域 */
+.wizard-content {
+    padding: 3rem;
+    min-height: 500px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+    margin-bottom: 2rem;
+}
+
+/* 向导步骤内容 */
+.wizard-step {
+    display: none;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.wizard-step.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 步骤头部 */
+.wizard-step-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.wizard-step-header h2 {
+    color: var(--charcoal, #2C2C2C);
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.wizard-step-header p {
+    color: #666;
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+/* 向导导航 */
+.wizard-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    margin-top: 2rem;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* 导航按钮样式 */
+.wizard-navigation .btn {
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    min-width: 120px;
+    justify-content: center;
+}
+
+.wizard-navigation .btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.wizard-navigation .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.wizard-navigation .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.wizard-navigation .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+}
+
+.wizard-navigation .btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+}
+
+.wizard-navigation .btn-secondary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
+}
+
+.wizard-navigation .btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.wizard-navigation .btn-success:hover:not(:disabled) {
+    background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+}
+
+/* 进度指示器 */
+.wizard-progress {
+    width: 100%;
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.wizard-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-gold, #D4AF37), var(--secondary-gold, #B8860B));
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+/* 步骤内容容器 */
+.step-content-container {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    border: 1px solid #e9ecef;
+}
+
+.step-content-container h3 {
+    color: var(--charcoal, #2C2C2C);
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.step-content-container h3 i {
+    color: var(--primary-gold, #D4AF37);
+    font-size: 1.3rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .wizard-steps {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .wizard-steps .step {
+        flex-direction: row;
+        text-align: left;
+        min-width: auto;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .wizard-steps .step-number {
+        margin-right: 1rem;
+        margin-bottom: 0;
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+    
+    .wizard-steps .step-title {
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .wizard-steps .step-description {
+        font-size: 0.85rem;
+        max-width: none;
+    }
+    
+    .wizard-content {
+        padding: 2rem 1rem;
+    }
+    
+    .wizard-navigation {
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1.5rem;
+    }
+    
+    .wizard-navigation .btn {
+        width: 100%;
+    }
+    
+    .wizard-page-header h1 {
+        font-size: 2rem;
+    }
+    
+    .wizard-step-header h2 {
+        font-size: 1.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .wizard-page {
+        padding: 1rem 0;
+    }
+    
+    .wizard-container {
+        margin: 0 1rem;
+        border-radius: 15px;
+    }
+    
+    .wizard-content {
+        padding: 1.5rem 1rem;
+    }
+    
+    .step-content-container {
+        padding: 1.5rem;
+    }
+    
+    .wizard-navigation {
+        padding: 1rem;
+    }
+}
+
+/* 加载状态 */
+.wizard-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    color: #6c757d;
+}
+
+.wizard-loading i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 错误状态 */
+.wizard-error {
+    text-align: center;
+    padding: 3rem;
+    color: #dc3545;
+}
+
+.wizard-error i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* 完成状态 */
+.wizard-complete {
+    text-align: center;
+    padding: 3rem;
+    color: #28a745;
+}
+
+.wizard-complete i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* 步骤验证状态 */
+.wizard-step.validating {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.wizard-step.validating::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 工具提示 */
+.wizard-tooltip {
+    position: relative;
+    cursor: help;
+}
+
+.wizard-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 1000;
+}
+
+.wizard-tooltip:hover::after {
+    opacity: 1;
+}
+
+/* 动画增强 */
+.wizard-step.transitioning {
+    transition: all 0.3s ease-in-out;
+}
+
+.wizard-steps .step.transitioning {
+    transition: all 0.3s ease-in-out;
+}
+
+/* 深色模式支持 */
+@media (prefers-color-scheme: dark) {
+    .wizard-page {
+        background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    }
+    
+    .wizard-container {
+        background: #2d2d2d;
+        color: #ffffff;
+    }
+    
+    .wizard-step-header h2 {
+        color: #ffffff;
+    }
+    
+    .step-content-container {
+        background: #3a3a3a;
+        border-color: #4a4a4a;
+    }
+    
+    .wizard-navigation {
+        background: #2d2d2d;
+        border-color: #4a4a4a;
+    }
+}

@@ -1,0 +1,276 @@
+{% extends "base_new.html" %}
+
+{% block title %}数据源管理 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-database me-2"></i>数据源管理
+                </h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+                    <i class="fas fa-plus me-2"></i>添加数据源
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据源列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>我的数据源
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="dataSourcesList">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 上传数据源模态框 -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-upload me-2"></i>添加数据源
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadForm">
+                    <div class="mb-3">
+                        <label for="dataSourceName" class="form-label">数据源名称</label>
+                        <input type="text" class="form-control" id="dataSourceName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="dataSourceType" class="form-label">数据源类型</label>
+                        <select class="form-select" id="dataSourceType" required>
+                            <option value="">请选择类型</option>
+                            <option value="csv">CSV文件</option>
+                            <option value="json">JSON文件</option>
+                            <option value="excel">Excel文件</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="dataSourceFile" class="form-label">选择文件</label>
+                        <input type="file" class="form-control" id="dataSourceFile" accept=".csv,.json,.xlsx,.xls" required>
+                        <div class="form-text">支持 CSV、JSON、Excel 格式，最大 16MB</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="dataSourceDescription" class="form-label">描述（可选）</label>
+                        <textarea class="form-control" id="dataSourceDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="uploadDataSource()">
+                    <i class="fas fa-upload me-2"></i>上传
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载完成后加载数据源列表
+$(document).ready(function() {
+    loadDataSources();
+});
+
+// 加载数据源列表
+async function loadDataSources() {
+    try {
+        const response = await fetch('/api/data-sources');
+        const result = await response.json();
+        
+        if (result.success) {
+            displayDataSources(result.data_sources);
+        } else {
+            showMessage('加载数据源失败', 'error');
+        }
+    } catch (error) {
+        console.error('加载数据源失败:', error);
+        showMessage('加载数据源失败', 'error');
+    }
+}
+
+// 显示数据源列表
+function displayDataSources(dataSources) {
+    const container = $('#dataSourcesList');
+    
+    if (dataSources.length === 0) {
+        container.html(`
+            <div class="empty-state">
+                <i class="fas fa-database"></i>
+                <h4>暂无数据源</h4>
+                <p>点击"添加数据源"按钮上传您的第一个数据文件</p>
+            </div>
+        `);
+        return;
+    }
+    
+    const html = dataSources.map(ds => `
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <h6 class="mb-1">
+                            <i class="fas fa-${getDataSourceIcon(ds.type)} me-2"></i>
+                            ${ds.name}
+                        </h6>
+                        <p class="text-muted mb-1">
+                            <span class="status-badge status-${ds.status}">${getStatusText(ds.status)}</span>
+                            <span class="ms-2">${ds.type.toUpperCase()}</span>
+                        </p>
+                        <small class="text-muted">
+                            创建时间: ${formatTime(ds.created_at)}
+                            ${ds.file_size ? ` | 文件大小: ${formatFileSize(ds.file_size)}` : ''}
+                            ${ds.row_count ? ` | 数据行数: ${ds.row_count}` : ''}
+                        </small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="previewDataSource(${ds.id})">
+                                <i class="fas fa-eye me-1"></i>预览
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="useDataSource(${ds.id})">
+                                <i class="fas fa-play me-1"></i>使用
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteDataSource(${ds.id})">
+                                <i class="fas fa-trash me-1"></i>删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.html(html);
+}
+
+// 获取数据源图标
+function getDataSourceIcon(type) {
+    const icons = {
+        'csv': 'file-csv',
+        'json': 'file-code',
+        'excel': 'file-excel'
+    };
+    return icons[type] || 'file';
+}
+
+// 获取状态文本
+function getStatusText(status) {
+    const statusTexts = {
+        'active': '活跃',
+        'processing': '处理中',
+        'error': '错误'
+    };
+    return statusTexts[status] || status;
+}
+
+// 上传数据源
+async function uploadDataSource() {
+    const formData = new FormData();
+    const name = $('#dataSourceName').val();
+    const type = $('#dataSourceType').val();
+    const file = $('#dataSourceFile')[0].files[0];
+    const description = $('#dataSourceDescription').val();
+    
+    if (!name || !type || !file) {
+        showMessage('请填写所有必填字段', 'error');
+        return;
+    }
+    
+    formData.append('name', name);
+    formData.append('type', type);
+    formData.append('file', file);
+    formData.append('description', description);
+    
+    try {
+        showLoading();
+        
+        const response = await fetch('/api/data-sources', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('数据源上传成功', 'success');
+            $('#uploadModal').modal('hide');
+            loadDataSources(); // 重新加载列表
+        } else {
+            showMessage(result.message || '上传失败', 'error');
+        }
+    } catch (error) {
+        console.error('上传失败:', error);
+        showMessage('上传失败，请稍后重试', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 预览数据源
+function previewDataSource(id) {
+    showMessage('预览功能开发中...', 'info');
+}
+
+// 使用数据源
+function useDataSource(id) {
+    showMessage('使用数据源功能开发中...', 'info');
+}
+
+// 删除数据源
+async function deleteDataSource(id) {
+    if (!confirm('确定要删除这个数据源吗？此操作不可撤销。')) {
+        return;
+    }
+    
+    try {
+        showLoading();
+        
+        const response = await fetch(`/api/data-sources/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('数据源删除成功', 'success');
+            loadDataSources(); // 重新加载列表
+        } else {
+            showMessage(result.message || '删除失败', 'error');
+        }
+    } catch (error) {
+        console.error('删除失败:', error);
+        showMessage('删除失败，请稍后重试', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+</script>
+{% endblock %}
+

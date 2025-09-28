@@ -1,0 +1,497 @@
+{% extends "base_new.html" %}
+
+{% block title %}敏感字段发现 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-shield-alt me-2"></i>敏感字段发现
+                </h2>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary" onclick="showHelp()">
+                        <i class="fas fa-question-circle me-2"></i>帮助
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="showHistory()">
+                        <i class="fas fa-history me-2"></i>历史记录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具说明 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <h6 class="alert-heading">
+                    <i class="fas fa-shield-alt me-2"></i>工具说明
+                </h6>
+                <p class="mb-0">
+                    智能识别数据中的敏感字段，提供风险评估和建议，帮助您更好地保护数据隐私。
+                    支持多种敏感信息类型检测，包括个人信息、金融数据、医疗记录等。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据选择 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>步骤1: 选择数据源
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="dataSourceSelect" class="form-label">选择数据源</label>
+                                <select class="form-select" id="dataSourceSelect">
+                                    <option value="">请选择数据源</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="detectionMode" class="form-label">检测模式</label>
+                                <select class="form-select" id="detectionMode">
+                                    <option value="comprehensive">全面检测</option>
+                                    <option value="quick">快速检测</option>
+                                    <option value="custom">自定义检测</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>提示：</strong>全面检测模式会检查所有可能的敏感字段类型，但耗时较长；快速检测模式只检查常见的敏感字段。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 检测配置 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>步骤2: 检测配置
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <h6>个人信息</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectNames" checked>
+                                <label class="form-check-label" for="detectNames">
+                                    姓名
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectEmails" checked>
+                                <label class="form-check-label" for="detectEmails">
+                                    邮箱地址
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectPhones" checked>
+                                <label class="form-check-label" for="detectPhones">
+                                    电话号码
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectAddresses" checked>
+                                <label class="form-check-label" for="detectAddresses">
+                                    地址信息
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectSSN" checked>
+                                <label class="form-check-label" for="detectSSN">
+                                    身份证号
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>金融信息</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectCreditCards" checked>
+                                <label class="form-check-label" for="detectCreditCards">
+                                    信用卡号
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectBankAccounts" checked>
+                                <label class="form-check-label" for="detectBankAccounts">
+                                    银行账号
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectIBAN" checked>
+                                <label class="form-check-label" for="detectIBAN">
+                                    IBAN号码
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectSWIFT" checked>
+                                <label class="form-check-label" for="detectSWIFT">
+                                    SWIFT代码
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>医疗信息</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectMedicalRecords" checked>
+                                <label class="form-check-label" for="detectMedicalRecords">
+                                    医疗记录
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectDrugNames" checked>
+                                <label class="form-check-label" for="detectDrugNames">
+                                    药物名称
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectDiagnoses" checked>
+                                <label class="form-check-label" for="detectDiagnoses">
+                                    诊断信息
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectInsurance" checked>
+                                <label class="form-check-label" for="detectInsurance">
+                                    保险信息
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>其他敏感信息</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectPasswords" checked>
+                                <label class="form-check-label" for="detectPasswords">
+                                    密码
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectKeys" checked>
+                                <label class="form-check-label" for="detectKeys">
+                                    密钥/Token
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectIPs" checked>
+                                <label class="form-check-label" for="detectIPs">
+                                    IP地址
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="detectGPS" checked>
+                                <label class="form-check-label" for="detectGPS">
+                                    GPS坐标
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开始检测 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-play me-2"></i>步骤3: 开始检测
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <button class="btn btn-warning btn-lg" onclick="startDetection()" id="detectBtn">
+                            <i class="fas fa-shield-alt me-2"></i>开始敏感字段检测
+                        </button>
+                    </div>
+                    
+                    <!-- 进度显示 -->
+                    <div id="progressContainer" class="mt-4" style="display: none;">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                                 role="progressbar" style="width: 0%" id="progressBar">
+                                <span id="progressText">0%</span>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-muted" id="progressMessage">正在初始化...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 检测结果 -->
+    <div class="row" id="resultContainer" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>检测结果
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 风险概览 -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="display-6 text-danger mb-2" id="highRiskCount">3</div>
+                                <h6 class="text-danger">高风险字段</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="display-6 text-warning mb-2" id="mediumRiskCount">7</div>
+                                <h6 class="text-warning">中风险字段</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="display-6 text-info mb-2" id="lowRiskCount">12</div>
+                                <h6 class="text-info">低风险字段</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="display-6 text-success mb-2" id="safeCount">15</div>
+                                <h6 class="text-success">安全字段</h6>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 详细结果 -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6>详细检测结果</h6>
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>字段名</th>
+                                            <th>数据类型</th>
+                                            <th>敏感类型</th>
+                                            <th>风险等级</th>
+                                            <th>置信度</th>
+                                            <th>建议操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detectionResults">
+                                        <tr>
+                                            <td>user_name</td>
+                                            <td>VARCHAR</td>
+                                            <td>姓名</td>
+                                            <td><span class="badge bg-danger">高风险</span></td>
+                                            <td>95%</td>
+                                            <td><button class="btn btn-sm btn-outline-primary">查看详情</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>email</td>
+                                            <td>VARCHAR</td>
+                                            <td>邮箱地址</td>
+                                            <td><span class="badge bg-danger">高风险</span></td>
+                                            <td>98%</td>
+                                            <td><button class="btn btn-sm btn-outline-primary">查看详情</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>phone_number</td>
+                                            <td>VARCHAR</td>
+                                            <td>电话号码</td>
+                                            <td><span class="badge bg-danger">高风险</span></td>
+                                            <td>92%</td>
+                                            <td><button class="btn btn-sm btn-outline-primary">查看详情</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>address</td>
+                                            <td>TEXT</td>
+                                            <td>地址信息</td>
+                                            <td><span class="badge bg-warning">中风险</span></td>
+                                            <td>78%</td>
+                                            <td><button class="btn btn-sm btn-outline-primary">查看详情</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>id_card</td>
+                                            <td>VARCHAR</td>
+                                            <td>身份证号</td>
+                                            <td><span class="badge bg-warning">中风险</span></td>
+                                            <td>85%</td>
+                                            <td><button class="btn btn-sm btn-outline-primary">查看详情</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 建议操作 -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-warning">
+                                <h6 class="alert-heading">
+                                    <i class="fas fa-lightbulb me-2"></i>建议操作
+                                </h6>
+                                <ul class="mb-0">
+                                    <li><strong>高风险字段：</strong>建议立即进行数据脱敏或加密处理</li>
+                                    <li><strong>中风险字段：</strong>建议根据业务需求考虑是否进行保护</li>
+                                    <li><strong>低风险字段：</strong>可以保持现状，但建议定期监控</li>
+                                    <li><strong>数据共享前：</strong>请确保所有敏感字段都经过适当处理</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-success me-3" onclick="downloadReport()">
+                            <i class="fas fa-download me-2"></i>下载报告
+                        </button>
+                        <button class="btn btn-info me-3" onclick="generateMaskingRules()">
+                            <i class="fas fa-mask me-2"></i>生成脱敏规则
+                        </button>
+                        <button class="btn btn-secondary" onclick="saveDetection()">
+                            <i class="fas fa-save me-2"></i>保存检测
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载完成后初始化
+$(document).ready(function() {
+    loadDataSources();
+});
+
+// 加载数据源列表
+async function loadDataSources() {
+    try {
+        const response = await fetch('/api/data-sources');
+        const result = await response.json();
+        
+        if (result.success && result.data_sources) {
+            const select = $('#dataSourceSelect');
+            result.data_sources.forEach(ds => {
+                select.append(`<option value="${ds.id}">${ds.name} (${ds.type})</option>`);
+            });
+        }
+    } catch (error) {
+        console.error('加载数据源失败:', error);
+    }
+}
+
+// 开始检测
+async function startDetection() {
+    const dataSourceId = $('#dataSourceSelect').val();
+    const detectionMode = $('#detectionMode').val();
+    
+    if (!dataSourceId) {
+        showMessage('请选择数据源', 'error');
+        return;
+    }
+    
+    // 检查是否选择了至少一个检测类型
+    const checkedTypes = $('input[type="checkbox"]:checked').length;
+    if (checkedTypes === 0) {
+        showMessage('请至少选择一种敏感信息类型进行检测', 'error');
+        return;
+    }
+    
+    // 显示进度
+    $('#progressContainer').show();
+    $('#detectBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>检测中...');
+    
+    // 模拟检测过程
+    simulateDetection();
+}
+
+// 模拟检测过程
+function simulateDetection() {
+    const steps = [
+        { progress: 10, message: '正在读取数据源...' },
+        { progress: 25, message: '正在分析数据结构...' },
+        { progress: 40, message: '正在检测个人信息...' },
+        { progress: 55, message: '正在检测金融信息...' },
+        { progress: 70, message: '正在检测医疗信息...' },
+        { progress: 85, message: '正在评估风险等级...' },
+        { progress: 100, message: '检测完成！' }
+    ];
+    
+    let currentStep = 0;
+    
+    const interval = setInterval(() => {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            $('#progressBar').css('width', step.progress + '%');
+            $('#progressText').text(step.progress + '%');
+            $('#progressMessage').text(step.message);
+            currentStep++;
+        } else {
+            clearInterval(interval);
+            showDetectionResult();
+        }
+    }, 700);
+}
+
+// 显示检测结果
+function showDetectionResult() {
+    $('#progressContainer').hide();
+    $('#resultContainer').show();
+    $('#detectBtn').prop('disabled', false).html('<i class="fas fa-shield-alt me-2"></i>开始敏感字段检测');
+    
+    showMessage('敏感字段检测完成！', 'success');
+}
+
+// 下载报告
+function downloadReport() {
+    showMessage('报告下载功能开发中...', 'info');
+}
+
+// 生成脱敏规则
+function generateMaskingRules() {
+    showMessage('脱敏规则生成功能开发中...', 'info');
+}
+
+// 保存检测
+function saveDetection() {
+    showMessage('检测结果保存功能开发中...', 'info');
+}
+
+// 显示帮助
+function showHelp() {
+    showMessage('帮助文档开发中...', 'info');
+}
+
+// 显示历史记录
+function showHistory() {
+    showMessage('历史记录功能开发中...', 'info');
+}
+</script>
+{% endblock %}
+

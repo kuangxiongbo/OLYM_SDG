@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}向导调试页面 - SDG 工具集{% endblock %}
+
+{% block content %}
+<div class="unified-wizard-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+        <h1 class="page-title">向导调试页面</h1>
+        <p class="page-description">调试向导功能问题</p>
+    </div>
+
+    <!-- 向导步骤指示器 -->
+    <div class="wizard-steps">
+        <div class="step active" data-step="1">
+            <div class="step-number">1</div>
+            <div class="step-title">步骤一</div>
+            <div class="step-description">调试第一步</div>
+        </div>
+        <div class="step" data-step="2">
+            <div class="step-number">2</div>
+            <div class="step-title">步骤二</div>
+            <div class="step-description">调试第二步</div>
+        </div>
+    </div>
+
+    <!-- 向导内容区域 -->
+    <div class="wizard-content">
+        <div class="wizard-step active" id="step-1">
+            <h3>步骤一：调试信息</h3>
+            <p>当前步骤: <span id="current-step-display">1</span></p>
+            <p>控制器状态: <span id="controller-status">检查中...</span></p>
+            <p>JavaScript错误: <span id="js-errors">无</span></p>
+            <button onclick="testNextStep()" class="btn btn-primary">测试下一步</button>
+            <button onclick="testPrevStep()" class="btn btn-secondary">测试上一步</button>
+        </div>
+        
+        <div class="wizard-step" id="step-2">
+            <h3>步骤二：调试结果</h3>
+            <p>成功进入第二步！</p>
+            <p>当前步骤: <span id="current-step-display-2">2</span></p>
+        </div>
+    </div>
+
+    <!-- 向导导航 -->
+    <div class="wizard-navigation">
+        <button type="button" class="btn btn-secondary" id="prev-btn" onclick="prevStep()" disabled>
+            <i class="fas fa-arrow-left"></i> 上一步
+        </button>
+        <div class="navigation-info">
+            <span class="step-indicator">步骤 1 / 2</span>
+        </div>
+        <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
+            下一步 <i class="fas fa-arrow-right"></i>
+        </button>
+    </div>
+</div>
+
+<style>
+.btn {
+    padding: 0.5rem 1rem;
+    margin: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn:disabled {
+    background: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 调试信息
+let currentStep = 1;
+const totalSteps = 2;
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面加载完成');
+    updateDebugInfo();
+    
+    // 检查全局函数是否存在
+    console.log('nextStep函数存在:', typeof window.nextStep);
+    console.log('prevStep函数存在:', typeof window.prevStep);
+    console.log('setGlobalWizardController函数存在:', typeof window.setGlobalWizardController);
+    
+    // 检查UnifiedWizardController类是否存在
+    console.log('UnifiedWizardController类存在:', typeof UnifiedWizardController);
+    
+    // 尝试创建控制器
+    try {
+        const config = {
+            wizardId: 'debug_wizard',
+            totalSteps: 2,
+            currentStep: 1,
+            validationRules: {
+                1: () => true,
+                2: () => true
+            }
+        };
+        
+        const controller = new UnifiedWizardController(config);
+        setGlobalWizardController(controller);
+        console.log('控制器创建成功:', controller);
+        updateDebugInfo();
+    } catch (error) {
+        console.error('控制器创建失败:', error);
+        document.getElementById('controller-status').textContent = '创建失败: ' + error.message;
+    }
+});
+
+// 更新调试信息
+function updateDebugInfo() {
+    document.getElementById('current-step-display').textContent = currentStep;
+    document.getElementById('current-step-display-2').textContent = currentStep;
+    
+    if (globalWizardController) {
+        document.getElementById('controller-status').textContent = '已创建';
+    } else {
+        document.getElementById('controller-status').textContent = '未创建';
+    }
+}
+
+// 测试下一步
+function testNextStep() {
+    console.log('测试下一步按钮');
+    console.log('当前步骤:', currentStep);
+    console.log('全局控制器:', globalWizardController);
+    
+    if (globalWizardController) {
+        console.log('使用全局控制器');
+        globalWizardController.nextStep();
+    } else {
+        console.log('使用本地函数');
+        if (currentStep < totalSteps) {
+            currentStep++;
+            updateWizardUI();
+            updateDebugInfo();
+        }
+    }
+}
+
+// 测试上一步
+function testPrevStep() {
+    console.log('测试上一步按钮');
+    console.log('当前步骤:', currentStep);
+    
+    if (globalWizardController) {
+        console.log('使用全局控制器');
+        globalWizardController.prevStep();
+    } else {
+        console.log('使用本地函数');
+        if (currentStep > 1) {
+            currentStep--;
+            updateWizardUI();
+            updateDebugInfo();
+        }
+    }
+}
+
+// 更新向导UI
+function updateWizardUI() {
+    // 更新步骤指示器
+    document.querySelectorAll('.wizard-steps .step').forEach((step, index) => {
+        if (index + 1 === currentStep) {
+            step.classList.add('active');
+        } else {
+            step.classList.remove('active');
+        }
+    });
+    
+    // 更新步骤内容
+    document.querySelectorAll('.wizard-step').forEach((step, index) => {
+        if (index + 1 === currentStep) {
+            step.classList.add('active');
+        } else {
+            step.classList.remove('active');
+        }
+    });
+    
+    // 更新步骤指示器文本
+    const stepIndicator = document.querySelector('.step-indicator');
+    if (stepIndicator) {
+        stepIndicator.textContent = `步骤 ${currentStep} / ${totalSteps}`;
+    }
+    
+    // 更新导航按钮
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentStep === 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentStep === totalSteps;
+    }
+}
+
+// 捕获JavaScript错误
+window.addEventListener('error', function(e) {
+    console.error('JavaScript错误:', e.error);
+    document.getElementById('js-errors').textContent = e.error.message;
+});
+
+// 捕获未处理的Promise错误
+window.addEventListener('unhandledrejection', function(e) {
+    console.error('未处理的Promise错误:', e.reason);
+    document.getElementById('js-errors').textContent = 'Promise错误: ' + e.reason;
+});
+</script>
+{% endblock %}

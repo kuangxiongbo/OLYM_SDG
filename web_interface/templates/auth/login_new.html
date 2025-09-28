@@ -1,0 +1,168 @@
+{% extends "base_new.html" %}
+
+{% block title %}登录 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-lg">
+                <div class="card-header text-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-sign-in-alt me-2"></i>用户登录
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    <form id="loginForm" class="ajax-form" action="/auth/login" method="POST" data-refresh="true">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">
+                                <i class="fas fa-envelope me-1"></i>邮箱地址
+                            </label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock me-1"></i>密码
+                            </label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" name="password" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                    <i class="fas fa-eye" id="passwordToggle"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="remember">
+                            <label class="form-check-label" for="remember">
+                                记住我
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i>登录
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <a href="#" class="text-decoration-none" onclick="showMessage('忘记密码功能开发中...', 'info')">
+                            <i class="fas fa-key me-1"></i>忘记密码？
+                        </a>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <p class="text-muted mb-0">还没有账号？</p>
+                        <a href="{{ url_for('register') }}" class="btn btn-outline-primary mt-2">
+                            <i class="fas fa-user-plus me-2"></i>立即注册
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速登录提示 -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>快速登录
+                    </h6>
+                    <p class="card-text small text-muted">
+                        测试账号：<br>
+                        <strong>普通用户：</strong> test@example.com / test123<br>
+                        <strong>管理员：</strong> admin@sdg.com / admin123
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 表单验证
+$(document).ready(function() {
+    $('#loginForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // 清除之前的验证状态
+        $('.form-control').removeClass('is-invalid');
+        $('.invalid-feedback').text('');
+        
+        // 验证邮箱格式
+        const email = $('#email').val();
+        if (!validateEmail(email)) {
+            showFieldError('email', '请输入有效的邮箱地址');
+            return false;
+        }
+        
+        // 验证密码
+        const password = $('#password').val();
+        if (password.length < 6) {
+            showFieldError('password', '密码长度至少6位');
+            return false;
+        }
+        
+        // 提交表单
+        submitLoginForm();
+    });
+});
+
+// 显示字段错误
+function showFieldError(fieldName, message) {
+    $(`#${fieldName}`).addClass('is-invalid');
+    $(`#${fieldName}`).siblings('.invalid-feedback').text(message);
+}
+
+// 提交登录表单
+async function submitLoginForm() {
+    const form = $('#loginForm');
+    const formData = new FormData(form[0]);
+    
+    try {
+        showLoading();
+        
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('登录成功，正在跳转...', 'success');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+        } else {
+            showMessage(result.message || '登录失败', 'error');
+        }
+    } catch (error) {
+        console.error('登录失败:', error);
+        showMessage('登录失败，请稍后重试', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 切换密码显示
+function togglePassword() {
+    const passwordField = $('#password');
+    const toggleIcon = $('#passwordToggle');
+    
+    if (passwordField.attr('type') === 'password') {
+        passwordField.attr('type', 'text');
+        toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
+    } else {
+        passwordField.attr('type', 'password');
+        toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,555 @@
+{% extends "base_new.html" %}
+
+{% block title %}合成数据生成 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-magic me-2"></i>合成数据生成
+                </h2>
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-primary" onclick="showHelp()">
+                        <i class="fas fa-question-circle me-2"></i>帮助
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="showHistory()">
+                        <i class="fas fa-history me-2"></i>历史记录
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具说明 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>工具说明
+                </h6>
+                <p class="mb-0">
+                    使用先进的生成对抗网络(GAN)技术，生成高质量的合成数据，
+                    保护原始数据隐私的同时保持数据特征。支持CTGAN、TVAE、Gaussian Copula等算法。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据源选择 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>步骤1: 选择数据源
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- 数据源类型选择 -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="dataSourceType" id="uploadData" value="upload" checked>
+                                <label class="btn btn-outline-primary" for="uploadData">
+                                    <i class="fas fa-upload me-2"></i>上传数据
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="dataSourceType" id="demoData" value="demo">
+                                <label class="btn btn-outline-success" for="demoData">
+                                    <i class="fas fa-play-circle me-2"></i>演示数据
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 上传数据选项 -->
+                    <div id="uploadDataSection" class="data-source-section">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dataSourceSelect" class="form-label">选择数据源</label>
+                                    <select class="form-select" id="dataSourceSelect">
+                                        <option value="">请选择数据源</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="fileUpload" class="form-label">或上传新文件</label>
+                                    <input type="file" class="form-control" id="fileUpload" accept=".csv,.json,.xlsx,.xls">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 演示数据选项 -->
+                    <div id="demoDataSection" class="data-source-section" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="demoIndustry" class="form-label">选择行业</label>
+                                    <select class="form-select" id="demoIndustry">
+                                        <option value="">请选择行业</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="demoDataset" class="form-label">选择数据集</label>
+                                    <select class="form-select" id="demoDataset" disabled>
+                                        <option value="">请先选择行业</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="demoDataSize" class="form-label">数据量</label>
+                                    <input type="number" class="form-control" id="demoDataSize" value="1000" min="100" max="10000">
+                                    <div class="form-text">演示数据生成数量</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 模型选择 -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modelType" class="form-label">生成模型</label>
+                                <select class="form-select" id="modelType">
+                                    <option value="ctgan">CTGAN (推荐)</option>
+                                    <option value="tvae">TVAE</option>
+                                    <option value="gaussian_copula">Gaussian Copula</option>
+                                    <option value="copula_gan">Copula GAN</option>
+                                    <option value="tab_ddpm">Tab DDPM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="modelConfig" class="form-label">模型配置</label>
+                                <select class="form-select" id="modelConfig">
+                                    <option value="default">默认配置</option>
+                                    <option value="fast">快速训练</option>
+                                    <option value="high_quality">高质量</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="dataAmount" class="form-label">生成数据量</label>
+                                <input type="number" class="form-control" id="dataAmount" value="1000" min="100" max="10000">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="similarity" class="form-label">相似度要求</label>
+                                <input type="range" class="form-range" id="similarity" min="0.1" max="1.0" step="0.1" value="0.8">
+                                <div class="d-flex justify-content-between">
+                                    <small>0.1 (低相似度)</small>
+                                    <small id="similarityValue">0.8</small>
+                                    <small>1.0 (高相似度)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 高级配置 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cogs me-2"></i>步骤2: 高级配置
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="privacyProtection" checked>
+                                <label class="form-check-label" for="privacyProtection">
+                                    隐私保护增强
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="differentialPrivacy">
+                                <label class="form-check-label" for="differentialPrivacy">
+                                    差分隐私
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="customConfig" class="form-label">自定义配置 (JSON格式)</label>
+                                <textarea class="form-control" id="customConfig" rows="4" placeholder='{"epochs": 300, "batch_size": 500}'></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 生成控制 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-play me-2"></i>步骤3: 开始生成
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <button class="btn btn-primary btn-lg" onclick="startGeneration()" id="generateBtn">
+                            <i class="fas fa-magic me-2"></i>开始生成合成数据
+                        </button>
+                    </div>
+                    
+                    <!-- 进度显示 -->
+                    <div id="progressContainer" class="mt-4" style="display: none;">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" id="progressBar">
+                                <span id="progressText">0%</span>
+                            </div>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-muted" id="progressMessage">正在初始化...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结果展示 -->
+    <div class="row" id="resultContainer" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>生成结果
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>质量评估</h6>
+                            <div class="mb-3">
+                                <label class="form-label">统计相似度</label>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" style="width: 85%">85%</div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">分布相似度</label>
+                                <div class="progress">
+                                    <div class="progress-bar bg-info" style="width: 78%">78%</div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">相关性保持</label>
+                                <div class="progress">
+                                    <div class="progress-bar bg-warning" style="width: 82%">82%</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>数据信息</h6>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>生成行数</span>
+                                    <span id="generatedRows">1000</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>生成列数</span>
+                                    <span id="generatedCols">5</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>生成时间</span>
+                                    <span id="generationTime">2.3秒</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between">
+                                    <span>文件大小</span>
+                                    <span id="fileSize">245KB</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <button class="btn btn-success me-3" onclick="downloadResult()">
+                            <i class="fas fa-download me-2"></i>下载结果
+                        </button>
+                        <button class="btn btn-info me-3" onclick="previewResult()">
+                            <i class="fas fa-eye me-2"></i>预览数据
+                        </button>
+                        <button class="btn btn-secondary" onclick="saveResult()">
+                            <i class="fas fa-save me-2"></i>保存到数据源
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载完成后初始化
+$(document).ready(function() {
+    loadDataSources();
+    loadDemoIndustries();
+    updateSimilarityDisplay();
+    
+    // 相似度滑块事件
+    $('#similarity').on('input', updateSimilarityDisplay);
+    
+    // 绑定数据源类型切换事件
+    $('input[name="dataSourceType"]').on('change', function() {
+        toggleDataSourceSections($(this).val());
+    });
+    
+    // 绑定行业选择事件
+    $('#demoIndustry').on('change', function() {
+        loadDemoDatasets($(this).val());
+    });
+    
+    // 绑定数据集选择事件
+    $('#demoDataset').on('change', function() {
+        loadDemoDataSample();
+    });
+    
+    // 绑定模型配置变化事件
+    $('#modelConfig').on('change', function() {
+        updateModelConfig($('#modelType').val(), $(this).val());
+    });
+});
+
+// 加载数据源列表
+async function loadDataSources() {
+    try {
+        const response = await fetch('/api/data-sources');
+        const result = await response.json();
+        
+        if (result.success && result.data_sources) {
+            const select = $('#dataSourceSelect');
+            result.data_sources.forEach(ds => {
+                select.append(`<option value="${ds.id}">${ds.name} (${ds.type})</option>`);
+            });
+        }
+    } catch (error) {
+        console.error('加载数据源失败:', error);
+    }
+}
+
+// 更新相似度显示
+function updateSimilarityDisplay() {
+    const value = $('#similarity').val();
+    $('#similarityValue').text(value);
+}
+
+// 切换数据源类型显示
+function toggleDataSourceSections(type) {
+    if (type === 'demo') {
+        $('#uploadDataSection').hide();
+        $('#demoDataSection').show();
+    } else {
+        $('#uploadDataSection').show();
+        $('#demoDataSection').hide();
+    }
+}
+
+// 加载演示行业列表
+async function loadDemoIndustries() {
+    try {
+        const response = await fetch('/api/demo/industries');
+        const result = await response.json();
+        
+        if (result.success) {
+            const select = $('#demoIndustry');
+            select.empty().append('<option value="">请选择行业</option>');
+            
+            result.industries.forEach(industry => {
+                select.append(`<option value="${industry.id}">${industry.name}</option>`);
+            });
+        }
+    } catch (error) {
+        console.error('加载演示行业失败:', error);
+    }
+}
+
+// 加载演示数据集列表
+async function loadDemoDatasets(industryId) {
+    if (!industryId) {
+        $('#demoDataset').empty().append('<option value="">请先选择行业</option>').prop('disabled', true);
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/demo/datasets/${industryId}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            const select = $('#demoDataset');
+            select.empty().append('<option value="">请选择数据集</option>').prop('disabled', false);
+            
+            result.datasets.forEach(dataset => {
+                select.append(`<option value="${dataset.id}">${dataset.name} (${dataset.size}条记录)</option>`);
+            });
+        }
+    } catch (error) {
+        console.error('加载演示数据集失败:', error);
+        showMessage('加载演示数据集失败', 'error');
+    }
+}
+
+// 加载演示数据样本
+async function loadDemoDataSample() {
+    const industryId = $('#demoIndustry').val();
+    const datasetId = $('#demoDataset').val();
+    
+    if (!industryId || !datasetId) return;
+    
+    try {
+        const response = await fetch(`/api/demo/data/${industryId}/${datasetId}?sample_size=5`);
+        const result = await response.json();
+        
+        if (result.success) {
+            displayDataPreview(result.data);
+        }
+    } catch (error) {
+        console.error('加载演示数据样本失败:', error);
+    }
+}
+
+// 显示数据预览
+function displayDataPreview(data) {
+    console.log('数据预览:', data);
+    // 这里可以实现数据预览逻辑
+}
+
+// 更新模型配置
+function updateModelConfig(modelType, configType) {
+    const configs = {
+        'default': { epochs: 300, batch_size: 500 },
+        'fast': { epochs: 100, batch_size: 1000 },
+        'high_quality': { epochs: 500, batch_size: 256 },
+        'custom': {}
+    };
+    
+    const config = configs[configType];
+    console.log(`更新${modelType}模型配置:`, config);
+}
+
+// 开始生成
+async function startGeneration() {
+    const dataSourceId = $('#dataSourceSelect').val();
+    const modelType = $('#modelType').val();
+    const dataAmount = $('#dataAmount').val();
+    const similarity = $('#similarity').val();
+    const privacyProtection = $('#privacyProtection').is(':checked');
+    const differentialPrivacy = $('#differentialPrivacy').is(':checked');
+    const customConfig = $('#customConfig').val();
+    
+    if (!dataSourceId) {
+        showMessage('请选择数据源', 'error');
+        return;
+    }
+    
+    if (!dataAmount || dataAmount < 100) {
+        showMessage('数据量至少为100行', 'error');
+        return;
+    }
+    
+    // 显示进度
+    $('#progressContainer').show();
+    $('#generateBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>生成中...');
+    
+    // 模拟生成过程
+    simulateGeneration();
+}
+
+// 模拟生成过程
+function simulateGeneration() {
+    const steps = [
+        { progress: 10, message: '正在读取原始数据...' },
+        { progress: 25, message: '正在分析数据特征...' },
+        { progress: 40, message: '正在训练生成模型...' },
+        { progress: 60, message: '正在生成合成数据...' },
+        { progress: 80, message: '正在评估数据质量...' },
+        { progress: 100, message: '生成完成！' }
+    ];
+    
+    let currentStep = 0;
+    
+    const interval = setInterval(() => {
+        if (currentStep < steps.length) {
+            const step = steps[currentStep];
+            $('#progressBar').css('width', step.progress + '%');
+            $('#progressText').text(step.progress + '%');
+            $('#progressMessage').text(step.message);
+            currentStep++;
+        } else {
+            clearInterval(interval);
+            showGenerationResult();
+        }
+    }, 1000);
+}
+
+// 显示生成结果
+function showGenerationResult() {
+    $('#progressContainer').hide();
+    $('#resultContainer').show();
+    $('#generateBtn').prop('disabled', false).html('<i class="fas fa-magic me-2"></i>开始生成合成数据');
+    
+    showMessage('合成数据生成完成！', 'success');
+}
+
+// 下载结果
+function downloadResult() {
+    showMessage('下载功能开发中...', 'info');
+}
+
+// 预览结果
+function previewResult() {
+    showMessage('预览功能开发中...', 'info');
+}
+
+// 保存结果
+function saveResult() {
+    showMessage('保存功能开发中...', 'info');
+}
+
+// 显示帮助
+function showHelp() {
+    showMessage('帮助文档开发中...', 'info');
+}
+
+// 显示历史记录
+function showHistory() {
+    showMessage('历史记录功能开发中...', 'info');
+}
+</script>
+{% endblock %}

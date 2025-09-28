@@ -38,11 +38,15 @@ from sdgx.utils import download_demo_data
 # 导入API蓝图
 from api import api_bp
 
+# 导入认证蓝图
+from auth_routes import auth_bp
+
 app = Flask(__name__)
 app.secret_key = 'sdg_web_interface_secret_key_2025'
 
-# 注册API蓝图
+# 注册蓝图
 app.register_blueprint(api_bp)
+app.register_blueprint(auth_bp)
 
 # 配置
 UPLOAD_FOLDER = 'uploads'

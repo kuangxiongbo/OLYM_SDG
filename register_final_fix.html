@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册 - SDG Web界面</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Art Deco CSS -->
+    <link href="/static/css/artdeco.css" rel="stylesheet">
+    <!-- 自定义CSS -->
+    <link href="/static/css/style.css" rel="stylesheet">
+    
+    
+<style>
+.auth-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.auth-card {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    width: 100%;
+    max-width: 450px;
+}
+
+.auth-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+.auth-header h2 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+.auth-header p {
+    margin: 10px 0 0 0;
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+.auth-body {
+    padding: 40px 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-control.error {
+    border-color: #dc3545;
+}
+
+.password-strength {
+    margin-top: 5px;
+    font-size: 12px;
+}
+
+.strength-weak { color: #dc3545; }
+.strength-medium { color: #ffc107; }
+.strength-strong { color: #28a745; }
+
+.form-text {
+    font-size: 12px;
+    color: #666;
+    margin-top: 5px;
+}
+
+.btn-register {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.btn-register:hover {
+    transform: translateY(-2px);
+}
+
+.btn-register:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.auth-links {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-links a {
+    color: #667eea;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #f5c6cb;
+}
+
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #c3e6cb;
+}
+
+.loading {
+    display: none;
+    text-align: center;
+    margin-top: 20px;
+}
+
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #667eea;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.password-requirements {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.password-requirements h6 {
+    margin: 0 0 10px 0;
+    color: #333;
+}
+
+.password-requirements ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.password-requirements li {
+    margin-bottom: 5px;
+    color: #666;
+}
+
+.password-requirements li.valid {
+    color: #28a745;
+}
+
+.password-requirements li.invalid {
+    color: #dc3545;
+}
+
+/* 验证码相关样式 */
+.verification-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.verification-input {
+    flex: 1;
+    max-width: 200px;
+}
+
+.btn-send-code {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-send-code:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.btn-send-code:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.countdown {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.verification-status {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.verification-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.verification-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* 图形验证码样式 */
+.captcha-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.captcha-image-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+}
+
+.captcha-image-container img {
+    max-height: 100%;
+    cursor: pointer;
+}
+
+.captcha-loading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.captcha-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+    font-size: 14px;
+    justify-content: center;
+}
+
+.captcha-input-container {
+    display: flex;
+    gap: 10px;
+}
+
+.captcha-input-container input {
+    flex: 1;
+}
+
+.captcha-input-container button {
+    width: 40px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-database"></i> SDG
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link " href="/">
+                            <i class="fas fa-home"></i> 首页
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/data-sources">
+                            <i class="fas fa-database"></i> 数据源
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/model-configs">
+                            <i class="fas fa-cogs"></i> 模型配置
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/synthetic-data">
+                            <i class="fas fa-chart-bar"></i> 结果展示
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link " href="/sensitive-detection">
+                            <i class="fas fa-tasks"></i> 批量处理
+                        </a>
+                    </li>
+                </ul>
+                
+                <!-- 用户认证相关导航 -->
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown" id="authDropdown" style="display: none;">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> <span id="usernameDisplay"></span>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/profile">
+                                <i class="fas fa-user-cog"></i> 个人资料
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()">
+                                <i class="fas fa-sign-out-alt"></i> 退出登录
+                            </a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item" id="loginButton">
+                        <a class="nav-link" href="/auth/login">
+                            <i class="fas fa-sign-in-alt"></i> 登录
+                        </a>
+                    </li>
+                    <li class="nav-item" id="registerButton">
+                        <a class="nav-link" href="/auth/register">
+                            <i class="fas fa-user-plus"></i> 注册
+                        </a>
+                    </li>
+                </ul>
+                
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要内容 -->
+    <main>
+        <!-- 消息提示 -->
+        <div id="alert-container"></div>
+        
+        
+<div class="auth-container">
+    <div class="auth-card">
+        <div class="auth-header">
+            <h2><i class="fas fa-user-plus"></i> 用户注册</h2>
+            <p>创建新账户</p>
+        </div>
+        
+        <div class="auth-body">
+            <form id="registerForm">
+                <!-- 邀请码输入（可选） -->
+                
+                
+                <!-- 邮箱输入 -->
+                <div class="form-group">
+                    <label class="form-label" for="email">
+                        <i class="fas fa-envelope"></i> 邮箱地址
+                    </label>
+                    <div class="input-group">
+                        <input type="email" class="form-control" id="email" 
+                               name="email" required 
+                               placeholder="请输入邮箱地址">
+                        <button type="button" class="btn btn-outline-primary" id="sendCodeBtn">
+                            发送验证码
+                        </button>
+                    </div>
+                    <div class="form-text">请输入您的邮箱地址，然后点击发送验证码</div>
+                </div>
+                
+                <!-- 邮箱验证码输入 -->
+                <div class="form-group">
+                    <label class="form-label" for="email_verification_code">
+                        <i class="fas fa-shield-alt"></i> 邮箱验证码
+                    </label>
+                    <input type="text" class="form-control" id="email_verification_code" 
+                           name="email_verification_code" required 
+                           placeholder="请输入6位验证码" maxlength="6">
+                    <div class="form-text">请输入发送到您邮箱的6位验证码</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="username">
+                        <i class="fas fa-user"></i> 用户名
+                    </label>
+                    <input type="text" class="form-control" id="username" 
+                           name="username" required 
+                           placeholder="请输入用户名">
+                    <div class="form-text">3-20位字母、数字或下划线</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password">
+                        <i class="fas fa-lock"></i> 密码
+                    </label>
+                    <input type="password" class="form-control" id="password" 
+                           name="password" required 
+                           placeholder="请输入密码">
+                    <div class="password-strength" id="passwordStrength"></div>
+                    
+                    <div class="password-requirements">
+                        <h6>密码要求：</h6>
+                        <ul>
+                            <li id="req-length">至少8位字符</li>
+                            <li id="req-upper">包含大写字母</li>
+                            <li id="req-lower">包含小写字母</li>
+                            <li id="req-number">包含数字</li>
+                            <li id="req-special">包含特殊字符</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="confirm_password">
+                        <i class="fas fa-lock"></i> 确认密码
+                    </label>
+                    <input type="password" class="form-control" id="confirm_password" 
+                           name="confirm_password" required 
+                           placeholder="请再次输入密码">
+                </div>
+                
+                <!-- 图形验证码 -->
+                <div class="form-group">
+                    <label class="form-label" for="captcha_code">
+                        <i class="fas fa-shield-alt"></i> 图形验证码
+                    </label>
+                    <div class="captcha-container">
+                        <div class="captcha-image-container">
+                            <img id="captcha_image" src="" alt="验证码" style="display: none;">
+                            <div id="captcha_loading" class="captcha-loading">
+                                <i class="fas fa-spinner fa-spin"></i> 加载中...
+                            </div>
+                            <div id="captcha_error" class="captcha-error" style="display: none;">
+                                <i class="fas fa-exclamation-triangle"></i> 加载失败
+                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="loadCaptcha()">
+                                    <i class="fas fa-redo"></i> 重试
+                                </button>
+                            </div>
+                        </div>
+                        <div class="captcha-input-container">
+                            <input type="text" class="form-control" id="captcha_code" 
+                                   name="captcha_code" required 
+                                   placeholder="请输入图形验证码" maxlength="4">
+                            <button type="button" class="btn btn-outline-secondary" id="refresh_captcha">
+                                <i class="fas fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="form-text">请输入图片中的验证码</div>
+                    <input type="hidden" id="captcha_session_id" name="captcha_session_id">
+                </div>
+                
+                <button type="submit" class="btn-register" id="registerBtn" disabled>
+                    <i class="fas fa-user-plus"></i> 注册
+                </button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>注册中...</p>
+            </div>
+            
+            <div class="auth-links">
+                <a href="/auth/login">已有账户？立即登录</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 密码强度检查
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const strengthDiv = document.getElementById('passwordStrength');
+    const requirements = {
+        length: document.getElementById('req-length'),
+        upper: document.getElementById('req-upper'),
+        lower: document.getElementById('req-lower'),
+        number: document.getElementById('req-number'),
+        special: document.getElementById('req-special')
+    };
+    
+    // 检查各项要求
+    const checks = {
+        length: password.length >= 8,
+        upper: /[A-Z]/.test(password),
+        lower: /[a-z]/.test(password),
+        number: /\d/.test(password),
+        special: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)
+    };
+    
+    // 更新要求显示
+    Object.keys(checks).forEach(key => {
+        if (checks[key]) {
+            requirements[key].classList.add('valid');
+            requirements[key].classList.remove('invalid');
+        } else {
+            requirements[key].classList.add('invalid');
+            requirements[key].classList.remove('valid');
+        }
+    });
+    
+    // 计算密码强度
+    const validCount = Object.values(checks).filter(Boolean).length;
+    if (validCount === 0) {
+        strengthDiv.textContent = '';
+        strengthDiv.className = 'password-strength';
+    } else if (validCount <= 2) {
+        strengthDiv.textContent = '密码强度：弱';
+        strengthDiv.className = 'password-strength strength-weak';
+    } else if (validCount <= 4) {
+        strengthDiv.textContent = '密码强度：中等';
+        strengthDiv.className = 'password-strength strength-medium';
+    } else {
+        strengthDiv.textContent = '密码强度：强';
+        strengthDiv.className = 'password-strength strength-strong';
+    }
+});
+
+// 确认密码检查
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = this.value;
+    
+    if (confirmPassword && password !== confirmPassword) {
+        this.classList.add('error');
+    } else {
+        this.classList.remove('error');
+    }
+});
+
+// 邮箱验证变量
+let isEmailVerified = false;
+
+// 发送邮箱验证码
+document.getElementById('sendCodeBtn').addEventListener('click', async function() {
+    const email = document.getElementById('email').value.trim();
+    
+    if (!email) {
+        showMessage('请先输入邮箱地址', 'error');
+        return;
+    }
+    
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showMessage('请输入有效的邮箱地址', 'error');
+        return;
+    }
+    
+    const btn = this;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '发送中...';
+    
+    try {
+        const response = await fetch('/api/auth/send_verification_code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email: email })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('验证码已发送到您的邮箱', 'success');
+            isEmailVerified = false; // 重置验证状态
+        } else {
+            showMessage(result.message || '发送失败', 'error');
+        }
+    } catch (error) {
+        showMessage('发送失败，请重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+});
+
+// 邮箱验证码输入监听
+document.getElementById('email_verification_code').addEventListener('input', function() {
+    const code = this.value.trim();
+    if (code.length === 6) {
+        // 自动验证邮箱验证码
+        verifyEmailCode(code);
+    }
+});
+
+// 验证邮箱验证码
+async function verifyEmailCode(code) {
+    const email = document.getElementById('email').value.trim();
+    
+    try {
+        const response = await fetch('/api/auth/verify_email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                email: email,
+                code: code 
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            isEmailVerified = true;
+            showMessage('邮箱验证成功', 'success');
+            // 重新检查表单状态
+            checkFormValidity();
+        } else {
+            isEmailVerified = false;
+            showMessage(result.message || '验证码错误', 'error');
+            // 重新检查表单状态
+            checkFormValidity();
+        }
+    } catch (error) {
+        isEmailVerified = false;
+        showMessage('验证失败，请重试', 'error');
+    }
+}
+
+// 图形验证码相关变量
+let captchaSessionId = null;
+
+// 加载图形验证码
+async function loadCaptcha() {
+    try {
+        console.log('开始加载验证码...');
+        
+        const loadingEl = document.getElementById('captcha_loading');
+        const imageEl = document.getElementById('captcha_image');
+        const errorEl = document.getElementById('captcha_error');
+        
+        if (!loadingEl || !imageEl) {
+            console.error('找不到验证码元素');
+            return;
+        }
+        
+        // 隐藏所有状态
+        loadingEl.style.display = 'flex';
+        imageEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'none';
+        
+        console.log('请求验证码API...');
+        const response = await fetch('/api/captcha/generate');
+        console.log('API响应状态:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('API返回结果:', result);
+        
+        if (result.success && result.image && result.session_id) {
+            captchaSessionId = result.session_id;
+            document.getElementById('captcha_session_id').value = captchaSessionId;
+            
+            // 设置图片源 (API返回的image已经包含data:image/png;base64,前缀)
+            imageEl.src = result.image;
+            imageEl.style.display = 'block';
+            loadingEl.style.display = 'none';
+            
+            console.log('验证码加载成功');
+        } else {
+            console.error('API返回数据不完整:', result);
+            loadingEl.style.display = 'none';
+            if (errorEl) errorEl.style.display = 'flex';
+            showMessage('验证码加载失败: 数据不完整', 'error');
+        }
+    } catch (error) {
+        console.error('验证码加载错误:', error);
+        const loadingEl = document.getElementById('captcha_loading');
+        const errorEl = document.getElementById('captcha_error');
+        if (loadingEl) loadingEl.style.display = 'none';
+        if (errorEl) errorEl.style.display = 'flex';
+        showMessage('验证码加载失败: ' + error.message, 'error');
+    }
+}
+
+// 刷新验证码
+document.getElementById('refresh_captcha').addEventListener('click', function() {
+    loadCaptcha();
+});
+
+// 点击验证码图片刷新
+document.getElementById('captcha_image').addEventListener('click', function() {
+    loadCaptcha();
+});
+
+// 表单提交
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    // 检查邮箱是否已验证
+    if (!isEmailVerified) {
+        showMessage('请先验证邮箱', 'error');
+        return;
+    }
+    
+    const form = e.target;
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+    
+    // 验证密码匹配
+    if (data.password !== data.confirm_password) {
+        showMessage('两次输入的密码不一致', 'error');
+        return;
+    }
+    
+    // 显示加载状态
+    document.getElementById('loading').style.display = 'block';
+    form.querySelector('button[type="submit"]').disabled = true;
+    
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 注册成功
+            showMessage('注册成功！正在跳转...', 'success');
+            
+            // 3秒后跳转到首页
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 3000);
+        } else {
+            // 显示错误消息
+            showMessage(result.message, 'error');
+        }
+    } catch (error) {
+        showMessage('注册失败，请稍后重试', 'error');
+    } finally {
+        // 隐藏加载状态
+        document.getElementById('loading').style.display = 'none';
+        form.querySelector('button[type="submit"]').disabled = false;
+    }
+});
+
+function showMessage(message, type) {
+    // 移除现有消息
+    const existingMessages = document.querySelectorAll('.error-message, .success-message');
+    existingMessages.forEach(msg => msg.remove());
+    
+    // 创建新消息
+    const messageDiv = document.createElement('div');
+    messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+    messageDiv.textContent = message;
+    
+    // 插入到表单前面
+    const form = document.getElementById('registerForm');
+    form.parentNode.insertBefore(messageDiv, form);
+    
+    // 5秒后自动隐藏（成功消息）
+    if (type === 'success') {
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 5000);
+    } else {
+        // 错误消息3秒后隐藏
+        setTimeout(() => {
+            messageDiv.remove();
+        }, 3000);
+    }
+}
+
+// 检查表单是否有效
+function checkFormValidity() {
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const captchaCode = document.getElementById('captcha_code').value.trim();
+    
+    // 检查所有必填字段
+    const hasUsername = username.length >= 3;
+    const hasEmail = email.length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const hasPassword = password.length >= 6; // 根据需求，密码至少6位
+    const hasConfirmPassword = confirmPassword === password;
+    const hasCaptcha = captchaCode.length === 4;
+    
+    // 检查邮箱是否已验证
+    const emailVerified = isEmailVerified;
+    
+    // 启用按钮的条件：所有字段都填写且邮箱已验证
+    const isValid = hasUsername && hasEmail && hasPassword && hasConfirmPassword && hasCaptcha && emailVerified;
+    
+    const registerBtn = document.getElementById('registerBtn');
+    registerBtn.disabled = !isValid;
+    
+    console.log('表单验证状态:', {
+        hasUsername, hasEmail, hasPassword, hasConfirmPassword, hasCaptcha, emailVerified, isValid
+    });
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 如果页面有错误信息，显示错误
+    
+    
+    // 加载图形验证码
+    loadCaptcha();
+    
+    // 添加表单字段监听器
+    document.getElementById('username').addEventListener('input', checkFormValidity);
+    document.getElementById('email').addEventListener('input', checkFormValidity);
+    document.getElementById('password').addEventListener('input', checkFormValidity);
+    document.getElementById('confirm_password').addEventListener('input', checkFormValidity);
+    document.getElementById('captcha_code').addEventListener('input', checkFormValidity);
+    
+    // 初始检查
+    checkFormValidity();
+});
+</script>
+
+    </main>
+
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 自定义JS -->
+    <script src="/static/js/common.js"></script>
+    
+    <!-- 认证状态检查 -->
+    <script>
+        // 检查用户登录状态
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/auth/check-auth');
+                
+                // 检查响应状态
+                if (!response.ok) {
+                    console.warn('认证状态检查失败，状态码:', response.status);
+                    updateUIForGuestUser();
+                    return;
+                }
+                
+                // 检查响应内容类型
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.warn('认证状态API返回非JSON响应:', contentType);
+                    updateUIForGuestUser();
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.authenticated) {
+                    // 用户已登录
+                    document.getElementById('authDropdown').style.display = 'block';
+                    document.getElementById('loginButton').style.display = 'none';
+                    document.getElementById('registerButton').style.display = 'none';
+                    document.getElementById('usernameDisplay').textContent = result.user.username;
+                } else {
+                    // 用户未登录
+                    document.getElementById('authDropdown').style.display = 'none';
+                    document.getElementById('loginButton').style.display = 'block';
+                    document.getElementById('registerButton').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('检查认证状态失败:', error);
+                // 默认显示访客状态
+                document.getElementById('authDropdown').style.display = 'none';
+                document.getElementById('loginButton').style.display = 'block';
+                document.getElementById('registerButton').style.display = 'block';
+            }
+        }
+        
+        // 更新访客用户UI
+        function updateUIForGuestUser() {
+            document.getElementById('authDropdown').style.display = 'none';
+            document.getElementById('loginButton').style.display = 'block';
+            document.getElementById('registerButton').style.display = 'block';
+        }
+        
+        // 退出登录
+        async function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                try {
+                    const response = await fetch('/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // 刷新页面以更新导航栏
+                        window.location.reload();
+                    } else {
+                        alert('退出登录失败');
+                    }
+                } catch (error) {
+                    console.error('退出登录失败:', error);
+                    alert('退出登录失败，请稍后重试');
+                }
+            }
+        }
+        
+        // 页面加载时检查认证状态
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthStatus();
+        });
+    </script>
+    
+    
+</body>
+</html>

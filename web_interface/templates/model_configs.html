@@ -1,0 +1,237 @@
+{% extends "base_new.html" %}
+
+{% block title %}模型配置 - SDG多账号控制系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-cogs me-2"></i>模型配置
+                </h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConfigModal">
+                    <i class="fas fa-plus me-2"></i>添加配置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 配置列表 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>我的模型配置
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="configList">
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加配置模态框 -->
+<div class="modal fade" id="addConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>添加模型配置
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="configForm">
+                    <div class="mb-3">
+                        <label for="configName" class="form-label">配置名称</label>
+                        <input type="text" class="form-control" id="configName" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="modelType" class="form-label">模型类型</label>
+                        <select class="form-select" id="modelType" required>
+                            <option value="">请选择模型类型</option>
+                            <option value="ctgan">CTGAN</option>
+                            <option value="tvae">TVAE</option>
+                            <option value="gaussian_copula">Gaussian Copula</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="configDescription" class="form-label">描述</label>
+                        <textarea class="form-control" id="configDescription" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">高级参数</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="epochs" class="form-label">训练轮数</label>
+                                <input type="number" class="form-control" id="epochs" value="300" min="10" max="1000">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="batchSize" class="form-label">批次大小</label>
+                                <input type="number" class="form-control" id="batchSize" value="500" min="10" max="2000">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="addConfig()">
+                    <i class="fas fa-plus me-2"></i>添加
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面加载完成后加载配置列表
+$(document).ready(function() {
+    loadConfigs();
+});
+
+// 加载配置列表
+async function loadConfigs() {
+    try {
+        // 模拟数据
+        const configs = [
+            {
+                id: 1,
+                name: 'CTGAN默认配置',
+                model_type: 'ctgan',
+                description: '适用于大多数数据集的默认配置',
+                is_default: true,
+                created_at: '2025-09-27T10:00:00Z'
+            },
+            {
+                id: 2,
+                name: 'TVAE高精度配置',
+                model_type: 'tvae',
+                description: '追求高精度的TVAE配置',
+                is_default: false,
+                created_at: '2025-09-27T11:00:00Z'
+            }
+        ];
+        
+        displayConfigs(configs);
+    } catch (error) {
+        console.error('加载配置失败:', error);
+        showMessage('加载配置失败', 'error');
+    }
+}
+
+// 显示配置列表
+function displayConfigs(configs) {
+    const container = $('#configList');
+    
+    if (configs.length === 0) {
+        container.html(`
+            <div class="empty-state">
+                <i class="fas fa-cogs"></i>
+                <h4>暂无配置</h4>
+                <p>点击"添加配置"按钮创建您的第一个模型配置</p>
+            </div>
+        `);
+        return;
+    }
+    
+    const html = configs.map(config => `
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6 class="mb-1">
+                            <i class="fas fa-cog me-2"></i>
+                            ${config.name}
+                            ${config.is_default ? '<span class="badge bg-primary ms-2">默认</span>' : ''}
+                        </h6>
+                        <p class="text-muted mb-1">
+                            <span class="badge bg-info">${config.model_type.toUpperCase()}</span>
+                            <span class="ms-2">${config.description || '无描述'}</span>
+                        </p>
+                        <small class="text-muted">
+                            创建时间: ${formatTime(config.created_at)}
+                        </small>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-outline-primary btn-sm" onclick="editConfig(${config.id})">
+                                <i class="fas fa-edit me-1"></i>编辑
+                            </button>
+                            <button class="btn btn-outline-success btn-sm" onclick="useConfig(${config.id})">
+                                <i class="fas fa-play me-1"></i>使用
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteConfig(${config.id})">
+                                <i class="fas fa-trash me-1"></i>删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.html(html);
+}
+
+// 添加配置
+function addConfig() {
+    const name = $('#configName').val();
+    const modelType = $('#modelType').val();
+    const description = $('#configDescription').val();
+    const epochs = $('#epochs').val();
+    const batchSize = $('#batchSize').val();
+    
+    if (!name || !modelType) {
+        showMessage('请填写配置名称和模型类型', 'error');
+        return;
+    }
+    
+    showMessage('配置添加成功', 'success');
+    $('#addConfigModal').modal('hide');
+    
+    // 清空表单
+    $('#configForm')[0].reset();
+    
+    // 重新加载列表
+    loadConfigs();
+}
+
+// 编辑配置
+function editConfig(id) {
+    showMessage('编辑功能开发中...', 'info');
+}
+
+// 使用配置
+function useConfig(id) {
+    showMessage('配置使用功能开发中...', 'info');
+}
+
+// 删除配置
+function deleteConfig(id) {
+    if (!confirm('确定要删除这个配置吗？')) {
+        return;
+    }
+    
+    showMessage('配置删除成功', 'success');
+    loadConfigs();
+}
+</script>
+{% endblock %}
+
