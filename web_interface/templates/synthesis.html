@@ -1,0 +1,3182 @@
+{% extends "base_new.html" %}
+
+{% block title %}AI 仿真数据生成{% endblock %}
+
+{% block extra_css %}
+<style>
+.wizard {
+  margin-top: 0;
+}
+.wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.wizard-step {
+  flex: 1 1 180px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(37, 99, 235, 0.06);
+  cursor: pointer;
+  transition: background 0.2s ease, border 0.2s ease;
+}
+.wizard-step .index {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+.wizard-step .meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wizard-step .meta strong {
+  font-size: 14px;
+  color: var(--text);
+}
+.wizard-step .meta span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.wizard-step.active {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.14);
+}
+.wizard-step.completed .index {
+  background: #16a34a;
+}
+.wizard-content [data-step] {
+  display: none;
+}
+.wizard-content [data-step].active-section {
+  display: block;
+}
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.button.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.button.secondary.active {
+  background: var(--primary);
+  color: #fff;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard">
+  <div class="wizard-steps">
+    <div class="wizard-step active" data-step="1">
+      <div class="index">1</div>
+      <div class="meta">
+        <strong>选择模板</strong>
+        <span>行业分类与基础字段</span>
+      </div>
+    </div>
+    <div class="wizard-step" data-step="2">
+      <div class="index">2</div>
+      <div class="meta">
+        <strong>配置字段</strong>
+        <span>类型与分布规则</span>
+      </div>
+    </div>
+    <div class="wizard-step" data-step="3">
+      <div class="index">3</div>
+      <div class="meta">
+        <strong>设置参数</strong>
+        <span>模型/相似度/行数</span>
+      </div>
+    </div>
+    <div class="wizard-step" data-step="4">
+      <div class="index">4</div>
+      <div class="meta">
+        <strong>生成与预览</strong>
+        <span>日志反馈与导出</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wizard-content">
+  <section class="section active-section" data-step="1">
+    <h2 class="visually-hidden">01 · 数据源选择</h2>
+    <div class="panel">
+      <div style="margin-bottom: 24px;">
+        <div style="display: flex; gap: 16px; margin-bottom: 16px;">
+          <button class="button secondary" id="tab-template" onclick="switchDataSource('template')" style="flex: 1;">使用模板</button>
+          <button class="button secondary" id="tab-upload" onclick="switchDataSource('upload')" style="flex: 1;">上传文件</button>
+        </div>
+      </div>
+      
+      <!-- 模板选择 -->
+      <div id="template-section">
+        <p style="color: var(--muted); margin-bottom: 16px;">选择行业模板以加载预置字段、类型与示例数据。</p>
+        <div class="grid cards" id="templates-list">
+          <p>加载中...</p>
+        </div>
+      </div>
+      
+      <!-- 文件上传 -->
+      <div id="upload-section" style="display: none;">
+        <p style="color: var(--muted); margin-bottom: 16px;">上传数据文件（支持 CSV、Excel、JSON 格式）。</p>
+        <div style="border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center; background: rgba(37, 99, 235, 0.02);">
+          <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.json" style="display: none;" onchange="handleFileSelect(event)">
+          <div style="margin-bottom: 16px;">
+            <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--primary);"></i>
+          </div>
+          <p style="color: var(--muted); margin-bottom: 16px;">拖拽文件到此处或 <a href="#" onclick="document.getElementById('file-input').click(); return false;" style="color: var(--primary);">点击选择文件</a></p>
+          <p style="font-size: 12px; color: var(--muted);">支持 CSV、Excel (.xlsx, .xls)、JSON 格式，最大 50MB</p>
+        </div>
+        <div id="file-preview" style="margin-top: 16px; display: none;">
+          <div class="panel" style="padding: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <div>
+                <strong id="file-name"></strong>
+                <p style="font-size: 12px; color: var(--muted); margin-top: 4px;" id="file-info"></p>
+              </div>
+              <button class="button secondary" onclick="clearFile()">清除</button>
+            </div>
+            <div style="max-height: 200px; overflow: auto;">
+              <table class="table" id="file-preview-table">
+                <thead id="file-preview-thead"></thead>
+                <tbody id="file-preview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="wizard-nav">
+        <button class="button secondary" data-nav="prev" disabled>上一步</button>
+        <button class="button primary" data-nav="next" id="step1-next" disabled>下一步</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-step="2">
+    <h2 class="visually-hidden">02 · 字段配置</h2>
+    <div class="panel">
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;">
+        <div>
+          <h3>字段列表</h3>
+          <div style="margin-bottom: 12px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="button secondary" style="font-size: 12px; padding: 6px 12px;" onclick="setAllFieldsAction('regenerate')">全部重新生成</button>
+              <button class="button secondary" style="font-size: 12px; padding: 6px 12px;" onclick="setAllFieldsAction('keep')">全部保留</button>
+              <button class="button secondary" style="font-size: 12px; padding: 6px 12px;" onclick="setAllFieldsAction('remove')">全部删除</button>
+            </div>
+          </div>
+          <table class="table" id="fields-list">
+            <thead>
+              <tr><th>字段名</th><th>数据类型</th><th>处理方式</th><th>操作</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" style="text-align: center; color: var(--muted);">请先选择数据源</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>字段详情配置</h3>
+          <div class="field-detail-panel" id="field-detail">
+            <div class="field-detail-empty">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--muted); margin-bottom: 12px;">
+                <path d="M12 2v20M2 12h20" stroke-linecap="round"/>
+              </svg>
+              <p style="color: var(--muted); margin: 0;">请选择一个字段进行配置</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button class="button secondary" data-nav="prev">上一步</button>
+        <button class="button primary" data-nav="next">下一步</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-step="3">
+    <h2 class="visually-hidden">03 · 参数配置与生成</h2>
+    <div class="panel">
+      <div class="grid" style="grid-template-columns: 1fr 1.2fr; gap: 32px; align-items: start;">
+        <!-- 左侧：模型选择和基础配置 -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div>
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--text);">模型选择</h3>
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 500; margin-bottom: 8px;">AI模型</label>
+              <select class="form-input" id="model-type" onchange="onModelTypeChange()" style="width: 100%; padding: 12px 16px; border-radius: 10px; border: 2px solid var(--border); font-size: 14px; transition: all 0.2s;">
+                <option value="">加载中...</option>
+              </select>
+              <p style="font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5;" id="model-description"></p>
+            </div>
+          </div>
+          
+          <div>
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--text);">参数模板</h3>
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 500; margin-bottom: 8px;">选择模板</label>
+              <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <select class="form-input" id="parameter-template" onchange="onTemplateChange()" style="flex: 1; padding: 12px 16px; border-radius: 10px; border: 2px solid var(--border); font-size: 14px;">
+                  <option value="">自定义参数</option>
+                </select>
+                <button class="button secondary" id="delete-template-btn" onclick="deleteTemplate()" style="white-space: nowrap; padding: 12px 16px; display: none;" title="删除自定义模板">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div>
+            <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--text);">生成设置</h3>
+            <div class="form-group">
+              <label class="form-label" style="font-weight: 500; margin-bottom: 8px;">生成行数</label>
+              <input type="number" class="form-input" id="data-amount" value="1000" min="100" max="100000" style="width: 100%; padding: 12px 16px; border-radius: 10px; border: 2px solid var(--border); font-size: 14px;">
+              <p style="font-size: 12px; color: var(--muted); margin-top: 6px;">建议范围：100 - 100,000 行</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 右侧：参数配置 -->
+        <div>
+          <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: var(--text);">参数配置</h3>
+          <div id="parameter-config" style="display: flex; flex-direction: column; gap: 16px; max-height: 500px; overflow-y: auto; padding-right: 8px;">
+            <div style="text-align: center; padding: 40px 20px; color: var(--muted);">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px; opacity: 0.5;">
+                <path d="M12 2v20M2 12h20" stroke-linecap="round"/>
+              </svg>
+              <p style="margin: 0; font-size: 14px;">请先选择AI模型</p>
+            </div>
+          </div>
+          <!-- 保存为模板按钮（只在自定义参数时显示） -->
+          <div id="save-template-container" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); display: none;">
+            <button class="button secondary" id="save-template-btn" onclick="saveAsTemplate()" style="width: 100%; padding: 12px 16px; font-size: 14px; font-weight: 500;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px; vertical-align: middle;">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              保存为模板
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="wizard-nav" style="margin-top: 32px; padding-top: 24px; border-top: 2px solid var(--border);">
+        <button class="button secondary" data-nav="prev" style="padding: 12px 24px; font-size: 14px; font-weight: 500;">上一步</button>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button class="button primary" onclick="startGenerate()" style="padding: 12px 32px; font-size: 14px; font-weight: 600; background: linear-gradient(135deg, var(--primary), #1e40af); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;">
+              <polygon points="5 3 19 12 5 21 5 3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            开始生成
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-step="4">
+    <h2 class="visually-hidden">04 · 生成反馈与预览</h2>
+    <div class="panel">
+      <div style="margin-bottom: 24px;">
+        <h3>生成状态</h3>
+        <div style="height: 12px; border-radius: 999px; background: rgba(92,124,250,0.12); overflow: hidden;">
+          <div id="progress-bar" style="width: 0%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--secondary)); transition: width 0.3s;"></div>
+        </div>
+        <p style="color: var(--muted); margin-top: 12px;" id="progress-text">等待开始...</p>
+      </div>
+      <div class="actions" style="display: flex; gap: 12px;">
+        <button class="button primary" onclick="downloadData()" id="download-btn" disabled>下载 CSV</button>
+      </div>
+      <div id="preview-area" style="margin-top: 24px; display: none;">
+        <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border);">
+          <!-- 统计信息 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 16px; padding-bottom: 12px;">
+            <div id="preview-stats" style="display: flex; gap: 24px; font-size: 13px; color: var(--muted);">
+              <span id="original-stats">原始数据: -</span>
+              <span id="synthetic-stats">生成数据: -</span>
+            </div>
+          </div>
+          
+          <!-- 并排对比视图（默认显示） -->
+          <div id="preview-compare-view" style="display: block;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <!-- 原始数据 -->
+              <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                  <span>📊</span> 原始模板数据
+                  <span id="original-count" style="margin-left: auto; font-size: 12px; opacity: 0.9;">-</span>
+                  <button onclick="viewOriginalData()" id="view-original-link-btn" style="margin-left: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; transition: all 0.2s; display: none; align-items: center; gap: 4px;" onmouseover="this.style.background='rgba(255,255,255,0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.2)';">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    查看完整数据
+                  </button>
+                </div>
+                <div style="max-height: 600px; overflow: auto;">
+                  <table class="table" style="margin: 0;">
+                    <thead id="compare-original-thead" style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;"></thead>
+                    <tbody id="compare-original-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <!-- 生成数据 -->
+              <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                  <span>✨</span> 生成数据
+                  <span id="synthetic-count" style="margin-left: auto; font-size: 12px; opacity: 0.9;">-</span>
+                </div>
+                <div style="max-height: 600px; overflow: auto;" id="compare-synthetic-scroll">
+                  <table class="table" style="margin: 0;">
+                    <thead id="compare-synthetic-thead" style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;"></thead>
+                    <tbody id="compare-synthetic-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button class="button secondary" data-nav="prev">上一步</button>
+        <button class="button primary" data-nav="next" onclick="onWizardComplete()">完成</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 原始数据查看模态框 -->
+<div id="original-data-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+  <div style="background: white; margin: 40px auto; max-width: 90%; width: 1200px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; display: flex; flex-direction: column;">
+    <!-- 模态框头部 -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+      <div>
+        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">原始数据详情</h3>
+        <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);" id="original-data-stats">加载中...</p>
+      </div>
+      <button onclick="closeOriginalDataModal()" style="background: none; border: none; font-size: 24px; color: var(--muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.color='#1f2937';" onmouseout="this.style.background='none'; this.style.color='var(--muted)';">
+        ×
+      </button>
+    </div>
+    
+    <!-- 模态框内容 -->
+    <div style="padding: 24px; overflow-y: auto; flex: 1;">
+      <div id="original-data-table-container">
+        <div style="text-align: center; padding: 40px; color: var(--muted);">
+          <p>加载中...</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 模态框底部 -->
+    <div style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+      <button class="button secondary" onclick="closeOriginalDataModal()">关闭</button>
+      <button class="button primary" onclick="downloadOriginalData()">下载原始数据</button>
+    </div>
+  </div>
+</div>
+
+<!-- 模板数据查看模态框 -->
+<div id="template-data-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+  <div style="background: white; margin: 40px auto; max-width: 90%; width: 1200px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; display: flex; flex-direction: column;">
+    <!-- 模态框头部 -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+      <div>
+        <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;" id="template-data-title">模板数据预览</h3>
+        <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);" id="template-data-stats">加载中...</p>
+      </div>
+      <button onclick="closeTemplateDataModal()" style="background: none; border: none; font-size: 24px; color: var(--muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.color='#1f2937';" onmouseout="this.style.background='none'; this.style.color='var(--muted)';">
+        ×
+      </button>
+    </div>
+    
+    <!-- 模态框内容 -->
+    <div style="padding: 24px; overflow-y: auto; flex: 1;">
+      <div id="template-data-table-container">
+        <div style="text-align: center; padding: 40px; color: var(--muted);">
+          <p>加载中...</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 模态框底部 -->
+    <div style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+      <button class="button secondary" onclick="closeTemplateDataModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/wizard.js') }}"></script>
+<script>
+let selectedTemplate = null;
+let selectedFileId = null;
+let selectedFileData = null;
+let currentTaskId = null;
+// 预览数据缓存
+let previewDataCache = {
+  original: null,
+  synthetic: null
+};
+let fieldsConfig = {}; // 存储字段配置 {fieldName: {type, action, range, ...}}
+let currentDataSource = 'template'; // 'template' | 'upload'
+let sdgModels = []; // SDG模型列表
+let aiModels = []; // 大模型列表（从系统设置获取）
+let currentModel = null; // 当前选择的模型
+let parameterTemplates = []; // 参数模板列表
+let currentParameters = {}; // 当前参数配置
+let currentTemplateId = null; // 当前选择的模板ID
+let pollingInterval = null; // 轮询定时器引用
+let isPolling = false; // 轮询状态标志
+
+// 加载模板列表
+async function loadTemplates() {
+  try {
+    const response = await fetch('/api/synthesis/templates', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('模板API响应:', result);
+    
+    if (result.success && result.data && result.data.templates) {
+      const templates = result.data.templates;
+      if (templates.length === 0) {
+        document.getElementById('templates-list').innerHTML = '<p style="color: var(--muted);">暂无可用模板</p>';
+        return;
+      }
+      
+      let html = '';
+      templates.forEach(template => {
+        html += `
+          <div class="card">
+            <span class="badge">${template.category || '未分类'}</span>
+            <h3>${template.name || '未命名模板'}</h3>
+            <p style="color: var(--muted);">${template.description || '无描述'}</p>
+            <div style="display: flex; gap: 8px; margin-top: 12px;">
+              <button class="button secondary" style="flex: 1;" onclick="viewTemplateData(${template.id})">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                查看数据
+              </button>
+              <button class="button primary" style="flex: 1;" onclick="selectTemplate(${template.id})">使用模板</button>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById('templates-list').innerHTML = html;
+    } else {
+      console.error('模板加载失败:', result.error || '未知错误');
+      document.getElementById('templates-list').innerHTML = `<p style="color: #dc2626;">加载失败: ${result.error || '未知错误'}</p>`;
+    }
+  } catch (error) {
+    console.error('加载模板失败:', error);
+    document.getElementById('templates-list').innerHTML = `<p style="color: #dc2626;">加载失败: ${error.message || '网络错误，请刷新重试'}</p>`;
+  }
+}
+
+// 切换数据源
+function switchDataSource(source) {
+  currentDataSource = source;
+  document.getElementById('tab-template').classList.toggle('active', source === 'template');
+  document.getElementById('tab-upload').classList.toggle('active', source === 'upload');
+  document.getElementById('template-section').style.display = source === 'template' ? 'block' : 'none';
+  document.getElementById('upload-section').style.display = source === 'upload' ? 'block' : 'none';
+  document.getElementById('step1-next').disabled = true;
+}
+
+function selectTemplate(templateId) {
+  selectedTemplate = templateId;
+  selectedFileId = null;
+  // 加载模板详情
+  fetch(`/api/synthesis/templates/${templateId}`)
+    .then(r => r.json())
+    .then(result => {
+      if (result.success) {
+        const template = result.data.template;
+        fieldsConfig = {};
+        // 初始化字段配置
+        template.fields.forEach(field => {
+          fieldsConfig[field.name] = {
+            name: field.name,
+            type: field.type,
+            action: 'regenerate', // 默认重新生成
+            range: field.range || null,
+            description: field.description || ''
+          };
+        });
+        renderFieldsList();
+        document.getElementById('step1-next').disabled = false;
+        // 自动进入下一步
+        setTimeout(() => {
+          document.querySelector('[data-step="2"]').click();
+        }, 300);
+      }
+    });
+}
+
+// 处理文件选择
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  fetch('/api/synthesis/upload', {
+    method: 'POST',
+    credentials: 'include',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.success) {
+      selectedFileId = result.data.file_id;
+      selectedFileData = result.data;
+      selectedTemplate = null;
+      
+      // 显示文件预览
+      document.getElementById('file-name').textContent = result.data.filename;
+      document.getElementById('file-info').textContent = `${result.data.rows} 行 × ${result.data.columns.length} 列`;
+      document.getElementById('file-preview').style.display = 'block';
+      
+      // 初始化字段配置
+      fieldsConfig = {};
+      result.data.columns.forEach(col => {
+        fieldsConfig[col] = {
+          name: col,
+          type: 'string', // 默认类型，后续可自动识别
+          action: 'regenerate'
+        };
+      });
+      
+      // 显示预览表格
+      renderFilePreview(result.data.preview, result.data.columns);
+      renderFieldsList();
+      document.getElementById('step1-next').disabled = false;
+    } else {
+      alert(result.error || '文件上传失败');
+    }
+  })
+  .catch(error => {
+    console.error('上传失败:', error);
+    alert('文件上传失败，请重试');
+  });
+}
+
+function clearFile() {
+  selectedFileId = null;
+  selectedFileData = null;
+  fieldsConfig = {};
+  document.getElementById('file-input').value = '';
+  document.getElementById('file-preview').style.display = 'none';
+  document.getElementById('step1-next').disabled = true;
+  renderFieldsList();
+}
+
+function renderFilePreview(preview, columns) {
+  const thead = document.getElementById('file-preview-thead');
+  const tbody = document.getElementById('file-preview-tbody');
+  
+  let headerHtml = '<tr>';
+  columns.forEach(col => {
+    headerHtml += `<th>${col}</th>`;
+  });
+  headerHtml += '</tr>';
+  thead.innerHTML = headerHtml;
+  
+  let bodyHtml = '';
+  preview.forEach(row => {
+    bodyHtml += '<tr>';
+    columns.forEach(col => {
+      bodyHtml += `<td>${row[col] || '-'}</td>`;
+    });
+    bodyHtml += '</tr>';
+  });
+  tbody.innerHTML = bodyHtml;
+}
+
+// 渲染字段列表
+function renderFieldsList() {
+  const tbody = document.querySelector('#fields-list tbody');
+  if (Object.keys(fieldsConfig).length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--muted);">请先选择数据源</td></tr>';
+    return;
+  }
+  
+  let html = '';
+  const typeLabels = {
+    'string': '字符串',
+    'integer': '整数',
+    'float': '浮点数',
+    'boolean': '布尔值',
+    'discrete': '离散/分类',
+    'id': 'ID',
+    'date': '日期时间'
+  };
+  
+  Object.values(fieldsConfig).forEach(field => {
+    const actionLabel = {
+      'regenerate': '重新生成',
+      'keep': '保留原值',
+      'remove': '删除字段'
+    }[field.action] || '重新生成';
+    
+    const typeLabel = typeLabels[field.type] || field.type;
+    
+    html += `
+      <tr onclick="editField('${field.name}')" style="cursor: pointer;">
+        <td><strong>${field.name}</strong> <span style="color: var(--muted); font-weight: normal; font-size: 12px;">(${typeLabel})</span></td>
+        <td><span class="badge" style="background: rgba(37, 99, 235, 0.1); color: var(--primary); font-size: 12px; padding: 4px 8px;">${typeLabel}</span></td>
+        <td><span class="badge" style="background: ${field.action === 'regenerate' ? 'var(--primary)' : field.action === 'keep' ? '#16a34a' : '#dc2626'}; color: #fff;">${actionLabel}</span></td>
+        <td style="color: var(--primary);">编辑</td>
+      </tr>
+    `;
+  });
+  tbody.innerHTML = html;
+}
+
+// 编辑字段
+function editField(fieldName) {
+  const field = fieldsConfig[fieldName];
+  if (!field) return;
+  
+  const detailDiv = document.getElementById('field-detail');
+  renderFieldDetail(fieldName, field);
+}
+
+// 渲染字段详情配置
+function renderFieldDetail(fieldName, field) {
+  const detailDiv = document.getElementById('field-detail');
+  const currentType = field.type || 'string';
+  
+  // 判断是否需要显示取值范围
+  const showRange = currentType === 'integer' || currentType === 'float';
+  const showDateRange = currentType === 'date';
+  const showDiscreteOptions = currentType === 'discrete';
+  const showIdOptions = currentType === 'id';
+  
+  detailDiv.innerHTML = `
+    <div class="field-detail-header">
+      <h4 class="field-detail-title">${field.name}</h4>
+      <span class="field-detail-badge" data-type="${currentType}">${getTypeLabel(currentType)}</span>
+    </div>
+    <div class="field-detail-content">
+      <div class="form-group-enhanced">
+        <label class="form-label-enhanced">
+          <span class="label-text">字段类型</span>
+          <span class="label-hint">选择字段的数据类型</span>
+        </label>
+        <select class="form-input-enhanced" id="field-type-${fieldName}" onchange="onFieldTypeChange('${fieldName}', this.value)">
+          <option value="string" ${currentType === 'string' ? 'selected' : ''}>字符串 (String)</option>
+          <option value="integer" ${currentType === 'integer' ? 'selected' : ''}>整数 (Integer)</option>
+          <option value="float" ${currentType === 'float' ? 'selected' : ''}>浮点数 (Float)</option>
+          <option value="boolean" ${currentType === 'boolean' ? 'selected' : ''}>布尔值 (Boolean)</option>
+          <option value="discrete" ${currentType === 'discrete' ? 'selected' : ''}>离散/分类 (Discrete)</option>
+          <option value="id" ${currentType === 'id' ? 'selected' : ''}>ID类型 (ID)</option>
+          <option value="date" ${currentType === 'date' ? 'selected' : ''}>日期时间 (DateTime)</option>
+        </select>
+      </div>
+      <div class="form-group-enhanced">
+        <label class="form-label-enhanced">
+          <span class="label-text">处理方式</span>
+          <span class="label-hint">选择字段的处理策略</span>
+        </label>
+        <select class="form-input-enhanced" id="field-action-${fieldName}" onchange="updateFieldConfig('${fieldName}', 'action', this.value)">
+          <option value="regenerate" ${field.action === 'regenerate' ? 'selected' : ''}>重新生成</option>
+          <option value="keep" ${field.action === 'keep' ? 'selected' : ''}>保留原值</option>
+          <option value="remove" ${field.action === 'remove' ? 'selected' : ''}>删除字段</option>
+        </select>
+      </div>
+    ${showRange ? `
+      <div class="form-group-enhanced" id="field-range-group-${fieldName}">
+        <label class="form-label-enhanced">
+          <span class="label-text">取值范围</span>
+          <span class="label-hint">${currentType === 'integer' ? '请输入整数范围' : '请输入浮点数范围'}</span>
+        </label>
+        <div class="range-input-group">
+          <div class="range-input-wrapper">
+            <span class="range-input-label">最小值</span>
+            <input type="number" 
+                   class="form-input-enhanced range-input" 
+                   id="field-range-min-${fieldName}" 
+                   placeholder="最小值" 
+                   value="${field.range ? field.range[0] : ''}" 
+                   step="${currentType === 'integer' ? '1' : '0.01'}">
+          </div>
+          <span class="range-separator">~</span>
+          <div class="range-input-wrapper">
+            <span class="range-input-label">最大值</span>
+            <input type="number" 
+                   class="form-input-enhanced range-input" 
+                   id="field-range-max-${fieldName}" 
+                   placeholder="最大值" 
+                   value="${field.range ? field.range[1] : ''}" 
+                   step="${currentType === 'integer' ? '1' : '0.01'}">
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    ${showDateRange ? `
+      <div class="form-group-enhanced" id="field-date-range-group-${fieldName}">
+        <label class="form-label-enhanced">
+          <span class="label-text">日期范围</span>
+          <span class="label-hint">选择日期生成范围</span>
+        </label>
+        <div class="range-input-group">
+          <div class="range-input-wrapper">
+            <span class="range-input-label">开始日期</span>
+            <input type="date" 
+                   class="form-input-enhanced range-input" 
+                   id="field-date-min-${fieldName}" 
+                   placeholder="开始日期" 
+                   value="${field.date_range ? field.date_range[0] : ''}">
+          </div>
+          <span class="range-separator">~</span>
+          <div class="range-input-wrapper">
+            <span class="range-input-label">结束日期</span>
+            <input type="date" 
+                   class="form-input-enhanced range-input" 
+                   id="field-date-max-${fieldName}" 
+                   placeholder="结束日期" 
+                   value="${field.date_range ? field.date_range[1] : ''}">
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    ${currentType === 'string' ? `
+      <div class="form-group-enhanced" id="field-string-options-${fieldName}">
+        <label class="form-label-enhanced">
+          <span class="label-text">字符串选项</span>
+          <span class="label-hint">配置字符串字段的特殊选项</span>
+        </label>
+        <div class="form-options-group">
+          <label class="checkbox-label">
+            <input type="checkbox" 
+                   id="field-allow-empty-${fieldName}" 
+                   ${field.allow_empty !== false ? 'checked' : ''}
+                   onchange="updateFieldConfig('${fieldName}', 'allow_empty', this.checked)">
+            <span>允许空值</span>
+          </label>
+          <div class="form-group-enhanced" style="margin-top: 12px; margin-bottom: 0;">
+            <label class="form-label-enhanced">
+              <span class="label-text">最大长度</span>
+              <span class="label-hint">可选，限制字符串的最大长度</span>
+            </label>
+            <input type="number" 
+                   class="form-input-enhanced" 
+                   id="field-max-length-${fieldName}" 
+                   placeholder="最大长度（可选）" 
+                   value="${field.max_length || ''}" 
+                   min="1" 
+                   max="10000"
+                   onchange="updateFieldConfig('${fieldName}', 'max_length', parseInt(this.value) || null)">
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    ${showDiscreteOptions ? `
+      <div class="form-group-enhanced" id="field-discrete-options-${fieldName}">
+        <label class="form-label-enhanced">
+          <span class="label-text">分类选项</span>
+          <span class="label-hint">离散类型用于表示有限个数的分类值，如：性别、状态、类型等</span>
+        </label>
+        <textarea class="form-input-enhanced" 
+                  id="field-categories-${fieldName}" 
+                  placeholder="例如: 男,女,其他" 
+                  rows="3"
+                  onchange="updateFieldConfig('${fieldName}', 'categories', this.value.split(',').map(s => s.trim()).filter(s => s))">${field.categories ? field.categories.join(',') : ''}</textarea>
+      </div>
+    ` : ''}
+    ${showIdOptions ? `
+      <div class="form-group-enhanced" id="field-id-options-${fieldName}">
+        <label class="form-label-enhanced">
+          <span class="label-text">ID选项</span>
+          <span class="label-hint">ID类型用于唯一标识记录，如：用户ID、订单号、交易号等</span>
+        </label>
+        <div class="form-options-group">
+          <label class="checkbox-label">
+            <input type="checkbox" 
+                   id="field-id-unique-${fieldName}" 
+                   ${field.id_unique !== false ? 'checked' : ''}
+                   onchange="updateFieldConfig('${fieldName}', 'id_unique', this.checked)">
+            <span>唯一标识（每个ID值唯一）</span>
+          </label>
+          <div class="form-group-enhanced" style="margin-top: 12px; margin-bottom: 0;">
+            <label class="form-label-enhanced">
+              <span class="label-text">ID前缀（可选）</span>
+              <span class="label-hint">为生成的ID添加前缀，如: USER_</span>
+            </label>
+            <input type="text" 
+                   class="form-input-enhanced" 
+                   id="field-id-prefix-${fieldName}" 
+                   placeholder="例如: USER_" 
+                   value="${field.id_prefix || ''}" 
+                   onchange="updateFieldConfig('${fieldName}', 'id_prefix', this.value)">
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    ${currentType === 'boolean' ? `
+      <div class="form-group-enhanced" id="field-boolean-options-${fieldName}">
+        <label class="form-label-enhanced">
+          <span class="label-text">布尔值选项</span>
+          <span class="label-hint">布尔类型用于表示真/假、是/否等二值状态</span>
+        </label>
+        <div class="form-options-group">
+          <div class="form-group-enhanced" style="margin-bottom: 12px;">
+            <label class="form-label-enhanced">
+              <span class="label-text">真值表示</span>
+              <span class="label-hint">例如: true, 1, 是</span>
+            </label>
+            <input type="text" 
+                   class="form-input-enhanced" 
+                   id="field-true-value-${fieldName}" 
+                   placeholder="例如: true, 1, 是" 
+                   value="${field.true_value || 'true'}" 
+                   onchange="updateFieldConfig('${fieldName}', 'true_value', this.value)">
+          </div>
+          <div class="form-group-enhanced" style="margin-bottom: 0;">
+            <label class="form-label-enhanced">
+              <span class="label-text">假值表示</span>
+              <span class="label-hint">例如: false, 0, 否</span>
+            </label>
+            <input type="text" 
+                   class="form-input-enhanced" 
+                   id="field-false-value-${fieldName}" 
+                   placeholder="例如: false, 0, 否" 
+                   value="${field.false_value || 'false'}" 
+                   onchange="updateFieldConfig('${fieldName}', 'false_value', this.value)">
+          </div>
+        </div>
+      </div>
+    ` : ''}
+    </div>
+    <div class="field-detail-actions">
+      <button class="button primary" onclick="saveFieldConfig('${fieldName}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="17 21 17 13 7 13 7 21" stroke-linecap="round" stroke-linejoin="round"/>
+          <polyline points="7 3 7 8 15 8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        保存配置
+      </button>
+    </div>
+  `;
+}
+
+// 获取类型标签
+function getTypeLabel(type) {
+  const labels = {
+    'string': '字符串',
+    'integer': '整数',
+    'float': '浮点数',
+    'boolean': '布尔值',
+    'discrete': '离散/分类',
+    'id': 'ID',
+    'date': '日期时间'
+  };
+  return labels[type] || type;
+}
+
+// 字段类型变化时的处理
+function onFieldTypeChange(fieldName, newType) {
+  const field = fieldsConfig[fieldName];
+  if (!field) return;
+  
+  // 更新字段类型
+  field.type = newType;
+  
+  // 根据新类型清理不相关的配置
+  if (newType === 'string' || newType === 'date' || newType === 'boolean' || newType === 'discrete' || newType === 'id') {
+    // 这些类型不需要数值范围
+    delete field.range;
+    delete field.date_range;
+  } else if (newType === 'integer' || newType === 'float') {
+    // 数值类型不需要日期范围和其他配置
+    delete field.date_range;
+    delete field.categories;
+    delete field.id_unique;
+    delete field.id_prefix;
+    delete field.true_value;
+    delete field.false_value;
+    // 如果没有范围，设置默认值
+    if (!field.range) {
+      if (newType === 'integer') {
+        field.range = [0, 100];
+      } else {
+        field.range = [0.0, 100.0];
+      }
+    }
+  } else if (newType === 'date') {
+    // 日期类型清理其他配置
+    delete field.range;
+    delete field.categories;
+    delete field.id_unique;
+    delete field.id_prefix;
+    delete field.true_value;
+    delete field.false_value;
+  } else if (newType === 'boolean') {
+    // 布尔类型清理其他配置
+    delete field.range;
+    delete field.date_range;
+    delete field.categories;
+    delete field.id_unique;
+    delete field.id_prefix;
+    if (!field.true_value) field.true_value = 'true';
+    if (!field.false_value) field.false_value = 'false';
+  } else if (newType === 'discrete') {
+    // 离散类型清理其他配置
+    delete field.range;
+    delete field.date_range;
+    delete field.id_unique;
+    delete field.id_prefix;
+    delete field.true_value;
+    delete field.false_value;
+  } else if (newType === 'id') {
+    // ID类型清理其他配置
+    delete field.range;
+    delete field.date_range;
+    delete field.categories;
+    delete field.true_value;
+    delete field.false_value;
+    if (field.id_unique === undefined) field.id_unique = true;
+  }
+  
+  // 重新渲染字段详情
+  renderFieldDetail(fieldName, field);
+}
+
+function updateFieldConfig(fieldName, key, value) {
+  if (fieldsConfig[fieldName]) {
+    fieldsConfig[fieldName][key] = value;
+  }
+}
+
+function saveFieldConfig(fieldName) {
+  const field = fieldsConfig[fieldName];
+  if (!field) return;
+  
+  // 根据字段类型保存不同的配置
+  if (field.type === 'integer' || field.type === 'float') {
+    const minInput = document.getElementById(`field-range-min-${fieldName}`);
+    const maxInput = document.getElementById(`field-range-max-${fieldName}`);
+    if (minInput && maxInput) {
+      const min = minInput.value ? parseFloat(minInput.value) : null;
+      const max = maxInput.value ? parseFloat(maxInput.value) : null;
+      if (min !== null && max !== null) {
+        if (min > max) {
+          alert('最小值不能大于最大值');
+          return;
+        }
+        field.range = field.type === 'integer' 
+          ? [Math.floor(min), Math.floor(max)] 
+          : [min, max];
+      } else {
+        delete field.range;
+      }
+    }
+  } else if (field.type === 'date') {
+    const minDateInput = document.getElementById(`field-date-min-${fieldName}`);
+    const maxDateInput = document.getElementById(`field-date-max-${fieldName}`);
+    if (minDateInput && maxDateInput) {
+      const minDate = minDateInput.value;
+      const maxDate = maxDateInput.value;
+      if (minDate && maxDate) {
+        if (minDate > maxDate) {
+          alert('开始日期不能晚于结束日期');
+          return;
+        }
+        field.date_range = [minDate, maxDate];
+      } else {
+        delete field.date_range;
+      }
+    }
+  } else if (field.type === 'discrete') {
+    const categoriesInput = document.getElementById(`field-categories-${fieldName}`);
+    if (categoriesInput && categoriesInput.value.trim()) {
+      const categories = categoriesInput.value.split(',').map(s => s.trim()).filter(s => s);
+      if (categories.length > 0) {
+        field.categories = categories;
+      } else {
+        delete field.categories;
+      }
+    } else {
+      delete field.categories;
+    }
+  } else if (field.type === 'id') {
+    const idUniqueInput = document.getElementById(`field-id-unique-${fieldName}`);
+    const idPrefixInput = document.getElementById(`field-id-prefix-${fieldName}`);
+    if (idUniqueInput) {
+      field.id_unique = idUniqueInput.checked;
+    }
+    if (idPrefixInput && idPrefixInput.value.trim()) {
+      field.id_prefix = idPrefixInput.value.trim();
+    } else {
+      delete field.id_prefix;
+    }
+  } else if (field.type === 'boolean') {
+    const trueValueInput = document.getElementById(`field-true-value-${fieldName}`);
+    const falseValueInput = document.getElementById(`field-false-value-${fieldName}`);
+    if (trueValueInput && trueValueInput.value.trim()) {
+      field.true_value = trueValueInput.value.trim();
+    }
+    if (falseValueInput && falseValueInput.value.trim()) {
+      field.false_value = falseValueInput.value.trim();
+    }
+  } else if (field.type === 'string') {
+    const allowEmptyInput = document.getElementById(`field-allow-empty-${fieldName}`);
+    const maxLengthInput = document.getElementById(`field-max-length-${fieldName}`);
+    if (allowEmptyInput) {
+      field.allow_empty = allowEmptyInput.checked;
+    }
+    if (maxLengthInput && maxLengthInput.value) {
+      field.max_length = parseInt(maxLengthInput.value);
+    } else {
+      delete field.max_length;
+    }
+  }
+  
+  renderFieldsList();
+  
+  // 显示保存成功提示
+  const saveBtn = event.target;
+  const originalText = saveBtn.textContent;
+  saveBtn.textContent = '已保存';
+  saveBtn.style.background = '#16a34a';
+  setTimeout(() => {
+    saveBtn.textContent = originalText;
+    saveBtn.style.background = '';
+  }, 1500);
+}
+
+// 批量设置字段action
+function setAllFieldsAction(action) {
+  Object.keys(fieldsConfig).forEach(fieldName => {
+    fieldsConfig[fieldName].action = action;
+  });
+  renderFieldsList();
+}
+
+function updateSimilarity() {
+  const value = document.getElementById('similarity').value;
+  document.getElementById('similarity-value').textContent = value;
+  // 更新参数映射
+  updateParamMapping();
+}
+
+function updateParamMapping() {
+  const similarity = parseFloat(document.getElementById('similarity').value);
+  const epochs = parseInt(document.getElementById('epochs').value) || 50;
+  const batchSize = parseInt(document.getElementById('batch-size').value) || 500;
+  
+  document.getElementById('param-mapping').innerHTML = `
+    <li>Epochs：${epochs}</li>
+    <li>Batch Size：${batchSize}</li>
+    <li>相似度：${similarity}</li>
+  `;
+}
+
+async function startGenerate() {
+  if (!selectedTemplate && !selectedFileId) {
+    showModal('提示', '请先选择模板或上传文件', 'warning');
+    return;
+  }
+  
+  if (Object.keys(fieldsConfig).length === 0) {
+    showModal('提示', '请先配置字段', 'warning');
+    return;
+  }
+  
+  if (!currentModel) {
+    showModal('提示', '请先选择模型', 'warning');
+    return;
+  }
+  
+  const modelType = currentModel.id;
+  const dataAmount = parseInt(document.getElementById('data-amount').value) || 1000;
+  
+  // 构建字段配置数组（按照接口文档格式）
+  const fields = Object.values(fieldsConfig).map(field => {
+    const fieldConfig = {
+      name: field.name,
+      type: field.type,
+      action: field.action
+    };
+    
+    // 根据字段类型添加相应的配置
+    if (field.type === 'integer' || field.type === 'float') {
+      if (field.range) {
+        fieldConfig.range = field.range;
+      }
+    } else if (field.type === 'date') {
+      if (field.date_range) {
+        fieldConfig.date_range = field.date_range;
+      }
+    } else if (field.type === 'string') {
+      if (field.max_length) {
+        fieldConfig.max_length = field.max_length;
+      }
+      if (field.allow_empty !== undefined) {
+        fieldConfig.allow_empty = field.allow_empty;
+      }
+    } else if (field.type === 'discrete') {
+      if (field.categories) {
+        fieldConfig.categories = field.categories;
+      }
+    } else if (field.type === 'id') {
+      if (field.id_unique !== undefined) {
+        fieldConfig.id_unique = field.id_unique;
+      }
+      if (field.id_prefix) {
+        fieldConfig.id_prefix = field.id_prefix;
+      }
+    } else if (field.type === 'boolean') {
+      if (field.true_value) {
+        fieldConfig.true_value = field.true_value;
+      }
+      if (field.false_value) {
+        fieldConfig.false_value = field.false_value;
+      }
+    }
+    
+    return fieldConfig;
+  });
+  
+  // 根据模型类型确定model_type
+  let finalModelType;
+  if (currentModel.type === 'sdg') {
+    finalModelType = currentModel.id; // ctgan, gaussian_copula
+  } else if (currentModel.type === 'ai') {
+    finalModelType = `ai_${currentModel.id}`; // ai_ollama, ai_tongyi等
+  } else {
+    alert('未知的模型类型');
+    return;
+  }
+  
+  // 构建请求体（严格按照接口文档）
+  const requestBody = {
+    model_type: finalModelType,
+    model_config: {}, // 初始化模型配置
+    data_amount: dataAmount,
+    fields: fields
+  };
+  
+  // 根据模型类型设置不同的配置
+  if (currentModel.type === 'sdg') {
+    // SDG本地模型：直接使用currentParameters
+    requestBody.model_config = currentParameters;
+  } else if (currentModel.type === 'ai') {
+    // AI大模型：只传递用户可配置的参数（API配置从系统设置获取）
+    requestBody.model_config = {
+      selected_model: currentParameters.selected_model || '',
+      temperature: currentParameters.temperature !== undefined ? currentParameters.temperature : 0.1,
+      max_tokens: currentParameters.max_tokens !== undefined ? currentParameters.max_tokens : 4000,
+      timeout: currentParameters.timeout !== undefined ? currentParameters.timeout : 90,
+      query_batch: currentParameters.query_batch !== undefined ? currentParameters.query_batch : 30,
+      prompt_template: currentParameters.prompt_template || ''
+    };
+  }
+  
+  // 添加数据源
+  if (selectedTemplate) {
+    requestBody.template_id = selectedTemplate;
+  } else if (selectedFileId) {
+    requestBody.file_id = selectedFileId;
+  }
+  
+  try {
+    const response = await fetch('/api/synthesis/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify(requestBody)
+    });
+    
+    const result = await response.json();
+    console.log('创建任务响应:', result);
+    
+    if (result.success && result.data) {
+      currentTaskId = result.data.task_id;
+      console.log('任务创建成功, task_id:', currentTaskId);
+      
+      // 立即切换到第四步
+      goToStep(4);
+      
+      // 立即初始化进度显示
+      const progressBar = document.getElementById('progress-bar');
+      const progressText = document.getElementById('progress-text');
+      if (progressBar) {
+        progressBar.style.width = '0%';
+      }
+      if (progressText) {
+        progressText.textContent = '任务已创建，正在启动...';
+      }
+      
+      // 禁用下载按钮
+      const downloadBtn = document.getElementById('download-btn');
+      if (downloadBtn) downloadBtn.disabled = true;
+      
+      // 立即开始轮询（不延迟），确保能及时获取进度
+      pollTaskStatus();
+    } else {
+      console.error('创建任务失败:', result.error);
+      showModal('创建任务失败', result.error || '创建任务失败', 'error');
+    }
+  } catch (error) {
+    console.error('创建任务失败:', error);
+    showModal('操作失败', '操作失败，请重试', 'error');
+  }
+}
+
+// 切换到指定步骤
+function goToStep(stepNumber) {
+  // 移除所有步骤的active-section类
+  document.querySelectorAll('.section[data-step]').forEach(section => {
+    section.classList.remove('active-section');
+  });
+  
+  // 添加目标步骤的active-section类
+  const targetStep = document.querySelector(`.section[data-step="${stepNumber}"]`);
+  if (targetStep) {
+    targetStep.classList.add('active-section');
+    
+    // 更新导航步骤的active和completed状态
+    document.querySelectorAll('.wizard-step[data-step]').forEach(step => {
+      const stepNum = parseInt(step.getAttribute('data-step'));
+      const indexEl = step.querySelector('.index');
+      
+      if (stepNum < stepNumber) {
+        // 之前的步骤标记为完成
+        step.classList.remove('active');
+        step.classList.add('completed');
+        if (indexEl) {
+          indexEl.style.background = '#16a34a';
+        }
+      } else if (stepNum === stepNumber) {
+        // 当前步骤标记为激活
+        step.classList.add('active');
+        step.classList.remove('completed');
+        if (indexEl) {
+          indexEl.style.background = 'var(--primary)';
+        }
+      } else {
+        // 之后的步骤保持未激活状态
+        step.classList.remove('active');
+        step.classList.remove('completed');
+        if (indexEl) {
+          indexEl.style.background = 'var(--primary)';
+        }
+      }
+    });
+    
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    console.error(`步骤 ${stepNumber} 不存在`);
+  }
+}
+
+function pollTaskStatus() {
+  if (!currentTaskId) {
+    console.error('pollTaskStatus: currentTaskId 为空');
+    return;
+  }
+  
+  // 如果已经在轮询，先停止之前的轮询
+  if (isPolling && pollingInterval) {
+    console.log('停止之前的轮询');
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+    isPolling = false;
+  }
+  
+  console.log('开始轮询任务状态, task_id:', currentTaskId);
+  
+  // 确保进度元素存在
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  
+  if (!progressBar || !progressText) {
+    console.error('进度显示元素不存在');
+    return;
+  }
+  
+  // 立即执行第一次查询，不等待间隔
+  let pollCount = 0;
+  const pollOnce = async () => {
+    // 如果已经停止轮询，直接返回
+    if (!isPolling) {
+      return true;
+    }
+    
+    pollCount++;
+    try {
+      const response = await fetch(`/api/synthesis/tasks/${currentTaskId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        console.error(`第${pollCount}次查询任务状态失败, HTTP状态:`, response.status);
+        return false;
+      }
+      
+      const result = await response.json();
+      console.log(`第${pollCount}次任务状态查询结果:`, result);
+      
+      if (result.success && result.data) {
+        const task = result.data;
+        const progress = task.progress || 0;
+        const status = task.status || 'pending';
+        
+        // 实时更新进度条（使用平滑过渡）
+        progressBar.style.width = progress + '%';
+        
+        // 根据状态更新文本
+        let statusText = '';
+        if (status === 'pending') {
+          statusText = '等待处理...';
+        } else if (status === 'running') {
+          statusText = `正在生成数据... · 已完成 ${progress}%`;
+        } else if (status === 'completed') {
+          statusText = '生成完成！';
+        } else if (status === 'failed') {
+          statusText = '生成失败: ' + (task.error_message || task.error || '未知错误');
+        } else {
+          statusText = task.message || `进行中 · 已完成 ${progress}%`;
+        }
+        progressText.textContent = statusText;
+        
+        // 检查任务是否完成
+        if (status === 'completed') {
+          progressBar.style.width = '100%';
+          progressText.textContent = '生成完成！';
+          const downloadBtn = document.getElementById('download-btn');
+          const viewOriginalLinkBtn = document.getElementById('view-original-link-btn');
+          if (downloadBtn) downloadBtn.disabled = false;
+          if (viewOriginalLinkBtn) viewOriginalLinkBtn.style.display = 'flex';
+          
+          // 停止轮询
+          stopPolling();
+          
+          // 自动切换到第四步（预览步骤）
+          console.log('任务完成，自动切换到第四步');
+          goToStep(4);
+          
+          // 更新步骤样式：标记第三步和第四步为完成
+          updateWizardSteps(3, 4);
+          
+          // 自动展示预览数据
+          console.log('任务完成，自动加载预览数据，任务ID:', currentTaskId);
+          setTimeout(() => {
+            previewData().catch(err => {
+              console.error('自动预览失败:', err);
+              // 如果自动预览失败，显示错误提示
+              const previewArea = document.getElementById('preview-area');
+              if (previewArea) {
+                previewArea.style.display = 'block';
+                previewArea.innerHTML = `
+                  <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border); padding: 24px; text-align: center;">
+                    <p style="color: var(--danger); margin-bottom: 12px;">预览数据加载失败</p>
+                    <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">${err.message || '未知错误'}</p>
+                    <button class="button primary" onclick="previewData()">重试</button>
+                  </div>
+                `;
+              }
+            });
+          }, 1000); // 延迟1秒确保数据已保存
+          
+          console.log('任务完成，轮询已停止');
+          return true; // 停止轮询
+        } else if (status === 'failed') {
+          progressText.textContent = '生成失败: ' + (task.error_message || task.error || '未知错误');
+          console.error('任务失败:', task.error_message || task.error);
+          
+          // 停止轮询
+          stopPolling();
+          
+          return true; // 停止轮询
+        }
+        
+        return false; // 继续轮询
+      } else {
+        console.error('查询任务状态返回失败:', result.error || '未知错误');
+        if (result.error && result.error.includes('不存在')) {
+          progressText.textContent = '任务不存在';
+          
+          // 停止轮询
+          stopPolling();
+          
+          return true; // 停止轮询
+        }
+        return false; // 继续轮询
+      }
+    } catch (error) {
+      console.error(`第${pollCount}次查询任务状态异常:`, error);
+      return false; // 继续轮询
+    }
+  };
+  
+  // 标记开始轮询
+  isPolling = true;
+  
+  // 立即执行第一次查询
+  pollOnce().then(shouldStop => {
+    if (shouldStop) {
+      isPolling = false;
+      return;
+    }
+    
+    // 设置定时轮询（每1.5秒一次，更频繁的更新）
+    pollingInterval = setInterval(async () => {
+      const shouldStop = await pollOnce();
+      if (shouldStop) {
+        stopPolling();
+      }
+    }, 1500); // 1.5秒轮询一次，更实时
+    
+    // 设置超时（30分钟后停止轮询）
+    setTimeout(() => {
+      if (isPolling) {
+        stopPolling();
+        if (progressText.textContent.includes('正在生成') || progressText.textContent.includes('进行中')) {
+          progressText.textContent = '任务超时，请刷新页面查看状态';
+        }
+      }
+    }, 30 * 60 * 1000);
+  });
+}
+
+// 停止轮询函数
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+  isPolling = false;
+  console.log('轮询已停止');
+}
+
+// 当前视图模式：只保留 'compare'（并排对比）
+let currentPreviewView = 'compare';
+
+// 更新向导步骤样式
+function updateWizardSteps(...completedSteps) {
+  completedSteps.forEach(stepNum => {
+    const stepElement = document.querySelector(`.wizard-step[data-step="${stepNum}"]`);
+    if (stepElement) {
+      stepElement.classList.add('completed');
+      const indexEl = stepElement.querySelector('.index');
+      if (indexEl) {
+        indexEl.style.background = '#16a34a';
+      }
+    }
+  });
+  
+  // 确保第四步是激活状态（即使标记为完成，也要保持激活）
+  const step4 = document.querySelector('.wizard-step[data-step="4"]');
+  const section4 = document.querySelector('[data-step="4"]');
+  if (step4 && section4) {
+    step4.classList.add('active');
+    step4.classList.add('completed'); // 第四步也标记为完成
+    section4.classList.add('active-section');
+    
+    // 确保第四步的索引显示为绿色（完成状态）
+    const indexEl4 = step4.querySelector('.index');
+    if (indexEl4) {
+      indexEl4.style.background = '#16a34a';
+    }
+    
+    // 移除其他步骤的active状态
+    document.querySelectorAll('.wizard-step').forEach(step => {
+      if (step !== step4) {
+        step.classList.remove('active');
+      }
+    });
+    document.querySelectorAll('[data-step]').forEach(section => {
+      if (section !== section4) {
+        section.classList.remove('active-section');
+      }
+    });
+  }
+}
+
+async function previewData() {
+  if (!currentTaskId) {
+    console.error('预览失败: currentTaskId 为空');
+    return;
+  }
+  
+  console.log('开始加载预览数据，任务ID:', currentTaskId);
+  
+  // 确保切换到第四步
+  goToStep(4);
+  
+  try {
+    // 同时加载原始数据和生成数据
+    const [originalRes, syntheticRes] = await Promise.all([
+      fetch(`/api/synthesis/tasks/${currentTaskId}/preview?type=original`).catch(err => {
+        console.warn('加载原始数据失败:', err);
+        return null;
+      }),
+      fetch(`/api/synthesis/tasks/${currentTaskId}/preview?type=synthetic`).catch(err => {
+        console.error('加载生成数据失败:', err);
+        throw err;
+      })
+    ]);
+    
+    console.log('API响应状态:', {
+      original: originalRes ? originalRes.status : 'null',
+      synthetic: syntheticRes ? syntheticRes.status : 'null'
+    });
+    
+    // 处理生成数据
+    if (syntheticRes && syntheticRes.ok) {
+      const syntheticResult = await syntheticRes.json();
+      console.log('生成数据响应:', syntheticResult);
+      if (syntheticResult.success && syntheticResult.data) {
+        previewDataCache.synthetic = syntheticResult.data;
+        console.log('生成数据已缓存，列数:', syntheticResult.data.columns?.length, '行数:', syntheticResult.data.data?.length);
+      } else {
+        console.error('生成数据加载失败:', syntheticResult.error || '未知错误');
+        throw new Error(syntheticResult.error || '无法加载生成数据');
+      }
+    } else if (syntheticRes) {
+      const errorText = await syntheticRes.text();
+      console.error('生成数据API错误:', syntheticRes.status, errorText);
+      throw new Error(`API错误: ${syntheticRes.status} - ${errorText}`);
+    }
+    
+    // 处理原始数据
+    if (originalRes && originalRes.ok) {
+      const originalResult = await originalRes.json();
+      if (originalResult.success && originalResult.data) {
+        previewDataCache.original = originalResult.data;
+        console.log('原始数据已缓存');
+      }
+    }
+    
+    // 检查是否有生成数据
+    if (!previewDataCache.synthetic) {
+      throw new Error('未获取到生成数据');
+    }
+    
+    // 显示预览区域
+    const previewArea = document.getElementById('preview-area');
+    if (!previewArea) {
+      console.error('预览区域元素不存在');
+      return;
+    }
+    
+    previewArea.style.display = 'block';
+    console.log('预览区域已显示');
+    
+    // 启用查看原始数据按钮（预览区域）
+    const viewOriginalLinkBtn = document.getElementById('view-original-link-btn');
+    if (viewOriginalLinkBtn) viewOriginalLinkBtn.style.display = 'flex';
+    
+    // 默认使用并排对比视图
+    renderCompareView();
+    
+    // 更新统计信息
+    updatePreviewStats();
+    
+    console.log('预览数据加载完成');
+    
+  } catch (error) {
+    console.error('预览失败:', error);
+    const previewArea = document.getElementById('preview-area');
+    if (previewArea) {
+      previewArea.style.display = 'block';
+      previewArea.innerHTML = `
+        <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border); padding: 24px; text-align: center;">
+          <p style="color: var(--danger); margin-bottom: 12px;">预览数据加载失败</p>
+          <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">${error.message || '未知错误'}</p>
+          <button class="button primary" onclick="previewData()">重试</button>
+        </div>
+      `;
+    } else {
+      showModal('预览失败', `无法加载预览数据: ${error.message || '未知错误'}`, 'error');
+    }
+  }
+}
+
+function switchPreviewView(view) {
+  currentPreviewView = view;
+  
+  // 更新按钮状态
+  document.getElementById('view-tab').classList.toggle('active', view === 'tab');
+  document.getElementById('view-compare').classList.toggle('active', view === 'compare');
+  
+  // 切换视图显示
+  document.getElementById('preview-tab-view').style.display = view === 'tab' ? 'block' : 'none';
+  document.getElementById('preview-compare-view').style.display = view === 'compare' ? 'block' : 'none';
+  
+  // 渲染对应视图
+  if (view === 'compare') {
+    renderCompareView();
+  } else {
+    // 如果切换到标签视图，显示生成数据
+    if (previewDataCache.synthetic) {
+      switchPreviewTab('synthetic');
+    }
+  }
+}
+
+function switchPreviewTab(type) {
+  // 更新标签按钮状态
+  const originalBtn = document.getElementById('tab-original');
+  const syntheticBtn = document.getElementById('tab-synthetic');
+  
+  if (originalBtn && syntheticBtn) {
+    originalBtn.classList.toggle('active', type === 'original');
+    syntheticBtn.classList.toggle('active', type === 'synthetic');
+    
+    // 添加active样式
+    if (type === 'original') {
+      originalBtn.style.background = 'var(--primary)';
+      originalBtn.style.color = '#fff';
+      syntheticBtn.style.background = '';
+      syntheticBtn.style.color = '';
+    } else {
+      syntheticBtn.style.background = 'var(--primary)';
+      syntheticBtn.style.color = '#fff';
+      originalBtn.style.background = '';
+      originalBtn.style.color = '';
+    }
+  }
+  
+  // 渲染对应数据
+  if (type === 'synthetic' && previewDataCache.synthetic) {
+    renderPreview('synthetic', previewDataCache.synthetic);
+  } else if (type === 'original' && previewDataCache.original) {
+    renderPreview('original', previewDataCache.original);
+  } else if (type === 'original' && !previewDataCache.original) {
+    // 如果原始数据未加载，尝试加载
+    loadOriginalData();
+  }
+}
+
+async function loadOriginalData() {
+  if (!currentTaskId || previewDataCache.original) return;
+  
+  try {
+    const response = await fetch(`/api/synthesis/tasks/${currentTaskId}/preview?type=original`);
+    const result = await response.json();
+    if (result.success) {
+      previewDataCache.original = result.data;
+      renderPreview('original', result.data);
+      updatePreviewStats();
+    }
+  } catch (error) {
+    console.error('加载原始数据失败:', error);
+  }
+}
+
+function renderPreview(type, data) {
+  const thead = document.getElementById('preview-thead');
+  const tbody = document.getElementById('preview-tbody');
+  
+  if (!thead || !tbody) return;
+  
+  if (data.columns && data.data) {
+    let headerHtml = '<tr>';
+    data.columns.forEach(col => {
+      headerHtml += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border); background: #f8f9fa;">${col}</th>`;
+    });
+    headerHtml += '</tr>';
+    thead.innerHTML = headerHtml;
+    
+    let bodyHtml = '';
+    const displayData = data.data.slice(0, 50); // 显示前50行
+    displayData.forEach((row, idx) => {
+      bodyHtml += '<tr style="border-bottom: 1px solid var(--border);">';
+      data.columns.forEach(col => {
+        const value = row[col];
+        const displayValue = value !== null && value !== undefined ? String(value) : '-';
+        bodyHtml += `<td style="padding: 10px 12px;">${displayValue}</td>`;
+      });
+      bodyHtml += '</tr>';
+    });
+    tbody.innerHTML = bodyHtml;
+    
+    // 如果没有更多数据，显示提示
+    if (data.total && data.total > displayData.length) {
+      tbody.innerHTML += `<tr><td colspan="${data.columns.length}" style="text-align: center; padding: 16px; color: var(--muted); font-size: 13px;">
+        显示前 ${displayData.length} 行，共 ${data.total} 行数据
+      </td></tr>`;
+    }
+  }
+}
+
+function renderCompareView() {
+  // 渲染原始数据
+  if (previewDataCache.original) {
+    renderCompareTable('original', previewDataCache.original);
+  } else {
+    // 尝试加载原始数据
+    loadOriginalData().then(() => {
+      if (previewDataCache.original) {
+        renderCompareTable('original', previewDataCache.original);
+      }
+    });
+  }
+  
+  // 渲染生成数据
+  if (previewDataCache.synthetic) {
+    renderCompareTable('synthetic', previewDataCache.synthetic);
+  }
+  
+  // 设置同步滚动
+  setupSyncScroll();
+}
+
+function renderCompareTable(type, data) {
+  const prefix = type === 'original' ? 'compare-original' : 'compare-synthetic';
+  const thead = document.getElementById(`${prefix}-thead`);
+  const tbody = document.getElementById(`${prefix}-tbody`);
+  const countEl = document.getElementById(`${type}-count`);
+  
+  if (!thead || !tbody) return;
+  
+  if (data.columns && data.data) {
+    // 表头
+    let headerHtml = '<tr>';
+    data.columns.forEach(col => {
+      headerHtml += `<th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border); background: #f8f9fa; font-weight: 600; font-size: 13px;">${col}</th>`;
+    });
+    headerHtml += '</tr>';
+    thead.innerHTML = headerHtml;
+    
+    // 数据行 - 按字段类型格式化显示
+    let bodyHtml = '';
+    const displayData = data.data.slice(0, 50); // 显示前50行
+    displayData.forEach((row, idx) => {
+      const rowClass = idx % 2 === 0 ? 'background: #fff;' : 'background: #f8f9fa;';
+      bodyHtml += `<tr style="border-bottom: 1px solid #e5e7eb; ${rowClass}">`;
+      data.columns.forEach(col => {
+        const value = row[col];
+        let displayValue = '-';
+        let cellStyle = 'padding: 10px 12px; font-size: 13px;';
+        
+        if (value !== null && value !== undefined) {
+          // 根据字段类型格式化显示
+          const valueStr = String(value);
+          
+          // 检查是否是日期格式（YYYY-MM-DD）
+          if (valueStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            displayValue = valueStr;
+            cellStyle += ' font-family: monospace; color: #059669;';
+          }
+          // 检查是否是数值
+          else if (!isNaN(value) && valueStr !== '' && valueStr.trim() !== '') {
+            // 如果是整数，不显示小数点
+            if (Number.isInteger(parseFloat(value))) {
+              displayValue = parseInt(value).toLocaleString('zh-CN');
+            } else {
+              displayValue = parseFloat(value).toLocaleString('zh-CN', {maximumFractionDigits: 2});
+            }
+            cellStyle += ' text-align: right; font-family: monospace; color: #2563eb;';
+          }
+          // 其他类型（字符串等）
+          else {
+            displayValue = valueStr;
+            cellStyle += ' color: #374151;';
+          }
+        }
+        
+        bodyHtml += `<td style="${cellStyle}">${displayValue}</td>`;
+      });
+      bodyHtml += '</tr>';
+    });
+    tbody.innerHTML = bodyHtml;
+    
+    // 更新计数
+    if (countEl) {
+      countEl.textContent = `共 ${data.total || displayData.length} 行`;
+    }
+  }
+}
+
+function setupSyncScroll() {
+  // 设置同步滚动：当滚动生成数据表格时，同步滚动原始数据表格
+  const originalScroll = document.querySelector('#preview-compare-view > div > div:first-child > div:last-child');
+  const syntheticScroll = document.getElementById('compare-synthetic-scroll');
+  
+  if (originalScroll && syntheticScroll) {
+    // 移除之前的监听器（如果存在）
+    syntheticScroll.removeEventListener('scroll', syncScrollHandler);
+    
+    // 添加新的同步滚动监听器
+    syncScrollHandler = function() {
+      originalScroll.scrollTop = syntheticScroll.scrollTop;
+      originalScroll.scrollLeft = syntheticScroll.scrollLeft;
+    };
+    
+    syntheticScroll.addEventListener('scroll', syncScrollHandler);
+    
+    // 反向同步：原始数据滚动时也同步生成数据
+    originalScroll.removeEventListener('scroll', syncScrollHandlerReverse);
+    syncScrollHandlerReverse = function() {
+      syntheticScroll.scrollTop = originalScroll.scrollTop;
+      syntheticScroll.scrollLeft = originalScroll.scrollLeft;
+    };
+    originalScroll.addEventListener('scroll', syncScrollHandlerReverse);
+  }
+}
+
+let syncScrollHandler = null;
+let syncScrollHandlerReverse = null;
+
+function updatePreviewStats() {
+  const originalStats = document.getElementById('original-stats');
+  const syntheticStats = document.getElementById('synthetic-stats');
+  
+  if (originalStats && previewDataCache.original) {
+    const data = previewDataCache.original;
+    originalStats.textContent = `原始数据: ${data.total || (data.data ? data.data.length : 0)} 行 × ${data.columns ? data.columns.length : 0} 列`;
+  }
+  
+  if (syntheticStats && previewDataCache.synthetic) {
+    const data = previewDataCache.synthetic;
+    syntheticStats.textContent = `生成数据: ${data.total || (data.data ? data.data.length : 0)} 行 × ${data.columns ? data.columns.length : 0} 列`;
+  }
+}
+
+function downloadData() {
+  if (!currentTaskId) return;
+  window.location.href = `/api/synthesis/tasks/${currentTaskId}/download?format=csv&type=synthetic`;
+}
+
+// 查看原始数据
+async function viewOriginalData() {
+  if (!currentTaskId) {
+    showModal('错误', '任务ID不存在', 'error');
+    return;
+  }
+  
+  const modal = document.getElementById('original-data-modal');
+  if (!modal) return;
+  
+  // 显示模态框
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  
+  // 加载原始数据
+  const container = document.getElementById('original-data-table-container');
+  const statsEl = document.getElementById('original-data-stats');
+  
+  try {
+    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>加载中...</p></div>';
+    
+    // 获取任务配置以获取字段类型信息
+    const taskRes = await fetch(`/api/synthesis/tasks/${currentTaskId}`);
+    const taskResult = await taskRes.json();
+    let fieldsConfig = [];
+    if (taskResult.success && taskResult.data) {
+      const config = taskResult.data.config || {};
+      fieldsConfig = config.fields || [];
+    }
+    
+    // 加载原始数据（获取所有数据，不分页）
+    const response = await fetch(`/api/synthesis/tasks/${currentTaskId}/preview?type=original&page=1&page_size=1000`);
+    const result = await response.json();
+    
+    if (!result.success || !result.data) {
+      throw new Error(result.error || '无法加载原始数据');
+    }
+    
+    const data = result.data;
+    
+    // 更新统计信息
+    if (statsEl) {
+      statsEl.textContent = `共 ${data.total || (data.data ? data.data.length : 0)} 行 × ${data.columns ? data.columns.length : 0} 列`;
+    }
+    
+    // 创建字段类型映射
+    const fieldTypeMap = {};
+    fieldsConfig.forEach(field => {
+      if (field.name) {
+        fieldTypeMap[field.name] = field.type || 'string';
+      }
+    });
+    
+    // 渲染表格
+    if (data.columns && data.data) {
+      let tableHtml = '<div style="overflow-x: auto;"><table class="table" style="width: 100%; border-collapse: collapse;">';
+      
+      // 表头
+      tableHtml += '<thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 10;"><tr>';
+      data.columns.forEach(col => {
+        const fieldType = fieldTypeMap[col] || 'string';
+        const typeLabel = {
+          'date': '日期',
+          'number': '数值',
+          'integer': '整数',
+          'string': '文本'
+        }[fieldType] || '文本';
+        tableHtml += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 13px; white-space: nowrap;">
+          ${col}
+          <span style="font-weight: normal; color: var(--muted); font-size: 11px; margin-left: 8px;">(${typeLabel})</span>
+        </th>`;
+      });
+      tableHtml += '</tr></thead>';
+      
+      // 数据行
+      tableHtml += '<tbody>';
+      data.data.forEach((row, idx) => {
+        const rowClass = idx % 2 === 0 ? 'background: #fff;' : 'background: #f8f9fa;';
+        tableHtml += `<tr style="border-bottom: 1px solid #e5e7eb; ${rowClass}">`;
+        data.columns.forEach(col => {
+          const value = row[col];
+          const fieldType = fieldTypeMap[col] || 'string';
+          let displayValue = '-';
+          let cellStyle = 'padding: 10px 12px; font-size: 13px;';
+          
+          if (value !== null && value !== undefined) {
+            const valueStr = String(value);
+            
+            // 根据字段类型格式化
+            if (fieldType === 'date') {
+              // 日期字段：绿色，等宽字体
+              displayValue = valueStr;
+              cellStyle += ' font-family: monospace; color: #059669;';
+            } else if (fieldType === 'number' || fieldType === 'integer') {
+              // 数值字段：蓝色，右对齐，千分位
+              try {
+                const numValue = fieldType === 'integer' ? parseInt(value) : parseFloat(value);
+                if (!isNaN(numValue)) {
+                  if (Number.isInteger(numValue)) {
+                    displayValue = numValue.toLocaleString('zh-CN');
+                  } else {
+                    displayValue = numValue.toLocaleString('zh-CN', {maximumFractionDigits: 2});
+                  }
+                  cellStyle += ' text-align: right; font-family: monospace; color: #2563eb;';
+                } else {
+                  displayValue = valueStr;
+                  cellStyle += ' color: #374151;';
+                }
+              } catch (e) {
+                displayValue = valueStr;
+                cellStyle += ' color: #374151;';
+              }
+            } else {
+              // 字符串字段：默认样式
+              displayValue = valueStr;
+              cellStyle += ' color: #374151;';
+            }
+          }
+          
+          tableHtml += `<td style="${cellStyle}">${displayValue}</td>`;
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</tbody></table></div>';
+      
+      container.innerHTML = tableHtml;
+    } else {
+      container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>暂无数据</p></div>';
+    }
+  } catch (error) {
+    console.error('加载原始数据失败:', error);
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--danger);">
+      <p style="margin-bottom: 12px;">加载失败</p>
+      <p style="font-size: 13px; color: var(--muted);">${error.message || '未知错误'}</p>
+      <button class="button primary" onclick="viewOriginalData()" style="margin-top: 16px;">重试</button>
+    </div>`;
+  }
+}
+
+// 关闭原始数据模态框
+function closeOriginalDataModal() {
+  const modal = document.getElementById('original-data-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+// 下载原始数据
+function downloadOriginalData() {
+  if (!currentTaskId) return;
+  window.location.href = `/api/synthesis/tasks/${currentTaskId}/download?format=csv&type=original`;
+}
+
+// 点击模态框外部关闭
+document.addEventListener('click', function(e) {
+  const modal = document.getElementById('original-data-modal');
+  if (modal && e.target === modal) {
+    closeOriginalDataModal();
+  }
+  const templateModal = document.getElementById('template-data-modal');
+  if (templateModal && e.target === templateModal) {
+    closeTemplateDataModal();
+  }
+});
+
+// 查看模板数据
+async function viewTemplateData(templateId) {
+  const modal = document.getElementById('template-data-modal');
+  if (!modal) return;
+  
+  // 显示模态框
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  
+  // 加载模板数据
+  const container = document.getElementById('template-data-table-container');
+  const statsEl = document.getElementById('template-data-stats');
+  const titleEl = document.getElementById('template-data-title');
+  
+  try {
+    container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>加载中...</p></div>';
+    
+    // 获取模板详情
+    const response = await fetch(`/api/synthesis/templates/${templateId}`);
+    const result = await response.json();
+    
+    if (!result.success || !result.data || !result.data.template) {
+      throw new Error(result.error || '无法加载模板数据');
+    }
+    
+    const template = result.data.template;
+    
+    // 更新标题和统计信息
+    if (titleEl) {
+      titleEl.textContent = `${template.name || '模板'} - 数据预览`;
+    }
+    
+    // 获取示例数据
+    const sampleData = template.sample_data || [];
+    const fields = template.fields || [];
+    
+    // 创建字段类型映射
+    const fieldTypeMap = {};
+    fields.forEach(field => {
+      if (field.name) {
+        fieldTypeMap[field.name] = field.type || 'string';
+      }
+    });
+    
+    // 更新统计信息
+    if (statsEl) {
+      statsEl.textContent = `共 ${sampleData.length} 行 × ${fields.length} 列`;
+    }
+    
+    // 渲染表格
+    if (sampleData.length > 0 && fields.length > 0) {
+      // 获取所有字段名
+      const columns = fields.map(f => f.name);
+      
+      let tableHtml = '<div style="overflow-x: auto;"><table class="table" style="width: 100%; border-collapse: collapse;">';
+      
+      // 表头
+      tableHtml += '<thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 10;"><tr>';
+      columns.forEach(col => {
+        const field = fields.find(f => f.name === col);
+        const fieldType = fieldTypeMap[col] || 'string';
+        const typeLabel = {
+          'date': '日期',
+          'number': '数值',
+          'integer': '整数',
+          'float': '浮点数',
+          'string': '文本',
+          'boolean': '布尔'
+        }[fieldType] || '文本';
+        tableHtml += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 13px; white-space: nowrap;">
+          ${col}
+          <span style="font-weight: normal; color: var(--muted); font-size: 11px; margin-left: 8px;">(${typeLabel})</span>
+        </th>`;
+      });
+      tableHtml += '</tr></thead>';
+      
+      // 数据行
+      tableHtml += '<tbody>';
+      sampleData.forEach((row, idx) => {
+        const rowClass = idx % 2 === 0 ? 'background: #fff;' : 'background: #f8f9fa;';
+        tableHtml += `<tr style="border-bottom: 1px solid #e5e7eb; ${rowClass}">`;
+        columns.forEach(col => {
+          const value = row[col];
+          const fieldType = fieldTypeMap[col] || 'string';
+          let displayValue = '-';
+          let cellStyle = 'padding: 10px 12px; font-size: 13px;';
+          
+          if (value !== null && value !== undefined) {
+            const valueStr = String(value);
+            
+            // 根据字段类型格式化
+            if (fieldType === 'date') {
+              // 日期字段：绿色，等宽字体
+              displayValue = valueStr.length > 10 ? valueStr.substring(0, 10) : valueStr;
+              cellStyle += ' font-family: monospace; color: #059669;';
+            } else if (fieldType === 'number' || fieldType === 'integer' || fieldType === 'float') {
+              // 数值字段：蓝色，右对齐，千分位
+              try {
+                const numValue = fieldType === 'integer' ? parseInt(value) : parseFloat(value);
+                if (!isNaN(numValue)) {
+                  if (Number.isInteger(numValue)) {
+                    displayValue = numValue.toLocaleString('zh-CN');
+                  } else {
+                    displayValue = numValue.toLocaleString('zh-CN', {maximumFractionDigits: 2});
+                  }
+                  cellStyle += ' text-align: right; font-family: monospace; color: #2563eb;';
+                } else {
+                  displayValue = valueStr;
+                  cellStyle += ' color: #374151;';
+                }
+              } catch (e) {
+                displayValue = valueStr;
+                cellStyle += ' color: #374151;';
+              }
+            } else {
+              // 字符串字段：默认样式
+              displayValue = valueStr;
+              cellStyle += ' color: #374151;';
+            }
+          }
+          
+          tableHtml += `<td style="${cellStyle}">${displayValue}</td>`;
+        });
+        tableHtml += '</tr>';
+      });
+      tableHtml += '</tbody></table></div>';
+      
+      container.innerHTML = tableHtml;
+    } else {
+      container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>该模板暂无示例数据</p></div>';
+    }
+  } catch (error) {
+    console.error('加载模板数据失败:', error);
+    container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--danger);">
+      <p style="margin-bottom: 12px;">加载失败</p>
+      <p style="font-size: 13px; color: var(--muted);">${error.message || '未知错误'}</p>
+      <button class="button primary" onclick="viewTemplateData(${templateId})" style="margin-top: 16px;">重试</button>
+    </div>`;
+  }
+}
+
+// 关闭模板数据模态框
+function closeTemplateDataModal() {
+  const modal = document.getElementById('template-data-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function addField() {
+  const fieldName = prompt('请输入字段名:');
+  if (!fieldName) return;
+  
+  if (fieldsConfig[fieldName]) {
+    alert('字段已存在');
+    return;
+  }
+  
+  fieldsConfig[fieldName] = {
+    name: fieldName,
+    type: 'string',
+    action: 'regenerate'
+  };
+  
+  renderFieldsList();
+  editField(fieldName);
+}
+
+function saveConfig() {
+  // 保存配置到本地存储（可选）
+  const config = {
+    modelType: document.getElementById('model-type').value,
+    similarity: parseFloat(document.getElementById('similarity').value),
+    epochs: parseInt(document.getElementById('epochs').value),
+    batchSize: parseInt(document.getElementById('batch-size').value),
+    dataAmount: parseInt(document.getElementById('data-amount').value)
+  };
+  localStorage.setItem('synthesis_config', JSON.stringify(config));
+  alert('配置已保存');
+}
+
+function viewLogs() {
+  if (!currentTaskId) {
+    alert('暂无任务日志');
+    return;
+  }
+  // 可以打开一个新窗口或显示模态框查看日志
+  window.open(`/api/tasks/${currentTaskId}`, '_blank');
+}
+
+function onWizardComplete() {
+  window.location.href = '/api/tasks';
+}
+
+// 页面加载时加载模板
+// ==================== SDG模型和参数模板相关函数 ====================
+
+// 加载大模型列表（从系统设置获取）
+async function loadAIModels() {
+  try {
+    const response = await fetch('/api/settings/ai-models', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success && result.data && result.data.models) {
+      // 只获取已启用且已配置的模型
+      aiModels = result.data.models.filter(m => m.enabled && m.config && m.config.endpoint);
+      console.log('已加载大模型列表:', aiModels);
+    }
+  } catch (error) {
+    console.error('加载大模型列表失败:', error);
+  }
+}
+
+// 加载SDG模型列表
+async function loadSDGModels() {
+  try {
+    const response = await fetch('/api/synthesis/sdg-models', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success && result.data && result.data.models) {
+      sdgModels = result.data.models;
+      // 合并SDG模型和大模型
+      renderModelSelect();
+      if (sdgModels.length > 0) {
+        onModelTypeChange(); // 自动选择第一个模型
+      }
+    }
+  } catch (error) {
+    console.error('加载SDG模型失败:', error);
+    document.getElementById('model-type').innerHTML = '<option value="">加载失败</option>';
+  }
+}
+
+// 渲染模型选择下拉框（合并SDG模型和大模型）
+function renderModelSelect() {
+  const select = document.getElementById('model-type');
+  select.innerHTML = '';
+  
+  // 添加SDG模型（本地模型）
+  if (sdgModels.length > 0) {
+    const sdgGroup = document.createElement('optgroup');
+    sdgGroup.label = '本地模型';
+    sdgModels.forEach(model => {
+      const option = document.createElement('option');
+      option.value = `sdg_${model.id}`;
+      option.textContent = `${model.name} (本地)`;
+      option.dataset.modelType = 'sdg';
+      option.dataset.modelData = JSON.stringify(model);
+      sdgGroup.appendChild(option);
+    });
+    select.appendChild(sdgGroup);
+  }
+  
+  // 添加大模型（AI模型）
+  if (aiModels.length > 0) {
+    const aiGroup = document.createElement('optgroup');
+    aiGroup.label = 'AI大模型';
+    aiModels.forEach(model => {
+      const option = document.createElement('option');
+      option.value = `ai_${model.id}`;
+      option.textContent = `${model.name} (${model.id})`;
+      option.dataset.modelType = 'ai';
+      option.dataset.modelData = JSON.stringify(model);
+      aiGroup.appendChild(option);
+    });
+    select.appendChild(aiGroup);
+  }
+  
+  // 默认选择第一个模型
+  if (select.options.length > 0) {
+    select.value = select.options[0].value;
+  }
+}
+
+// 模型类型变化时的处理
+async function onModelTypeChange() {
+  const modelValue = document.getElementById('model-type').value;
+  if (!modelValue) return;
+  
+  const selectedOption = document.getElementById('model-type').options[document.getElementById('model-type').selectedIndex];
+  const modelType = selectedOption.dataset.modelType;
+  const modelData = JSON.parse(selectedOption.dataset.modelData || '{}');
+  
+  if (modelType === 'sdg') {
+    // SDG本地模型
+    currentModel = {
+      id: modelData.id,
+      name: modelData.name,
+      description: modelData.description || '',
+      type: 'sdg',
+      parameters: modelData.parameters || {}
+    };
+    document.getElementById('model-description').textContent = currentModel.description || '';
+    await loadParameterTemplates(modelData.id);
+    renderParameterConfig();
+  } else if (modelType === 'ai') {
+    // AI大模型
+    // 确保config中包含selected_models（从系统设置中获取）
+    const modelConfig = modelData.config || {};
+    const selectedModels = modelConfig.selected_models || [];
+    
+    currentModel = {
+      id: modelData.id,
+      name: modelData.name,
+      description: `AI大模型 - ${modelData.name}`,
+      type: 'ai',
+      config: {
+        ...modelConfig,
+        selected_models: selectedModels  // 确保包含selected_models
+      },
+      // AI大模型的参数定义（与SDGX SingleTableGPTModel一致）
+      parameters: {
+        'selected_model': {
+          'type': 'string',
+          'default': '',
+          'description': '选择模型（从系统设置中已配置的模型列表中选择）'
+        },
+        'temperature': {
+          'type': 'number',
+          'default': 0.1,
+          'min': 0,
+          'max': 2,
+          'step': 0.1,
+          'description': 'Temperature（随机性）'
+        },
+        'max_tokens': {
+          'type': 'number',
+          'default': 4000,
+          'min': 100,
+          'max': 8000,
+          'description': 'Max Tokens（最大Token数）'
+        },
+        'query_batch': {
+          'type': 'number',
+          'default': 30,
+          'min': 1,
+          'max': 50,
+          'description': 'Query Batch（查询批次大小）'
+        },
+        'timeout': {
+          'type': 'number',
+          'default': 90,
+          'min': 10,
+          'max': 300,
+          'description': 'Timeout（超时时间）'
+        },
+        'prompt_template': {
+          'type': 'string',
+          'default': '',
+          'description': '提示词模板（可选）'
+        }
+      }
+    };
+    
+    console.log(`[DEBUG] 选择AI大模型: ${modelData.id}, selected_models数量: ${selectedModels.length}`, selectedModels);
+    
+    document.getElementById('model-description').textContent = currentModel.description || '使用AI大模型生成合成数据（基于SDGX SingleTableGPTModel）';
+    // 加载AI大模型的参数模板
+    await loadParameterTemplates('ai_' + modelData.id);
+    renderAIModelConfig();
+  }
+}
+
+// 加载参数模板列表
+async function loadParameterTemplates(modelType) {
+  try {
+    const response = await fetch(`/api/synthesis/parameter-templates?model_type=${modelType}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success && result.data && result.data.templates) {
+      parameterTemplates = result.data.templates;
+      renderTemplateSelect();
+    }
+  } catch (error) {
+    console.error('加载参数模板失败:', error);
+  }
+}
+
+// 渲染参数模板选择下拉框
+function renderTemplateSelect() {
+  const select = document.getElementById('parameter-template');
+  select.innerHTML = '<option value="">自定义参数</option>';
+  
+  // 分组显示：内置模板和自定义模板
+  const systemTemplates = parameterTemplates.filter(t => t.type === 'system');
+  const userTemplates = parameterTemplates.filter(t => t.type === 'user');
+  
+  if (systemTemplates.length > 0) {
+    const systemGroup = document.createElement('optgroup');
+    systemGroup.label = '内置模板';
+    systemTemplates.forEach(template => {
+      const option = document.createElement('option');
+      option.value = template.id;
+      option.textContent = `${template.name}${template.is_default ? ' (默认)' : ''}`;
+      option.dataset.templateType = 'system';
+      systemGroup.appendChild(option);
+    });
+    select.appendChild(systemGroup);
+  }
+  
+  if (userTemplates.length > 0) {
+    const userGroup = document.createElement('optgroup');
+    userGroup.label = '自定义模板';
+    userTemplates.forEach(template => {
+      const option = document.createElement('option');
+      option.value = template.id;
+      option.textContent = template.name;
+      option.dataset.templateType = 'user';
+      option.dataset.templateDbId = template.id.replace('user_', ''); // 保存数据库ID用于删除
+      userGroup.appendChild(option);
+    });
+    select.appendChild(userGroup);
+  }
+  
+  // 显示/隐藏删除按钮
+  updateDeleteButtonVisibility();
+}
+
+// 模板选择变化时的处理
+function onTemplateChange() {
+  const templateId = document.getElementById('parameter-template').value;
+  currentTemplateId = templateId;
+  
+  if (!templateId) {
+    // 自定义参数，保持当前配置，允许修改
+    if (currentModel && currentModel.type === 'sdg') {
+      renderParameterConfig();
+    } else if (currentModel && currentModel.type === 'ai') {
+      renderAIModelConfig();
+    }
+    updateDeleteButtonVisibility();
+    return;
+  }
+  
+  const selectedOption = document.getElementById('parameter-template').options[document.getElementById('parameter-template').selectedIndex];
+  const templateType = selectedOption.dataset.templateType;
+  
+  const template = parameterTemplates.find(t => t.id === templateId);
+  if (template && template.parameters) {
+    // 加载模板参数
+    currentParameters = {...template.parameters};
+    if (currentModel && currentModel.type === 'sdg') {
+      renderParameterConfig();
+    } else if (currentModel && currentModel.type === 'ai') {
+      renderAIModelConfig();
+    }
+  }
+  
+  updateDeleteButtonVisibility();
+}
+
+// 更新删除按钮和保存为模板按钮的显示状态
+function updateDeleteButtonVisibility() {
+  const deleteBtn = document.getElementById('delete-template-btn');
+  const saveTemplateContainer = document.getElementById('save-template-container');
+  const selectedOption = document.getElementById('parameter-template').options[document.getElementById('parameter-template').selectedIndex];
+  
+  // 更新删除按钮
+  if (currentTemplateId && selectedOption && selectedOption.dataset.templateType === 'user') {
+    deleteBtn.style.display = 'block';
+    deleteBtn.dataset.templateDbId = selectedOption.dataset.templateDbId;
+  } else {
+    deleteBtn.style.display = 'none';
+  }
+  
+  // 更新保存为模板按钮（只在选择"自定义参数"时显示）
+  if (!currentTemplateId || document.getElementById('parameter-template').value === '') {
+    // 选择的是"自定义参数"
+    saveTemplateContainer.style.display = 'block';
+  } else {
+    // 选择的是模板（内置或自定义）
+    saveTemplateContainer.style.display = 'none';
+  }
+}
+
+// 删除自定义模板
+async function deleteTemplate() {
+  const deleteBtn = document.getElementById('delete-template-btn');
+  const templateDbId = deleteBtn.dataset.templateDbId;
+  
+  if (!templateDbId) {
+    return;
+  }
+  
+  const template = parameterTemplates.find(t => t.id === currentTemplateId);
+  if (!template) {
+    return;
+  }
+  
+  const confirmed = await new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;';
+    
+    modal.innerHTML = `
+      <div style="background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #dc2626;">⚠️ 确认删除</h3>
+          <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); font-size: 20px;" onclick="this.closest('.custom-modal').remove(); window.__confirmDeleteTemplateResolve(false);">✕</div>
+        </div>
+        <div style="color: var(--text); font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+          确定要删除模板 <strong>${template.name}</strong> 吗？<br>
+          <span style="color: #dc2626; font-size: 13px;">⚠️ 此操作不可恢复</span>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="button secondary" onclick="this.closest('.custom-modal').remove(); window.__confirmDeleteTemplateResolve(false);" style="padding: 10px 20px;">取消</button>
+          <button class="button primary" onclick="this.closest('.custom-modal').remove(); window.__confirmDeleteTemplateResolve(true);" style="padding: 10px 20px; background: #dc2626;">确认删除</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    window.__confirmDeleteTemplateResolve = resolve;
+  });
+  
+  if (!confirmed) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/synthesis/parameter-templates/${templateDbId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include'
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      // 重新加载模板列表
+      if (currentModel) {
+        const modelId = currentModel.type === 'sdg' ? currentModel.id : 'ai_' + currentModel.id;
+        await loadParameterTemplates(modelId);
+      }
+      // 清除当前模板选择
+      document.getElementById('parameter-template').value = '';
+      currentTemplateId = null;
+      updateDeleteButtonVisibility();
+      
+      // 显示成功提示
+      const modal = document.createElement('div');
+      modal.className = 'custom-modal';
+      modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;';
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+          <div style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+            <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #10b981;">删除成功</h3>
+            <p style="color: var(--muted); margin: 0 0 20px 0;">模板已删除</p>
+            <button class="button primary" onclick="this.closest('.custom-modal').remove();" style="padding: 10px 24px;">确定</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    } else {
+      alert('删除失败: ' + (result.error || '未知错误'));
+    }
+  } catch (error) {
+    console.error('删除模板失败:', error);
+    alert('删除模板失败: ' + error.message);
+  }
+}
+
+// 渲染参数配置界面（SDG模型）
+function renderParameterConfig() {
+  if (!currentModel || !currentModel.parameters) {
+    document.getElementById('parameter-config').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: var(--muted);"><p>请先选择模型</p></div>';
+    updateDeleteButtonVisibility();
+    return;
+  }
+  
+  const configDiv = document.getElementById('parameter-config');
+  let html = '';
+  
+  // 判断当前是否选择了内置模板（不可修改）
+  const isSystemTemplate = currentTemplateId && parameterTemplates.find(t => t.id === currentTemplateId && t.type === 'system');
+  const isReadOnly = !!isSystemTemplate;
+  
+  Object.entries(currentModel.parameters).forEach(([key, paramDef]) => {
+    const paramType = paramDef.type || 'number';
+    const defaultValue = currentParameters[key] !== undefined ? currentParameters[key] : paramDef.default;
+    const min = paramDef.min;
+    const max = paramDef.max;
+    const step = paramDef.step;
+    const description = paramDef.description || key;
+    
+    html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+    html += `<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">${description}</label>`;
+    
+    if (paramType === 'number') {
+      html += `<input type="number" 
+                      class="form-input" 
+                      id="param-${key}" 
+                      value="${defaultValue}" 
+                      ${min !== undefined ? `min="${min}"` : ''} 
+                      ${max !== undefined ? `max="${max}"` : ''} 
+                      ${step !== undefined ? `step="${step}"` : ''}
+                      ${isReadOnly ? 'readonly' : ''}
+                      style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+                      onchange="updateParameter('${key}', parseFloat(this.value))">`;
+    } else if (paramType === 'boolean') {
+      html += `<label style="display: flex; align-items: center; gap: 8px; cursor: ${isReadOnly ? 'not-allowed' : 'pointer'}; opacity: ${isReadOnly ? '0.6' : '1'};">
+                 <input type="checkbox" 
+                        id="param-${key}" 
+                        ${defaultValue ? 'checked' : ''}
+                        ${isReadOnly ? 'disabled' : ''}
+                        style="width: 18px; height: 18px; cursor: ${isReadOnly ? 'not-allowed' : 'pointer'};"
+                        onchange="updateParameter('${key}', this.checked)">
+                 <span style="font-size: 14px;">${defaultValue ? '启用' : '禁用'}</span>
+               </label>`;
+    } else if (paramType === 'array') {
+      html += `<input type="text" 
+                      class="form-input" 
+                      id="param-${key}" 
+                      value="${Array.isArray(defaultValue) ? defaultValue.join(',') : (typeof defaultValue === 'string' ? defaultValue : '')}" 
+                      placeholder="用逗号分隔，如: 256,256"
+                      ${isReadOnly ? 'readonly' : ''}
+                      style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+                      onchange="updateParameter('${key}', this.value.split(',').map(s => s.trim()).filter(s => s))">`;
+    } else if (paramType === 'string') {
+      // 支持字符串类型参数（如 default_distribution）
+      const options = paramDef.options || [];
+      if (options.length > 0) {
+        // 如果有选项，使用下拉框
+        html += `<select 
+                      class="form-input" 
+                      id="param-${key}" 
+                      ${isReadOnly ? 'disabled' : ''}
+                      style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+                      onchange="updateParameter('${key}', this.value)">`;
+        options.forEach(opt => {
+          html += `<option value="${opt}" ${defaultValue === opt ? 'selected' : ''}>${opt}</option>`;
+        });
+        html += `</select>`;
+      } else {
+        // 普通文本输入
+        html += `<input type="text" 
+                        class="form-input" 
+                        id="param-${key}" 
+                        value="${defaultValue || ''}" 
+                        ${isReadOnly ? 'readonly' : ''}
+                        style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+                        onchange="updateParameter('${key}', this.value)">`;
+      }
+    }
+    
+    if (isReadOnly) {
+      html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+    }
+    
+    html += '</div>';
+  });
+  
+  configDiv.innerHTML = html;
+  
+  // 初始化当前参数值
+  Object.entries(currentModel.parameters).forEach(([key, paramDef]) => {
+    if (currentParameters[key] === undefined) {
+      currentParameters[key] = paramDef.default;
+    }
+  });
+  
+  // 更新按钮显示状态
+  updateDeleteButtonVisibility();
+}
+
+// 渲染AI大模型配置界面（参数与SDGX SingleTableGPTModel一致）
+function renderAIModelConfig() {
+  if (!currentModel || currentModel.type !== 'ai') {
+    document.getElementById('parameter-config').innerHTML = '<div style="text-align: center; padding: 40px 20px; color: var(--muted);"><p>请先选择AI模型</p></div>';
+    updateDeleteButtonVisibility();
+    return;
+  }
+  
+  const configDiv = document.getElementById('parameter-config');
+  
+  // 判断当前是否选择了内置模板（不可修改）
+  const isSystemTemplate = currentTemplateId && parameterTemplates.find(t => t.id === currentTemplateId && t.type === 'system');
+  const isReadOnly = !!isSystemTemplate;
+  
+  // 获取系统设置中配置的模型列表
+  const selectedModels = currentModel.config.selected_models || [];
+  const selectedModel = currentParameters.selected_model || (selectedModels.length > 0 ? selectedModels[0].id : '');
+  
+  // AI大模型参数配置（与SDGX SingleTableGPTModel参数一致）
+  let html = '';
+  
+  // 模型信息展示
+  html += `
+    <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(59, 130, 246, 0.05) 100%); padding: 20px; border-radius: 12px; border: 1px solid rgba(37, 99, 235, 0.2); margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--primary);">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <h4 style="margin: 0; font-size: 16px; font-weight: 600; color: var(--text);">AI大模型配置</h4>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+        <div>
+          <span style="color: var(--muted);">模型服务：</span>
+          <span style="color: var(--text); font-weight: 500;">${currentModel.name}</span>
+        </div>
+        <div>
+          <span style="color: var(--muted);">Endpoint：</span>
+          <span style="color: var(--muted); word-break: break-all; font-size: 12px;">${currentModel.config.endpoint || '未配置'}</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 参数配置区域
+  html += '<div style="display: flex; flex-direction: column; gap: 16px;">';
+  
+  // 1. 选择具体模型（从系统设置中已配置的模型列表中选择）
+  html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+  html += '<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">选择模型</label>';
+  html += `<select 
+    class="form-input" 
+    id="param-selected_model" 
+    ${isReadOnly ? 'disabled' : ''}
+    style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+    onchange="updateParameter('selected_model', this.value)">`;
+  html += '<option value="">请选择模型</option>';
+  if (selectedModels.length > 0) {
+    selectedModels.forEach(model => {
+      // model可能是对象（包含id和name）或字符串（只有id）
+      const modelId = typeof model === 'string' ? model : (model.id || model);
+      const modelName = typeof model === 'string' ? model : (model.name || model.id || model);
+      html += `<option value="${modelId}" ${selectedModel === modelId ? 'selected' : ''}>${modelName}</option>`;
+    });
+  } else {
+    html += '<option value="" disabled>暂无可用模型，请先在系统设置中配置模型</option>';
+  }
+  html += '</select>';
+  html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: var(--muted);">从系统设置中已配置的模型列表中选择（需要在系统设置中先添加模型）</p>';
+  if (isReadOnly) {
+    html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+  }
+  html += '</div>';
+  
+  // 2. Temperature参数（控制随机性）
+  const temperature = currentParameters.temperature !== undefined ? currentParameters.temperature : 0.1;
+  html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+  html += '<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">Temperature（随机性）</label>';
+  html += `<input type="number" 
+    class="form-input" 
+    id="param-temperature" 
+    value="${temperature}" 
+    min="0" 
+    max="2" 
+    step="0.1"
+    ${isReadOnly ? 'readonly' : ''}
+    style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+    onchange="updateParameter('temperature', parseFloat(this.value))">`;
+  html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: var(--muted);">控制生成的随机性，0-2之间，越小越保守（默认0.1）</p>';
+  if (isReadOnly) {
+    html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+  }
+  html += '</div>';
+  
+  // 3. Max Tokens参数
+  const maxTokens = currentParameters.max_tokens !== undefined ? currentParameters.max_tokens : 4000;
+  html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+  html += '<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">Max Tokens（最大Token数）</label>';
+  html += `<input type="number" 
+    class="form-input" 
+    id="param-max_tokens" 
+    value="${maxTokens}" 
+    min="100" 
+    max="8000"
+    ${isReadOnly ? 'readonly' : ''}
+    style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+    onchange="updateParameter('max_tokens', parseInt(this.value))">`;
+  html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: var(--muted);">单次生成的最大token数量（默认4000）</p>';
+  if (isReadOnly) {
+    html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+  }
+  html += '</div>';
+  
+  // 4. Query Batch参数
+  const queryBatch = currentParameters.query_batch !== undefined ? currentParameters.query_batch : 30;
+  html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+  html += '<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">Query Batch（查询批次大小）</label>';
+  html += `<input type="number" 
+    class="form-input" 
+    id="param-query_batch" 
+    value="${queryBatch}" 
+    min="1" 
+    max="50"
+    ${isReadOnly ? 'readonly' : ''}
+    style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+    onchange="updateParameter('query_batch', parseInt(this.value))">`;
+  html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: var(--muted);">每次查询提交给AI的样本数和返回的样本数（默认30，不建议设置过大）</p>';
+  if (isReadOnly) {
+    html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+  }
+  html += '</div>';
+  
+  // 5. Timeout参数
+  const timeout = currentParameters.timeout !== undefined ? currentParameters.timeout : 90;
+  html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+  html += '<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">Timeout（超时时间）</label>';
+  html += `<input type="number" 
+    class="form-input" 
+    id="param-timeout" 
+    value="${timeout}" 
+    min="10" 
+    max="300"
+    ${isReadOnly ? 'readonly' : ''}
+    style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+    onchange="updateParameter('timeout', parseInt(this.value))">`;
+  html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: var(--muted);">API请求的超时时间（秒，默认90）</p>';
+  if (isReadOnly) {
+    html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+  }
+  html += '</div>';
+  
+  // 6. 提示词模板（可选，自定义）
+  html += '<div class="form-group" style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid var(--border);">';
+  html += '<label class="form-label" style="font-weight: 500; margin-bottom: 8px; display: block;">提示词模板（可选）</label>';
+  html += `<textarea 
+    id="param-prompt_template" 
+    class="form-input" 
+    placeholder="自定义提示词模板，例如：请根据以下数据生成类似的合成数据..."
+    ${isReadOnly ? 'readonly' : ''}
+    style="width: 100%; min-height: 100px; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; resize: vertical; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
+    onchange="updateParameter('prompt_template', this.value)">${currentParameters.prompt_template || ''}</textarea>`;
+  html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: var(--muted);">自定义提示词模板，将替换SDGX默认的提示词前缀</p>';
+  if (isReadOnly) {
+    html += '<p style="margin: 8px 0 0 0; font-size: 12px; color: #f59e0b; display: flex; align-items: center; gap: 4px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>内置模板参数不可修改</p>';
+  }
+  html += '</div>';
+  
+  html += '</div>';
+  
+  configDiv.innerHTML = html;
+  
+  // 初始化AI模型参数（使用SDGX默认值）
+  if (currentParameters.temperature === undefined) {
+    currentParameters.temperature = 0.1;
+  }
+  if (currentParameters.max_tokens === undefined) {
+    currentParameters.max_tokens = 4000;
+  }
+  if (currentParameters.query_batch === undefined) {
+    currentParameters.query_batch = 30;
+  }
+  if (currentParameters.timeout === undefined) {
+    currentParameters.timeout = 90;
+  }
+  if (currentParameters.prompt_template === undefined) {
+    currentParameters.prompt_template = '';
+  }
+  if (!currentParameters.selected_model && selectedModels.length > 0) {
+    currentParameters.selected_model = selectedModels[0].id;
+  }
+  
+  // 更新按钮显示状态
+  updateDeleteButtonVisibility();
+}
+
+// 更新参数值
+function updateParameter(key, value) {
+  // 如果选择的是内置模板，不允许修改
+  const isSystemTemplate = currentTemplateId && parameterTemplates.find(t => t.id === currentTemplateId && t.type === 'system');
+  if (isSystemTemplate) {
+    return; // 内置模板参数不可修改
+  }
+  
+  currentParameters[key] = value;
+  // 如果当前选择了模板，清除模板选择（因为现在是自定义参数）
+  if (currentTemplateId) {
+    document.getElementById('parameter-template').value = '';
+    currentTemplateId = null;
+    updateDeleteButtonVisibility();
+  }
+}
+
+// 保存为模板
+async function saveAsTemplate() {
+  if (!currentModel) {
+    showModal('提示', '请先选择模型', 'warning');
+    return;
+  }
+  
+  // 使用自定义弹窗获取模板名称和描述
+  const templateInfo = await new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;';
+    
+    modal.innerHTML = `
+      <div style="background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 style="margin: 0; font-size: 18px; font-weight: 600;">保存为模板</h3>
+          <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); font-size: 20px;" onclick="this.closest('.custom-modal').remove(); window.__saveTemplateResolve(null);">✕</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text);">模板名称 <span style="color: #dc2626;">*</span></label>
+          <input type="text" id="template-name-input" class="form-input" placeholder="请输入模板名称" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px;" autofocus>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500; color: var(--text);">模板描述（可选）</label>
+          <textarea id="template-desc-input" class="form-input" placeholder="请输入模板描述" style="width: 100%; min-height: 80px; padding: 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; resize: vertical;"></textarea>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="template-is-default" style="width: 18px; height: 18px; cursor: pointer;">
+            <span style="font-size: 14px; color: var(--text);">设置为默认模板</span>
+          </label>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+          <button class="button secondary" onclick="this.closest('.custom-modal').remove(); window.__saveTemplateResolve(null);" style="padding: 10px 20px;">取消</button>
+          <button class="button primary" onclick="
+            const name = document.getElementById('template-name-input').value.trim();
+            const desc = document.getElementById('template-desc-input').value.trim();
+            const isDefault = document.getElementById('template-is-default').checked;
+            if (!name) {
+              alert('请输入模板名称');
+              return;
+            }
+            this.closest('.custom-modal').remove();
+            window.__saveTemplateResolve({name: name, description: desc, is_default: isDefault});
+          " style="padding: 10px 20px;">保存</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    window.__saveTemplateResolve = resolve;
+    
+    // 自动聚焦到输入框
+    setTimeout(() => {
+      document.getElementById('template-name-input').focus();
+    }, 100);
+  });
+  
+  if (!templateInfo) {
+    return;
+  }
+  
+  try {
+    const modelType = currentModel.type === 'sdg' ? currentModel.id : 'ai_' + currentModel.id;
+    
+    const response = await fetch('/api/synthesis/parameter-templates', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        name: templateInfo.name,
+        model_type: modelType,
+        parameters: currentParameters,
+        description: templateInfo.description,
+        is_default: templateInfo.is_default
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    if (result.success) {
+      showModal('保存成功', '模板已保存', 'success');
+      await loadParameterTemplates(modelType);
+      // 自动选择新保存的模板
+      const newTemplate = parameterTemplates.find(t => t.name === templateInfo.name && t.type === 'user');
+      if (newTemplate) {
+        document.getElementById('parameter-template').value = newTemplate.id;
+        currentTemplateId = newTemplate.id;
+        updateDeleteButtonVisibility();
+      }
+    } else {
+      showModal('保存失败', result.error || '未知错误', 'error');
+    }
+  } catch (error) {
+    console.error('保存模板失败:', error);
+    showModal('保存失败', error.message, 'error');
+  }
+}
+
+// 保存配置（已废弃，改为保存为模板）
+// function saveConfig() {
+//   // 将当前配置保存到localStorage
+//   const config = {
+//     model_type: currentModel ? currentModel.id : null,
+//     parameters: currentParameters,
+//     data_amount: parseInt(document.getElementById('data-amount').value) || 1000
+//   };
+//   localStorage.setItem('synthesis_config', JSON.stringify(config));
+//   alert('配置已保存！');
+// }
+
+// 显示模态框（通用函数）
+function showModal(title, message, type = 'info', onConfirm = null) {
+  const modal = document.createElement('div');
+  modal.className = 'custom-modal';
+  modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;';
+  
+  const iconMap = {
+    'success': '✅',
+    'error': '❌',
+    'warning': '⚠️',
+    'info': 'ℹ️'
+  };
+  
+  const colorMap = {
+    'success': '#10b981',
+    'error': '#dc2626',
+    'warning': '#f59e0b',
+    'info': 'var(--primary)'
+  };
+  
+  modal.innerHTML = `
+    <div style="background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+      <div style="text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 16px;">${iconMap[type] || iconMap.info}</div>
+        <h3 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: ${colorMap[type] || colorMap.info};">${title}</h3>
+        <p style="color: var(--muted); margin: 0 0 20px 0; line-height: 1.6;">${message}</p>
+        <button class="button primary" onclick="
+          this.closest('.custom-modal').remove();
+          ${onConfirm ? `(${onConfirm.toString()})();` : ''}
+        " style="padding: 10px 24px;">确定</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('页面DOM加载完成，开始加载模板...');
+  
+  // 确保templates-list元素存在
+  const templatesList = document.getElementById('templates-list');
+  if (!templatesList) {
+    console.error('templates-list元素不存在');
+    return;
+  }
+  
+  // 初始化数据源标签
+  const tabTemplate = document.getElementById('tab-template');
+  if (tabTemplate) {
+    tabTemplate.classList.add('active');
+  }
+  
+  // 加载模板
+  loadTemplates();
+  
+  // 先加载大模型列表，再加载SDG模型列表
+  loadAIModels().then(() => {
+    loadSDGModels();
+  });
+  
+  console.log('页面初始化完成');
+  
+  // 页面卸载时停止轮询
+  window.addEventListener('beforeunload', function() {
+    stopPolling();
+  });
+  
+  // 页面隐藏时停止轮询（切换标签页时）
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      // 页面隐藏时可以选择停止轮询或继续轮询
+      // 这里选择继续轮询，以便用户切换回来时能看到最新状态
+      // 如果需要停止，可以取消下面的注释
+      // stopPolling();
+    }
+  });
+});
+</script>
+{% endblock %}
+
+
