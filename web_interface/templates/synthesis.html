@@ -93,6 +93,10 @@
   background: var(--primary);
   color: #fff;
 }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 </style>
 {% endblock %}
 
@@ -197,6 +201,12 @@
               <button class="button secondary" style="font-size: 12px; padding: 6px 12px;" onclick="setAllFieldsAction('regenerate')">全部重新生成</button>
               <button class="button secondary" style="font-size: 12px; padding: 6px 12px;" onclick="setAllFieldsAction('keep')">全部保留</button>
               <button class="button secondary" style="font-size: 12px; padding: 6px 12px;" onclick="setAllFieldsAction('remove')">全部删除</button>
+              <button class="button primary" style="font-size: 12px; padding: 6px 12px;" onclick="autoDetectAllFields()" title="使用SDGX自动识别所有字段类型">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;">
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                全部自动识别
+              </button>
             </div>
           </div>
           <table class="table" id="fields-list">
@@ -376,7 +386,7 @@
       </div>
       <div class="wizard-nav">
         <button class="button secondary" data-nav="prev">上一步</button>
-        <button class="button primary" data-nav="next" onclick="onWizardComplete()">完成</button>
+        <button class="button primary" onclick="onWizardComplete()" style="padding: 12px 32px; font-size: 14px; font-weight: 600;">完成</button>
       </div>
     </div>
   </section>
@@ -595,15 +605,33 @@ function handleFileSelect(event) {
       result.data.columns.forEach(col => {
         fieldsConfig[col] = {
           name: col,
-          type: 'string', // 默认类型，后续可自动识别
+          type: 'auto', // 默认自动识别
           action: 'regenerate'
         };
       });
       
       // 显示预览表格
       renderFilePreview(result.data.preview, result.data.columns);
-      renderFieldsList();
-      document.getElementById('step1-next').disabled = false;
+      
+      // 显示正在自动识别的提示
+      const fileInfo = document.getElementById('file-info');
+      const originalInfo = fileInfo.textContent;
+      fileInfo.innerHTML = `<span style="color: var(--primary);">🔄 正在自动识别字段类型...</span>`;
+      
+      // 自动调用全部自动识别
+      console.log('文件上传成功，开始自动识别字段类型...');
+      autoDetectAllFieldsInternal().then(() => {
+        console.log('自动识别完成');
+        fileInfo.textContent = `${result.data.rows} 行 × ${result.data.columns.length} 列 <span style="color: #16a34a; font-size: 11px;">✓ 已自动识别</span>`;
+        renderFieldsList();
+        document.getElementById('step1-next').disabled = false;
+      }).catch(error => {
+        console.error('自动识别失败:', error);
+        fileInfo.textContent = originalInfo;
+        renderFieldsList();
+        // 即使自动识别失败，也允许继续
+        document.getElementById('step1-next').disabled = false;
+      });
     } else {
       alert(result.error || '文件上传失败');
     }
@@ -656,6 +684,7 @@ function renderFieldsList() {
   
   let html = '';
   const typeLabels = {
+    'auto': '🤖 自动识别',
     'string': '字符串',
     'integer': '整数',
     'float': '浮点数',
@@ -700,6 +729,63 @@ function renderFieldDetail(fieldName, field) {
   const detailDiv = document.getElementById('field-detail');
   const currentType = field.type || 'string';
   
+  // 如果是自动识别，显示简化界面
+  if (currentType === 'auto') {
+    detailDiv.innerHTML = `
+      <div class="field-detail-header">
+        <h4 class="field-detail-title">${field.name}</h4>
+        <span class="field-detail-badge" data-type="auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">🤖 自动识别</span>
+      </div>
+      <div class="field-detail-content">
+        <div class="form-group-enhanced">
+          <label class="form-label-enhanced">
+            <span class="label-text">字段类型</span>
+            <span class="label-hint">选择字段的数据类型</span>
+          </label>
+          <select class="form-input-enhanced" id="field-type-${fieldName}" onchange="onFieldTypeChange('${fieldName}', this.value)">
+            <option value="auto" selected>🤖 自动识别 (SDGX自动处理)</option>
+            <option value="string">字符串 (String)</option>
+            <option value="integer">整数 (Integer)</option>
+            <option value="float">浮点数 (Float)</option>
+            <option value="boolean">布尔值 (Boolean)</option>
+            <option value="discrete">离散/分类 (Discrete)</option>
+            <option value="id">ID类型 (ID)</option>
+            <option value="date">日期时间 (DateTime)</option>
+          </select>
+          <p style="font-size: 12px; color: var(--primary); margin-top: 6px; display: flex; align-items: flex-start; gap: 4px; padding: 8px; background: rgba(102, 126, 234, 0.1); border-radius: 6px; line-height: 1.5;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-top: 2px; flex-shrink: 0;">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>此字段将由SDGX自动识别类型，无需手动配置。SDGX会在训练时自动分析数据特征并确定最合适的类型。</span>
+            ${field.sdgx_detected_type ? `<br><span style="color: var(--muted); font-size: 11px; margin-top: 4px; display: block;">识别结果参考: ${getTypeLabel(field.sdgx_detected_type)} (置信度: ${(field.sdgx_confidence * 100).toFixed(0)}%)</span>` : ''}
+          </p>
+        </div>
+        <div class="form-group-enhanced">
+          <label class="form-label-enhanced">
+            <span class="label-text">处理方式</span>
+            <span class="label-hint">选择字段的处理策略</span>
+          </label>
+          <select class="form-input-enhanced" id="field-action-${fieldName}" onchange="updateFieldConfig('${fieldName}', 'action', this.value)">
+            <option value="regenerate" ${field.action === 'regenerate' ? 'selected' : ''}>重新生成</option>
+            <option value="keep" ${field.action === 'keep' ? 'selected' : ''}>保留原值</option>
+            <option value="remove" ${field.action === 'remove' ? 'selected' : ''}>删除字段</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-detail-actions">
+        <button class="button primary" onclick="saveFieldConfig('${fieldName}')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="17 21 17 13 7 13 7 21" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="7 3 7 8 15 8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          保存配置
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
   // 判断是否需要显示取值范围
   const showRange = currentType === 'integer' || currentType === 'float';
   const showDateRange = currentType === 'date';
@@ -718,6 +804,7 @@ function renderFieldDetail(fieldName, field) {
           <span class="label-hint">选择字段的数据类型</span>
         </label>
         <select class="form-input-enhanced" id="field-type-${fieldName}" onchange="onFieldTypeChange('${fieldName}', this.value)">
+          <option value="auto" ${currentType === 'auto' ? 'selected' : ''}>🤖 自动识别 (SDGX自动处理)</option>
           <option value="string" ${currentType === 'string' ? 'selected' : ''}>字符串 (String)</option>
           <option value="integer" ${currentType === 'integer' ? 'selected' : ''}>整数 (Integer)</option>
           <option value="float" ${currentType === 'float' ? 'selected' : ''}>浮点数 (Float)</option>
@@ -726,6 +813,14 @@ function renderFieldDetail(fieldName, field) {
           <option value="id" ${currentType === 'id' ? 'selected' : ''}>ID类型 (ID)</option>
           <option value="date" ${currentType === 'date' ? 'selected' : ''}>日期时间 (DateTime)</option>
         </select>
+        ${currentType === 'auto' ? `
+        <p style="font-size: 12px; color: var(--primary); margin-top: 6px; display: flex; align-items: center; gap: 4px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          此字段将由SDGX自动识别类型，无需手动配置
+        </p>
+        ` : ''}
       </div>
       <div class="form-group-enhanced">
         <label class="form-label-enhanced">
@@ -918,15 +1013,20 @@ function renderFieldDetail(fieldName, field) {
 // 获取类型标签
 function getTypeLabel(type) {
   const labels = {
-    'string': '字符串',
+    'auto': '自动识别',
+    'string': '文本',
     'integer': '整数',
+    'int': '整数',
     'float': '浮点数',
+    'number': '数值',
     'boolean': '布尔值',
+    'bool': '布尔值',
     'discrete': '离散/分类',
     'id': 'ID',
-    'date': '日期时间'
+    'date': '日期',
+    'datetime': '日期时间'
   };
-  return labels[type] || type;
+  return labels[type] || '文本';
 }
 
 // 字段类型变化时的处理
@@ -936,6 +1036,22 @@ function onFieldTypeChange(fieldName, newType) {
   
   // 更新字段类型
   field.type = newType;
+  
+  // 如果选择自动识别，清理所有手动配置
+  if (newType === 'auto') {
+    // 自动识别模式下，清理所有手动配置，让SDGX完全自动处理
+    delete field.range;
+    delete field.date_range;
+    delete field.categories;
+    delete field.id_unique;
+    delete field.id_prefix;
+    delete field.true_value;
+    delete field.false_value;
+    // 重新渲染字段详情（会显示自动识别提示）
+    renderFieldDetail(fieldName, field);
+    renderFieldsList();
+    return;
+  }
   
   // 根据新类型清理不相关的配置
   if (newType === 'string' || newType === 'date' || newType === 'boolean' || newType === 'discrete' || newType === 'id') {
@@ -1108,6 +1224,193 @@ function setAllFieldsAction(action) {
   renderFieldsList();
 }
 
+// 全部自动识别字段类型（内部函数，不依赖按钮事件）
+async function autoDetectAllFieldsInternal() {
+  if (Object.keys(fieldsConfig).length === 0) {
+    return;
+  }
+  
+  try {
+    // 确定数据源
+    const requestData = {};
+    if (selectedFileId) {
+      requestData.file_id = selectedFileId;
+    } else if (selectedTemplate) {
+      requestData.template_id = selectedTemplate;
+    } else {
+      return;
+    }
+    
+    // 调用后端API进行字段类型识别
+    const response = await fetch('/api/synthesis/analyze-field-types', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(requestData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.fields) {
+      // 更新字段配置，将所有字段类型设置为 'auto'
+      // 同时保存SDGX识别的类型作为参考
+      result.fields.forEach(field => {
+        if (fieldsConfig[field.name]) {
+          fieldsConfig[field.name].type = 'auto';
+          fieldsConfig[field.name].sdgx_detected_type = field.type; // 保存SDGX识别的类型作为参考
+          fieldsConfig[field.name].sdgx_confidence = field.confidence; // 保存置信度
+        }
+      });
+      
+      renderFieldsList();
+      console.log(`已为 ${result.fields.length} 个字段启用自动识别`);
+    } else {
+      throw new Error(result.error || '识别失败');
+    }
+  } catch (error) {
+    console.error('自动识别字段类型失败:', error);
+    // 不显示错误提示，静默失败，让用户可以继续操作
+  }
+}
+
+// 全部自动识别字段类型（用户点击按钮触发）
+async function autoDetectAllFields() {
+  if (Object.keys(fieldsConfig).length === 0) {
+    showModal('提示', '请先选择数据源', 'warning');
+    return;
+  }
+  
+  // 显示加载提示
+  const button = event.target.closest('button');
+  const originalText = button.innerHTML;
+  button.disabled = true;
+  button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle; animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56" stroke-linecap="round" stroke-linejoin="round"/></svg>识别中...';
+  
+  try {
+    // 确定数据源
+    const requestData = {};
+    if (selectedFileId) {
+      requestData.file_id = selectedFileId;
+    } else if (selectedTemplate) {
+      requestData.template_id = selectedTemplate;
+    } else {
+      showModal('提示', '请先选择数据源（模板或上传文件）', 'warning');
+      button.disabled = false;
+      button.innerHTML = originalText;
+      return;
+    }
+    
+    // 调用后端API进行字段类型识别
+    const response = await fetch('/api/synthesis/analyze-field-types', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(requestData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.fields) {
+      // 更新字段配置，将所有字段类型设置为 'auto'
+      // 同时保存SDGX识别的类型作为参考
+      result.fields.forEach(field => {
+        if (fieldsConfig[field.name]) {
+          fieldsConfig[field.name].type = 'auto';
+          fieldsConfig[field.name].sdgx_detected_type = field.type; // 保存SDGX识别的类型作为参考
+          fieldsConfig[field.name].sdgx_confidence = field.confidence; // 保存置信度
+        }
+      });
+      
+      renderFieldsList();
+      showModal('成功', `已为 ${result.fields.length} 个字段启用自动识别，SDGX将自动处理这些字段的类型`, 'success');
+    } else {
+      throw new Error(result.error || '识别失败');
+    }
+  } catch (error) {
+    console.error('自动识别字段类型失败:', error);
+    showModal('错误', `自动识别失败: ${error.message || '未知错误'}`, 'error');
+  } finally {
+    button.disabled = false;
+    button.innerHTML = originalText;
+  }
+}
+
+// 单个字段自动识别
+async function autoDetectField(fieldName) {
+  if (!fieldsConfig[fieldName]) {
+    return;
+  }
+  
+  // 显示加载提示
+  const select = document.getElementById(`field-type-${fieldName}`);
+  if (!select) return;
+  
+  const originalValue = select.value;
+  select.disabled = true;
+  select.innerHTML = '<option>识别中...</option>';
+  
+  try {
+    // 确定数据源
+    const requestData = {};
+    if (selectedFileId) {
+      requestData.file_id = selectedFileId;
+    } else if (selectedTemplate) {
+      requestData.template_id = selectedTemplate;
+    } else {
+      showModal('提示', '请先选择数据源', 'warning');
+      select.disabled = false;
+      select.value = originalValue;
+      return;
+    }
+    
+    // 调用后端API
+    const response = await fetch('/api/synthesis/analyze-field-types', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify(requestData)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.fields) {
+      const detectedField = result.fields.find(f => f.name === fieldName);
+      if (detectedField) {
+        fieldsConfig[fieldName].type = 'auto';
+        fieldsConfig[fieldName].sdgx_detected_type = detectedField.type;
+        fieldsConfig[fieldName].sdgx_confidence = detectedField.confidence;
+        
+        // 重新渲染字段详情
+        renderFieldDetail(fieldName, fieldsConfig[fieldName]);
+        renderFieldsList();
+      }
+    }
+  } catch (error) {
+    console.error('自动识别字段类型失败:', error);
+    showModal('错误', `自动识别失败: ${error.message || '未知错误'}`, 'error');
+  } finally {
+    select.disabled = false;
+  }
+}
+
 function updateSimilarity() {
   const value = document.getElementById('similarity').value;
   document.getElementById('similarity-value').textContent = value;
@@ -1138,6 +1441,30 @@ async function startGenerate() {
     return;
   }
   
+  // 禁用按钮并显示加载状态
+  const generateBtn = document.querySelector('button[onclick="startGenerate()"]');
+  const originalBtnText = generateBtn ? generateBtn.innerHTML : '';
+  if (generateBtn) {
+    generateBtn.disabled = true;
+    generateBtn.style.opacity = '0.6';
+    generateBtn.style.cursor = 'not-allowed';
+    generateBtn.innerHTML = `
+      <div style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle;"></div>
+      正在创建任务...
+    `;
+  }
+  
+  // 立即切换到第四步，显示加载状态
+  goToStep(4);
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  if (progressBar) {
+    progressBar.style.width = '0%';
+  }
+  if (progressText) {
+    progressText.textContent = '正在创建任务...';
+  }
+  
   if (!currentModel) {
     showModal('提示', '请先选择模型', 'warning');
     return;
@@ -1147,12 +1474,28 @@ async function startGenerate() {
   const dataAmount = parseInt(document.getElementById('data-amount').value) || 1000;
   
   // 构建字段配置数组（按照接口文档格式）
+  console.log('[startGeneration] 当前fieldsConfig:', fieldsConfig);
   const fields = Object.values(fieldsConfig).map(field => {
     const fieldConfig = {
       name: field.name,
-      type: field.type,
       action: field.action
     };
+    
+    // 如果字段类型是 'auto'，传递type='auto'以便后端和前端显示
+    if (field.type === 'auto') {
+      // 自动识别模式：传递type='auto'，同时传递sdgx_detected_type作为参考
+      fieldConfig.type = 'auto';
+      if (field.sdgx_detected_type) {
+        fieldConfig.sdgx_detected_type = field.sdgx_detected_type; // SDGX识别的类型作为参考
+      }
+      if (field.sdgx_confidence) {
+        fieldConfig.sdgx_confidence = field.sdgx_confidence; // SDGX识别的置信度
+      }
+      return fieldConfig;
+    }
+    
+    // 手动配置模式：传递类型和相应配置
+    fieldConfig.type = field.type;
     
     // 根据字段类型添加相应的配置
     if (field.type === 'integer' || field.type === 'float') {
@@ -1212,6 +1555,9 @@ async function startGenerate() {
     fields: fields
   };
   
+  console.log('[startGeneration] 发送的字段配置:', fields);
+  console.log('[startGeneration] 请求体:', JSON.stringify(requestBody, null, 2));
+  
   // 根据模型类型设置不同的配置
   if (currentModel.type === 'sdg') {
     // SDG本地模型：直接使用currentParameters
@@ -1250,12 +1596,15 @@ async function startGenerate() {
       currentTaskId = result.data.task_id;
       console.log('任务创建成功, task_id:', currentTaskId);
       
-      // 立即切换到第四步
-      goToStep(4);
+      // 恢复按钮状态
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.style.opacity = '1';
+        generateBtn.style.cursor = 'pointer';
+        generateBtn.innerHTML = originalBtnText;
+      }
       
-      // 立即初始化进度显示
-      const progressBar = document.getElementById('progress-bar');
-      const progressText = document.getElementById('progress-text');
+      // 更新进度显示
       if (progressBar) {
         progressBar.style.width = '0%';
       }
@@ -1271,10 +1620,40 @@ async function startGenerate() {
       pollTaskStatus();
     } else {
       console.error('创建任务失败:', result.error);
+      
+      // 恢复按钮状态
+      const generateBtn = document.querySelector('button[onclick="startGenerate()"]');
+      if (generateBtn) {
+        generateBtn.disabled = false;
+        generateBtn.style.opacity = '1';
+        generateBtn.style.cursor = 'pointer';
+        generateBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;">
+            <polygon points="5 3 19 12 5 21 5 3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          开始生成
+        `;
+      }
+      
       showModal('创建任务失败', result.error || '创建任务失败', 'error');
     }
   } catch (error) {
     console.error('创建任务失败:', error);
+    
+    // 恢复按钮状态
+    const generateBtn = document.querySelector('button[onclick="startGenerate()"]');
+    if (generateBtn) {
+      generateBtn.disabled = false;
+      generateBtn.style.opacity = '1';
+      generateBtn.style.cursor = 'pointer';
+      generateBtn.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right: 8px; vertical-align: middle;">
+          <polygon points="5 3 19 12 5 21 5 3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        开始生成
+      `;
+    }
+    
     showModal('操作失败', '操作失败，请重试', 'error');
   }
 }
@@ -1421,25 +1800,106 @@ function pollTaskStatus() {
           // 更新步骤样式：标记第三步和第四步为完成
           updateWizardSteps(3, 4);
           
-          // 自动展示预览数据
+          // 自动展示预览数据（立即加载，不延迟）
           console.log('任务完成，自动加载预览数据，任务ID:', currentTaskId);
-          setTimeout(() => {
-            previewData().catch(err => {
-              console.error('自动预览失败:', err);
-              // 如果自动预览失败，显示错误提示
-              const previewArea = document.getElementById('preview-area');
-              if (previewArea) {
-                previewArea.style.display = 'block';
-                previewArea.innerHTML = `
-                  <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border); padding: 24px; text-align: center;">
-                    <p style="color: var(--danger); margin-bottom: 12px;">预览数据加载失败</p>
-                    <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">${err.message || '未知错误'}</p>
-                    <button class="button primary" onclick="previewData()">重试</button>
-                  </div>
-                `;
-              }
-            });
-          }, 1000); // 延迟1秒确保数据已保存
+          // 先显示预览区域，避免用户等待
+          const previewArea = document.getElementById('preview-area');
+          if (previewArea) {
+  previewArea.style.display = 'block';
+  
+  // 检查是否已有表格结构
+  const existingThead = document.getElementById('compare-original-thead');
+  if (!existingThead) {
+    // 如果表格结构不存在，先恢复HTML结构，然后显示加载状态
+    previewArea.innerHTML = `
+      <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border);">
+        <!-- 统计信息 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 16px; padding-bottom: 12px;">
+          <div id="preview-stats" style="display: flex; gap: 24px; font-size: 13px; color: var(--muted);">
+            <span id="original-stats">原始数据: -</span>
+            <span id="synthetic-stats">生成数据: -</span>
+          </div>
+        </div>
+        
+        <!-- 加载提示 -->
+        <div id="preview-loading" style="text-align: center; padding: 40px 20px; color: var(--muted);">
+          <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;"></div>
+          <p style="margin: 0; font-size: 14px;">正在加载预览数据...</p>
+        </div>
+        
+        <!-- 并排对比视图（默认显示） -->
+        <div id="preview-compare-view" style="display: block;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <!-- 原始数据 -->
+            <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <span>📊</span> 原始模板数据
+                <span id="original-count" style="margin-left: auto; font-size: 12px; opacity: 0.9;">-</span>
+                <button onclick="viewOriginalData()" id="view-original-link-btn" style="margin-left: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; transition: all 0.2s; display: none; align-items: center; gap: 4px;" onmouseover="this.style.background='rgba(255,255,255,0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.2)';">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  查看完整数据
+                </button>
+              </div>
+              <div style="max-height: 600px; overflow: auto;">
+                <table class="table" style="margin: 0;">
+                  <thead id="compare-original-thead" style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;"></thead>
+                  <tbody id="compare-original-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- 生成数据 -->
+            <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                <span>✨</span> 生成数据
+                <span id="synthetic-count" style="margin-left: auto; font-size: 12px; opacity: 0.9;">-</span>
+              </div>
+              <div style="max-height: 600px; overflow: auto;" id="compare-synthetic-scroll">
+                <table class="table" style="margin: 0;">
+                  <thead id="compare-synthetic-thead" style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;"></thead>
+                  <tbody id="compare-synthetic-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    // 如果表格结构已存在，只显示/更新加载提示
+    let loadingDiv = document.getElementById('preview-loading');
+    if (!loadingDiv) {
+      loadingDiv = document.createElement('div');
+      loadingDiv.id = 'preview-loading';
+      loadingDiv.style.cssText = 'text-align: center; padding: 20px; color: var(--muted); background: rgba(37, 99, 235, 0.05); border-radius: 8px; margin-bottom: 16px;';
+      loadingDiv.innerHTML = `
+        <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle;"></div>
+        <span style="font-size: 14px;">正在加载预览数据...</span>
+      `;
+      const compareView = document.getElementById('preview-compare-view');
+      if (compareView && compareView.parentNode) {
+        compareView.parentNode.insertBefore(loadingDiv, compareView);
+      }
+    }
+  }
+          }
+          // 立即开始加载预览数据
+          previewData().catch(err => {
+            console.error('自动预览失败:', err);
+            // 如果自动预览失败，显示错误提示
+            if (previewArea) {
+              previewArea.innerHTML = `
+                <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border); padding: 24px; text-align: center;">
+                  <p style="color: var(--danger); margin-bottom: 12px;">预览数据加载失败</p>
+                  <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">${err.message || '未知错误'}</p>
+                  <button class="button primary" onclick="previewData()">重试</button>
+                </div>
+              `;
+            }
+          });
           
           console.log('任务完成，轮询已停止');
           return true; // 停止轮询
@@ -1567,6 +2027,59 @@ async function previewData() {
   // 确保切换到第四步
   goToStep(4);
   
+  // 立即显示预览区域，避免用户等待
+  const previewArea = document.getElementById('preview-area');
+  if (!previewArea) {
+    console.error('预览区域元素不存在');
+    return;
+  }
+  
+  previewArea.style.display = 'block';
+  
+  // 检查是否已有表格结构，如果没有则显示加载状态
+  const existingThead = document.getElementById('compare-original-thead');
+  if (!existingThead) {
+    // 如果表格结构不存在，显示加载状态（但保留原有结构）
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'preview-loading';
+    loadingDiv.style.cssText = 'text-align: center; padding: 40px 20px; color: var(--muted);';
+    loadingDiv.innerHTML = `
+      <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px;"></div>
+      <p style="margin: 0; font-size: 14px;">正在加载预览数据...</p>
+    `;
+    // 如果preview-area内部已经有内容，先清空
+    previewArea.innerHTML = '';
+    previewArea.appendChild(loadingDiv);
+  } else {
+    // 如果表格结构已存在，只显示加载提示（不覆盖表格）
+    const loadingDiv = document.getElementById('preview-loading');
+    if (!loadingDiv) {
+      const loadingDivNew = document.createElement('div');
+      loadingDivNew.id = 'preview-loading';
+      loadingDivNew.style.cssText = 'text-align: center; padding: 20px; color: var(--muted); background: rgba(37, 99, 235, 0.05); border-radius: 8px; margin-bottom: 16px;';
+      loadingDivNew.innerHTML = `
+        <div style="display: inline-block; width: 24px; height: 24px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle;"></div>
+        <span style="font-size: 14px;">正在加载预览数据...</span>
+      `;
+      previewArea.insertBefore(loadingDivNew, previewArea.firstChild);
+    }
+  }
+  
+  // 设置超时（30秒）
+  let timeoutId = setTimeout(() => {
+    console.error('预览数据加载超时');
+    const previewAreaCheck = document.getElementById('preview-area');
+    if (previewAreaCheck && previewAreaCheck.innerHTML.includes('正在加载预览数据')) {
+      previewAreaCheck.innerHTML = `
+        <div class="panel" style="border-radius: 12px; box-shadow: none; border: 1px dashed var(--border); padding: 24px; text-align: center;">
+          <p style="color: var(--danger); margin-bottom: 12px;">加载超时</p>
+          <p style="color: var(--muted); font-size: 14px; margin-bottom: 16px;">预览数据加载时间过长，请检查网络连接或重试</p>
+          <button class="button primary" onclick="previewData()">重试</button>
+        </div>
+      `;
+    }
+  }, 30000);
+  
   try {
     // 先获取任务配置以获取字段类型信息
     const taskRes = await fetch(`/api/synthesis/tasks/${currentTaskId}`);
@@ -1580,26 +2093,26 @@ async function previewData() {
             fieldsConfig[field.name] = {};
           }
           fieldsConfig[field.name].type = field.type || 'string';
+          fieldsConfig[field.name].sdgx_detected_type = field.sdgx_detected_type;
+          fieldsConfig[field.name].sdgx_confidence = field.sdgx_confidence;
         }
       });
     }
     
     // 同时加载原始数据和生成数据
+    console.log('开始请求预览数据API...');
     const [originalRes, syntheticRes] = await Promise.all([
       fetch(`/api/synthesis/tasks/${currentTaskId}/preview?type=original`).catch(err => {
-        console.warn('加载原始数据失败:', err);
-        return null;
+        console.warn('加载原始数据请求失败:', err);
+        return { ok: false, error: err };
       }),
       fetch(`/api/synthesis/tasks/${currentTaskId}/preview?type=synthetic`).catch(err => {
-        console.error('加载生成数据失败:', err);
-        throw err;
+        console.error('加载生成数据请求失败:', err);
+        return { ok: false, error: err };
       })
     ]);
     
-    console.log('API响应状态:', {
-      original: originalRes ? originalRes.status : 'null',
-      synthetic: syntheticRes ? syntheticRes.status : 'null'
-    });
+    console.log('API请求完成，原始数据状态:', originalRes?.ok, '生成数据状态:', syntheticRes?.ok);
     
     // 处理生成数据
     if (syntheticRes && syntheticRes.ok) {
@@ -1607,24 +2120,36 @@ async function previewData() {
       console.log('生成数据响应:', syntheticResult);
       if (syntheticResult.success && syntheticResult.data) {
         previewDataCache.synthetic = syntheticResult.data;
-        console.log('生成数据已缓存，列数:', syntheticResult.data.columns?.length, '行数:', syntheticResult.data.data?.length);
+        console.log('生成数据已缓存，行数:', syntheticResult.data.data?.length, '列数:', syntheticResult.data.columns?.length);
       } else {
         console.error('生成数据加载失败:', syntheticResult.error || '未知错误');
         throw new Error(syntheticResult.error || '无法加载生成数据');
       }
-    } else if (syntheticRes) {
-      const errorText = await syntheticRes.text();
-      console.error('生成数据API错误:', syntheticRes.status, errorText);
-      throw new Error(`API错误: ${syntheticRes.status} - ${errorText}`);
+    } else {
+      let errorMsg = '无法加载生成数据';
+      if (syntheticRes && syntheticRes.error) {
+        errorMsg = `请求失败: ${syntheticRes.error.message || syntheticRes.error}`;
+      } else if (syntheticRes && !syntheticRes.ok) {
+        const errorText = await syntheticRes.text().catch(() => '');
+        errorMsg = `API错误: ${syntheticRes.status} - ${errorText || '未知错误'}`;
+      }
+      console.error('生成数据加载失败:', errorMsg);
+      throw new Error(errorMsg);
     }
     
-    // 处理原始数据
+    // 处理原始数据（可选，失败不影响显示）
     if (originalRes && originalRes.ok) {
-      const originalResult = await originalRes.json();
-      if (originalResult.success && originalResult.data) {
-        previewDataCache.original = originalResult.data;
-        console.log('原始数据已缓存');
+      try {
+        const originalResult = await originalRes.json();
+        if (originalResult.success && originalResult.data) {
+          previewDataCache.original = originalResult.data;
+          console.log('原始数据已缓存，行数:', originalResult.data.data?.length, '列数:', originalResult.data.columns?.length);
+        }
+      } catch (err) {
+        console.warn('解析原始数据失败:', err);
       }
+    } else {
+      console.warn('原始数据加载失败，将只显示生成数据');
     }
     
     // 检查是否有生成数据
@@ -1632,29 +2157,46 @@ async function previewData() {
       throw new Error('未获取到生成数据');
     }
     
-    // 显示预览区域
-    const previewArea = document.getElementById('preview-area');
-    if (!previewArea) {
-      console.error('预览区域元素不存在');
-      return;
+    // 预览区域已经在函数开始时显示了，这里直接渲染
+    console.log('开始渲染数据');
+    
+    // 先移除加载提示
+    const loadingDiv = document.getElementById('preview-loading');
+    if (loadingDiv) {
+      loadingDiv.remove();
+      console.log('已移除加载提示');
     }
     
-    previewArea.style.display = 'block';
-    console.log('预览区域已显示');
+    // 确保表格结构存在
+    const originalThead = document.getElementById('compare-original-thead');
+    const syntheticThead = document.getElementById('compare-synthetic-thead');
+    if (!originalThead || !syntheticThead) {
+      console.error('表格结构不存在，无法渲染');
+      throw new Error('表格结构不存在，请刷新页面重试');
+    }
     
-    // 启用查看原始数据按钮（预览区域）
-    const viewOriginalLinkBtn = document.getElementById('view-original-link-btn');
-    if (viewOriginalLinkBtn) viewOriginalLinkBtn.style.display = 'flex';
-    
-    // 默认使用并排对比视图
-    renderCompareView();
-    
-    // 更新统计信息
-    updatePreviewStats();
-    
-    console.log('预览数据加载完成');
+    // 渲染对比表格（添加错误处理）
+    try {
+      renderCompareView();
+      // 更新统计信息
+      updatePreviewStats();
+      
+      // 启用查看原始数据按钮（预览区域）
+      const viewOriginalLinkBtn = document.getElementById('view-original-link-btn');
+      if (viewOriginalLinkBtn) viewOriginalLinkBtn.style.display = 'flex';
+      
+      console.log('预览数据加载完成');
+      // 清除超时
+      clearTimeout(timeoutId);
+    } catch (renderError) {
+      console.error('渲染预览数据失败:', renderError);
+      clearTimeout(timeoutId);
+      throw new Error(`渲染失败: ${renderError.message || '未知错误'}`);
+    }
     
   } catch (error) {
+    // 清除超时
+    clearTimeout(timeoutId);
     console.error('预览失败:', error);
     const previewArea = document.getElementById('preview-area');
     if (previewArea) {
@@ -1808,23 +2350,70 @@ function renderCompareTable(type, data) {
   const tbody = document.getElementById(`${prefix}-tbody`);
   const countEl = document.getElementById(`${type}-count`);
   
-  if (!thead || !tbody) return;
+  if (!thead || !tbody) {
+    console.error(`渲染${type}数据失败: 找不到thead或tbody元素 (${prefix}-thead, ${prefix}-tbody)`);
+    return;
+  }
   
-  // 获取字段类型信息（从任务配置或fieldsConfig）
+  if (!data || !data.columns || !data.data) {
+    console.error(`渲染${type}数据失败: 数据格式不正确`, data);
+    tbody.innerHTML = `<tr><td colspan="${data?.columns?.length || 1}" style="text-align: center; padding: 20px; color: var(--muted);">数据格式错误</td></tr>`;
+    return;
+  }
+  
+  // 获取字段类型信息（优先从预览数据中获取，如果不存在则从fieldsConfig获取）
+  const fieldTypes = data.field_types || {};
+  
+  // 如果fieldTypes为空，尝试从fieldsConfig构建
   let fieldTypeMap = {};
-  if (currentTaskId && fieldsConfig) {
+  if (Object.keys(fieldTypes).length === 0 && fieldsConfig) {
     Object.keys(fieldsConfig).forEach(fieldName => {
-      if (fieldsConfig[fieldName] && fieldsConfig[fieldName].type) {
-        fieldTypeMap[fieldName] = fieldsConfig[fieldName].type;
+      if (fieldsConfig[fieldName]) {
+        fieldTypeMap[fieldName] = {
+          type: fieldsConfig[fieldName].type || 'string',
+          sdgx_detected_type: fieldsConfig[fieldName].sdgx_detected_type,
+          sdgx_confidence: fieldsConfig[fieldName].sdgx_confidence
+        };
       }
+    });
+  } else {
+    // 使用预览数据中的field_types
+    Object.keys(fieldTypes).forEach(fieldName => {
+      fieldTypeMap[fieldName] = fieldTypes[fieldName];
     });
   }
   
   if (data.columns && data.data) {
-    // 表头
+    // 表头 - 显示字段类型
     let headerHtml = '<tr>';
     data.columns.forEach(col => {
-      headerHtml += `<th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border); background: #f8f9fa; font-weight: 600; font-size: 13px;">${col}</th>`;
+      const fieldInfo = fieldTypeMap[col] || {};
+      const fieldType = fieldInfo.type || 'string';
+      let typeLabel = '文本';
+      
+      // 根据数据类型和配置显示类型标签
+      if (type === 'original') {
+        // 原始数据：如果配置的是自动识别，显示"自动识别"；否则显示配置的类型
+        if (fieldType === 'auto') {
+          typeLabel = '🤖 自动识别';
+        } else {
+          typeLabel = getTypeLabel(fieldType);
+        }
+      } else {
+        // 生成数据：如果配置的是自动识别，显示SDGX识别的类型；否则显示配置的类型
+        if (fieldType === 'auto') {
+          const sdgxType = fieldInfo.sdgx_detected_type || 'string';
+          const label = getTypeLabel(sdgxType);
+          typeLabel = `🤖 ${label}`;
+        } else {
+          typeLabel = getTypeLabel(fieldType);
+        }
+      }
+      
+      headerHtml += `<th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border); background: #f8f9fa; font-weight: 600; font-size: 13px; white-space: nowrap;">
+        ${col}
+        <span style="font-weight: normal; color: var(--muted); font-size: 11px; margin-left: 8px;">(${typeLabel})</span>
+      </th>`;
     });
     headerHtml += '</tr>';
     thead.innerHTML = headerHtml;
@@ -1843,7 +2432,12 @@ function renderCompareTable(type, data) {
         if (value !== null && value !== undefined) {
           // 根据字段类型格式化显示
           const valueStr = String(value);
-          const fieldType = fieldTypeMap[col] || 'string'; // 默认字符串类型
+          const fieldInfo = fieldTypeMap[col] || {};
+          // 对于生成数据，如果配置的是自动识别，使用SDGX识别的类型；否则使用配置的类型
+          let fieldType = fieldInfo.type || 'string';
+          if (type === 'synthetic' && fieldType === 'auto') {
+            fieldType = fieldInfo.sdgx_detected_type || 'string';
+          }
           
           // 检查是否是日期格式（YYYY-MM-DD）
           if (valueStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
@@ -2754,6 +3348,54 @@ function renderParameterConfig() {
       // 支持字符串类型参数（如 default_distribution）
       const options = paramDef.options || [];
       if (options.length > 0) {
+        // 分布类型说明映射
+        const distributionDescriptions = {
+          'norm': { 
+            name: '正态分布 (Norm)', 
+            desc: '适用于大多数连续数值数据，呈钟形对称分布',
+            detail: '正态分布（高斯分布）是最常用的连续概率分布，呈钟形曲线，对称分布。适用于：身高、体重、考试成绩、测量误差等大多数自然现象。特点是均值、中位数、众数相等，数据集中在均值附近。'
+          },
+          'beta': { 
+            name: 'Beta分布 (Beta)', 
+            desc: '适用于0-1范围内的有界数据，灵活的形状',
+            detail: 'Beta分布是定义在[0,1]区间内的连续概率分布，形状非常灵活（可以是U形、J形、钟形等）。适用于：比例数据（如转化率、完成率）、概率估计、百分比数据。可以通过调整参数α和β来控制分布的形状。'
+          },
+          'truncnorm': { 
+            name: '截断正态分布 (TruncNorm)', 
+            desc: '适用于有明确上下限的数值数据',
+            detail: '截断正态分布是正态分布被限制在特定区间内的版本。适用于：有明确范围限制的数据（如年龄18-65岁、评分1-10分）、需要保持正态分布特性但必须满足边界条件的数据。能更好地处理边界值。'
+          },
+          'uniform': { 
+            name: '均匀分布 (Uniform)', 
+            desc: '适用于数值在范围内均匀分布的数据',
+            detail: '均匀分布中所有值在指定范围内出现的概率相等，呈矩形分布。适用于：随机数生成、等概率事件、没有明显偏态的数据。特点是所有值出现的概率相同，方差较大。'
+          },
+          'gamma': { 
+            name: 'Gamma分布 (Gamma)', 
+            desc: '适用于非负的偏态分布数据，如等待时间、金额等',
+            detail: 'Gamma分布是定义在正实数上的连续概率分布，通常呈右偏（正偏）分布。适用于：等待时间、服务时长、金额、计数数据、生存时间等。可以模拟多种偏态形状，从指数分布到接近正态分布。'
+          },
+          'gaussian_kde': { 
+            name: '高斯核密度估计 (Gaussian KDE)', 
+            desc: '非参数方法，适用于复杂分布形状，但无法获取参数',
+            detail: '高斯核密度估计是一种非参数统计方法，不需要假设特定的分布形式，通过核函数平滑数据来估计概率密度。适用于：分布形状复杂、不规则的数据、多峰分布、无法用标准分布描述的数据。注意：使用此方法后无法获取分布的参数信息。'
+          }
+        };
+        
+        // 如果是分布类型参数，添加帮助提示
+        const isDistributionParam = key === 'default_distribution';
+        if (isDistributionParam) {
+          html += `<div style="margin-bottom: 12px; padding: 12px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">`;
+          html += `<div style="font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 4px;">📊 分布类型说明</div>`;
+          html += `<div style="font-size: 12px; color: #64748b; line-height: 1.6;">`;
+          html += `分布类型决定了生成数值数据的概率分布形状，影响合成数据的统计特性。选择合适的分布类型可以提高生成数据的质量和真实性。`;
+          html += `</div>`;
+          html += `<div style="margin-top: 8px; font-size: 11px; color: #94a3b8;">`;
+          html += `💡 <strong>提示：</strong>如果不确定选择哪种分布，建议使用 <strong>Beta分布</strong>（默认），它适用于大多数场景且形状灵活。`;
+          html += `</div>`;
+          html += `</div>`;
+        }
+        
         // 如果有选项，使用下拉框
         html += `<select 
                       class="form-input" 
@@ -2762,18 +3404,48 @@ function renderParameterConfig() {
                       style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
                       onchange="updateParameter('${key}', this.value)">`;
         options.forEach(opt => {
-          html += `<option value="${opt}" ${defaultValue === opt ? 'selected' : ''}>${opt}</option>`;
+          // 如果是分布类型，显示中文名称和说明
+          if (isDistributionParam && distributionDescriptions[opt]) {
+            const distInfo = distributionDescriptions[opt];
+            html += `<option value="${opt}" ${defaultValue === opt ? 'selected' : ''} title="${distInfo.desc}">${distInfo.name}</option>`;
+          } else {
+            html += `<option value="${opt}" ${defaultValue === opt ? 'selected' : ''}>${opt}</option>`;
+          }
         });
         html += `</select>`;
+        
+        // 如果选择了分布类型，显示当前选择的详细说明
+        if (isDistributionParam) {
+          const selectedDist = distributionDescriptions[defaultValue];
+          if (selectedDist) {
+            html += `<div id="param-${key}-desc" style="margin-top: 10px; padding: 14px; background: #ffffff; border-radius: 8px; font-size: 12px; color: #475569; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">`;
+            html += `<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">`;
+            html += `<div style="width: 4px; height: 20px; background: #3b82f6; border-radius: 2px;"></div>`;
+            html += `<strong style="font-size: 13px; color: #1e293b;">${selectedDist.name}</strong>`;
+            html += `</div>`;
+            html += `<div style="color: #64748b; line-height: 1.6; margin-bottom: 8px;">${selectedDist.desc}</div>`;
+            html += `<details style="margin-top: 8px;">`;
+            html += `<summary style="cursor: pointer; color: #3b82f6; font-size: 11px; font-weight: 500; user-select: none;">📖 查看详细说明</summary>`;
+            html += `<div style="margin-top: 8px; padding: 10px; background: #f8fafc; border-radius: 6px; color: #475569; font-size: 11px; line-height: 1.7;">${selectedDist.detail || selectedDist.desc}</div>`;
+            html += `</details>`;
+            html += `</div>`;
+          }
+        }
       } else {
         // 普通文本输入
+        const placeholder = paramDef.placeholder || '';
         html += `<input type="text" 
                         class="form-input" 
                         id="param-${key}" 
                         value="${defaultValue || ''}" 
+                        placeholder="${placeholder}"
                         ${isReadOnly ? 'readonly' : ''}
                         style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 14px; ${isReadOnly ? 'background: #f1f5f9; color: #64748b; cursor: not-allowed;' : ''}"
                         onchange="updateParameter('${key}', this.value)">`;
+        // 如果有placeholder，添加提示说明
+        if (placeholder) {
+          html += `<p style="margin: 6px 0 0 0; font-size: 11px; color: var(--muted);">${placeholder}</p>`;
+        }
       }
     }
     
@@ -2792,6 +3464,64 @@ function renderParameterConfig() {
       currentParameters[key] = paramDef.default;
     }
   });
+  
+  // 为分布类型参数添加事件监听器
+  const distributionDescriptions = {
+    'norm': { 
+      name: '正态分布 (Norm)', 
+      desc: '适用于大多数连续数值数据，呈钟形对称分布',
+      detail: '正态分布（高斯分布）是最常用的连续概率分布，呈钟形曲线，对称分布。适用于：身高、体重、考试成绩、测量误差等大多数自然现象。特点是均值、中位数、众数相等，数据集中在均值附近。'
+    },
+    'beta': { 
+      name: 'Beta分布 (Beta)', 
+      desc: '适用于0-1范围内的有界数据，灵活的形状',
+      detail: 'Beta分布是定义在[0,1]区间内的连续概率分布，形状非常灵活（可以是U形、J形、钟形等）。适用于：比例数据（如转化率、完成率）、概率估计、百分比数据。可以通过调整参数α和β来控制分布的形状。'
+    },
+    'truncnorm': { 
+      name: '截断正态分布 (TruncNorm)', 
+      desc: '适用于有明确上下限的数值数据',
+      detail: '截断正态分布是正态分布被限制在特定区间内的版本。适用于：有明确范围限制的数据（如年龄18-65岁、评分1-10分）、需要保持正态分布特性但必须满足边界条件的数据。能更好地处理边界值。'
+    },
+    'uniform': { 
+      name: '均匀分布 (Uniform)', 
+      desc: '适用于数值在范围内均匀分布的数据',
+      detail: '均匀分布中所有值在指定范围内出现的概率相等，呈矩形分布。适用于：随机数生成、等概率事件、没有明显偏态的数据。特点是所有值出现的概率相同，方差较大。'
+    },
+    'gamma': { 
+      name: 'Gamma分布 (Gamma)', 
+      desc: '适用于非负的偏态分布数据，如等待时间、金额等',
+      detail: 'Gamma分布是定义在正实数上的连续概率分布，通常呈右偏（正偏）分布。适用于：等待时间、服务时长、金额、计数数据、生存时间等。可以模拟多种偏态形状，从指数分布到接近正态分布。'
+    },
+    'gaussian_kde': { 
+      name: '高斯核密度估计 (Gaussian KDE)', 
+      desc: '非参数方法，适用于复杂分布形状，但无法获取参数',
+      detail: '高斯核密度估计是一种非参数统计方法，不需要假设特定的分布形式，通过核函数平滑数据来估计概率密度。适用于：分布形状复杂、不规则的数据、多峰分布、无法用标准分布描述的数据。注意：使用此方法后无法获取分布的参数信息。'
+    }
+  };
+  
+  // 为 default_distribution 参数添加事件监听器
+  const distSelect = document.getElementById('param-default_distribution');
+  const distDescDiv = document.getElementById('param-default_distribution-desc');
+  if (distSelect && distDescDiv) {
+    distSelect.addEventListener('change', function() {
+      const distInfo = distributionDescriptions[this.value];
+      if (distInfo) {
+        distDescDiv.innerHTML = 
+          '<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">' +
+          '<div style="width: 4px; height: 20px; background: #3b82f6; border-radius: 2px;"></div>' +
+          '<strong style="font-size: 13px; color: #1e293b;">' + distInfo.name + '</strong>' +
+          '</div>' +
+          '<div style="color: #64748b; line-height: 1.6; margin-bottom: 8px;">' + distInfo.desc + '</div>' +
+          '<details style="margin-top: 8px;">' +
+          '<summary style="cursor: pointer; color: #3b82f6; font-size: 11px; font-weight: 500; user-select: none;">📖 查看详细说明</summary>' +
+          '<div style="margin-top: 8px; padding: 10px; background: #f8fafc; border-radius: 6px; color: #475569; font-size: 11px; line-height: 1.7;">' + (distInfo.detail || distInfo.desc) + '</div>' +
+          '</details>';
+        distDescDiv.style.display = 'block';
+      } else {
+        distDescDiv.style.display = 'none';
+      }
+    });
+  }
   
   // 更新按钮显示状态
   updateDeleteButtonVisibility();
