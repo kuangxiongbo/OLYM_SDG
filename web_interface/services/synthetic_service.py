@@ -7,6 +7,7 @@
 import os
 import sys
 import re
+import json
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -152,6 +153,28 @@ def create_sdgx_model(model_type, model_config=None, similarity=0.8):
                 if 'default_distribution' in model_config:
                     copula_params['default_distribution'] = str(model_config['default_distribution'])
                 
+                # locales参数（用于PII数据匿名化）
+                if 'locales' in model_config and model_config['locales']:
+                    locales_str = str(model_config['locales']).strip()
+                    if locales_str:
+                        # 支持逗号分隔的多个locale
+                        if ',' in locales_str:
+                            copula_params['locales'] = [loc.strip() for loc in locales_str.split(',')]
+                        else:
+                            copula_params['locales'] = locales_str
+                
+                # numerical_distributions参数（为特定字段指定分布）
+                if 'numerical_distributions' in model_config and model_config['numerical_distributions']:
+                    numerical_dist_str = str(model_config['numerical_distributions']).strip()
+                    if numerical_dist_str:
+                        try:
+                            import json
+                            numerical_distributions = json.loads(numerical_dist_str)
+                            if isinstance(numerical_distributions, dict):
+                                copula_params['numerical_distributions'] = numerical_distributions
+                        except (json.JSONDecodeError, ValueError) as e:
+                            print(f"[create_sdgx_model] 警告: numerical_distributions JSON解析失败: {e}，将忽略此参数")
+                
                 return GaussianCopulaSynthesizerModel(**copula_params)
             else:
                 # 使用默认参数
@@ -160,6 +183,24 @@ def create_sdgx_model(model_type, model_config=None, similarity=0.8):
             # AI大模型：使用SDGX的SingleTableGPTModel
             # model_type格式：ai_ollama, ai_tongyi等
             # 注意：api_key和endpoint应该从model_config中获取（已在_execute_generation_task_with_app中处理）
+            
+            # #region agent log
+            import json
+            with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'A',
+                    'location': 'synthetic_service.py:187',
+                    'message': 'AI模型创建入口',
+                    'data': {
+                        'model_type': model_type,
+                        'model_config_type': str(type(model_config)),
+                        'model_config_keys': list(model_config.keys()) if isinstance(model_config, dict) else 'N/A'
+                    },
+                    'timestamp': int(__import__('time').time() * 1000)
+                }) + '\n')
+            # #endregion
             
             print(f"[create_sdgx_model] 开始创建AI大模型: {model_type}")
             print(f"[create_sdgx_model] model_config类型: {type(model_config)}, 内容keys: {list(model_config.keys()) if isinstance(model_config, dict) else 'N/A'}")
@@ -173,15 +214,96 @@ def create_sdgx_model(model_type, model_config=None, similarity=0.8):
             api_url = model_config.get('endpoint', '')
             selected_model = model_config.get('selected_model', '')
             
+            # 判断是否是本地模型（如Ollama），本地模型通常不需要api_key
+            is_local_model = model_type.lower() in ['ai_ollama']
+            
+            # #region agent log
+            with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'B',
+                    'location': 'synthetic_service.py:204',
+                    'message': '配置检查前',
+                    'data': {
+                        'api_key': '***' if api_key else '空',
+                        'api_key_length': len(api_key) if api_key else 0,
+                        'api_url': api_url if api_url else '未设置',
+                        'selected_model': selected_model if selected_model else '未设置',
+                        'is_local_model': is_local_model,
+                        'model_type': model_type
+                    },
+                    'timestamp': int(__import__('time').time() * 1000)
+                }) + '\n')
+            # #endregion
+            
             print(f"[create_sdgx_model] 配置检查:")
             print(f"  - api_key: {'已设置' if api_key else '未设置'} (长度: {len(api_key) if api_key else 0})")
             print(f"  - endpoint: {api_url if api_url else '未设置'}")
             print(f"  - selected_model: {selected_model if selected_model else '未设置'}")
+            print(f"  - 是否为本地模型: {is_local_model}")
             
-            if not api_key or not api_url:
-                error_msg = f"AI大模型配置不完整：api_key={'未设置' if not api_key else '已设置'}, endpoint={'未设置' if not api_url else api_url}"
-                print(f"[create_sdgx_model] 错误: {error_msg}")
-                raise ValueError(error_msg)
+            # 对于本地模型（如Ollama），api_key是可选的；对于其他模型，api_key是必需的
+            if is_local_model:
+                # 本地模型只需要endpoint，api_key可选
+                if not api_url:
+                    error_msg = f"本地大模型配置不完整：endpoint未设置"
+                    print(f"[create_sdgx_model] 错误: {error_msg}")
+                    # #region agent log
+                    with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({
+                            'sessionId': 'debug-session',
+                            'runId': 'run1',
+                            'hypothesisId': 'C',
+                            'location': 'synthetic_service.py:220',
+                            'message': '本地模型验证失败',
+                            'data': {
+                                'error': error_msg,
+                                'api_url': api_url
+                            },
+                            'timestamp': int(__import__('time').time() * 1000)
+                        }) + '\n')
+                    # #endregion
+                    raise ValueError(error_msg)
+            else:
+                # 非本地模型需要api_key和endpoint
+                if not api_key or not api_url:
+                    error_msg = f"AI大模型配置不完整：api_key={'未设置' if not api_key else '已设置'}, endpoint={'未设置' if not api_url else api_url}"
+                    print(f"[create_sdgx_model] 错误: {error_msg}")
+                    # #region agent log
+                    with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps({
+                            'sessionId': 'debug-session',
+                            'runId': 'run1',
+                            'hypothesisId': 'D',
+                            'location': 'synthetic_service.py:232',
+                            'message': '非本地模型验证失败',
+                            'data': {
+                                'error': error_msg,
+                                'api_key': '***' if api_key else '空',
+                                'api_url': api_url if api_url else '未设置'
+                            },
+                            'timestamp': int(__import__('time').time() * 1000)
+                        }) + '\n')
+                    # #endregion
+                    raise ValueError(error_msg)
+            
+            # #region agent log
+            with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                f.write(json.dumps({
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'E',
+                    'location': 'synthetic_service.py:240',
+                    'message': '配置验证通过',
+                    'data': {
+                        'is_local_model': is_local_model,
+                        'api_key_set': bool(api_key),
+                        'api_url_set': bool(api_url)
+                    },
+                    'timestamp': int(__import__('time').time() * 1000)
+                }) + '\n')
+            # #endregion
             
             if not selected_model:
                 error_msg = f"AI大模型配置不完整：缺少selected_model（需要从系统设置中选择具体模型）"
@@ -208,19 +330,88 @@ def create_sdgx_model(model_type, model_config=None, similarity=0.8):
                     query_batch=int(model_config.get('query_batch', 30))
                 )
                 
+                # #region agent log
+                with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'H',
+                        'location': 'synthetic_service.py:325',
+                        'message': '创建SingleTableGPTModel实例后',
+                        'data': {
+                            'selected_model': selected_model,
+                            'gpt_model_attr': gpt_model.gpt_model,
+                            'model_match': gpt_model.gpt_model == selected_model
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }) + '\n')
+                # #endregion
+                
                 # 关键：使用set_openAI_settings()方法显式设置API配置
                 # 这样可以确保我们的配置不会被环境变量覆盖
-                gpt_model.set_openAI_settings(API_url=api_url, API_key=api_key)
+                # 对于本地模型（如Ollama），如果api_key为空，传递占位符字符串"local"而不是None
+                # 这样可以绕过SDGX库的_check_openAI_setting()检查（它会检查api_key是否为空）
+                # 本地模型（如Ollama）通常不验证API key，只使用base_url
+                # #region agent log
+                with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'F',
+                        'location': 'synthetic_service.py:340',
+                        'message': '调用set_openAI_settings前',
+                        'data': {
+                            'is_local_model': is_local_model,
+                            'api_key': '***' if api_key else '空',
+                            'api_key_length': len(api_key) if api_key else 0,
+                            'api_url': api_url,
+                            'selected_model': selected_model
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }) + '\n')
+                # #endregion
+                
+                # 对于本地模型，如果api_key为空，传递占位符字符串"local"而不是None
+                # 这样可以绕过SDGX库的_check_openAI_setting()检查
+                api_key_for_setting = api_key if api_key else ("local" if is_local_model else '')
+                gpt_model.set_openAI_settings(API_url=api_url, API_key=api_key_for_setting)
+                
+                # #region agent log
+                with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps({
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'G',
+                        'location': 'synthetic_service.py:356',
+                        'message': '调用set_openAI_settings后',
+                        'data': {
+                            'api_key_set': bool(gpt_model.openai_API_key),
+                            'api_key_value': 'local' if (gpt_model.openai_API_key == 'local') else ('***' if gpt_model.openai_API_key else '空'),
+                            'api_url_set': bool(gpt_model.openai_API_url),
+                            'api_url_matches': gpt_model.openai_API_url == api_url,
+                            'gpt_model_attr': gpt_model.gpt_model,
+                            'selected_model': selected_model
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }) + '\n')
+                # #endregion
                 
                 # 验证配置是否正确设置
-                if gpt_model.openai_API_key != api_key:
+                if gpt_model.openai_API_key != api_key and api_key:  # 只有当api_key非空时才检查
                     print(f"[create_sdgx_model] 警告: API Key可能被环境变量覆盖，期望: {api_key[:10]}..., 实际: {gpt_model.openai_API_key[:10] if gpt_model.openai_API_key else 'None'}...")
                 if gpt_model.openai_API_url != api_url:
                     print(f"[create_sdgx_model] 警告: API URL可能被环境变量覆盖，期望: {api_url}, 实际: {gpt_model.openai_API_url}")
                 
+                # 验证模型名称是否正确设置
+                if gpt_model.gpt_model != selected_model:
+                    print(f"[create_sdgx_model] 警告: 模型名称可能被覆盖，期望: {selected_model}, 实际: {gpt_model.gpt_model}")
+                    # 如果模型名称不匹配，强制设置
+                    gpt_model.gpt_model = selected_model
+                    print(f"[create_sdgx_model] 已强制设置模型名称为: {selected_model}")
+                
                 print(f"[create_sdgx_model] SingleTableGPTModel创建成功")
                 print(f"[create_sdgx_model] 模型参数: gpt_model={gpt_model.gpt_model}, temperature={gpt_model.temperature}, max_tokens={gpt_model.max_tokens}")
-                print(f"[create_sdgx_model] API配置: url={gpt_model.openai_API_url}, key={'已设置' if gpt_model.openai_API_key else '未设置'}")
+                print(f"[create_sdgx_model] API配置: url={gpt_model.openai_API_url}, key={'已设置(本地模型)' if (is_local_model and gpt_model.openai_API_key == 'local') else ('已设置' if gpt_model.openai_API_key else '未设置')}")
             except Exception as e:
                 error_msg = f"创建SingleTableGPTModel实例失败: {str(e)}"
                 print(f"[create_sdgx_model] 错误: {error_msg}")
@@ -440,7 +631,7 @@ class SyntheticService:
         # 保存原始模板数据（用于保存结果时使用）
         self._original_template_data = None
         
-        # 初始化新模块
+        # 初始化新模块（保持向后兼容）
         from .data_loader import DataLoader
         from .data_validator import DataValidator
         from .data_transformer import DataTransformer
@@ -457,6 +648,18 @@ class SyntheticService:
             self.data_validator = None
             self.data_transformer = None
             self.sdgx_adapter = None
+        
+        # 初始化新架构服务类
+        try:
+            from .data_preparation_service import DataPreparationService
+            from .sdgx_service import SDGXService
+            self.data_prep_service = DataPreparationService(self.upload_folder)
+            self.sdgx_service = SDGXService() if SDGX_AVAILABLE else None
+            print("✅ 新架构服务类初始化成功")
+        except Exception as e:
+            print(f"⚠️ 新架构服务类初始化失败: {e}，将使用旧逻辑")
+            self.data_prep_service = None
+            self.sdgx_service = None
     
     def create_generation_task(self, user_id, config):
         """创建生成任务"""
@@ -516,14 +719,30 @@ class SyntheticService:
             # 保存原始模板数据（用于后续保存结果时使用）
             original_template_df = None
             
-            if self.data_loader:
-                # 使用新模块
+            if self.data_prep_service:
+                # 使用新模块架构：DataPreparationService
+                print(f"任务 {task_id}: [Step 1] 使用DataPreparationService加载数据...")
+                original_df, original_template_df, source_file_path = self.data_prep_service.load_data(
+                    file_id=file_id,
+                    template_id=template_id,
+                    template_service=self,  # 传递self作为template_service，用于模板数据加载
+                    fields_config=fields_config
+                )
+                print(f"任务 {task_id}: [Step 1] 数据加载完成: {original_df.shape[0]} 行 × {original_df.shape[1]} 列")
+            elif self.data_loader:
+                # 回退到旧模块
                 # 优先从文件加载
+                source_file_path = None
                 if file_id:
+                    for ext in ['csv', 'xlsx', 'xls']:
+                        filepath = os.path.join(self.upload_folder, f"{file_id}.{ext}")
+                        if os.path.exists(filepath):
+                            if ext == 'csv':
+                                source_file_path = filepath
+                            break
+                    
                     original_df = self.data_loader.load_from_file(file_id)
-                    if original_df is not None:
-                        print(f"任务 {task_id}: [Step 1] 从文件加载数据成功")
-                    else:
+                    if original_df is None:
                         original_df = None
                 else:
                     original_df = None
@@ -675,8 +894,150 @@ class SyntheticService:
                         print(f"任务 {task_id}: 模型参数 {key} = {value}")
             print(f"任务 {task_id}: ========== 参数验证完成 ==========")
             
-            # ========== 重构：使用新模块架构 ==========
-            print(f"任务 {task_id}: ========== 开始数据准备和验证（新架构）==========")
+            # ========== 重构：使用新架构服务类（优先）==========
+            # 如果新架构服务类可用，使用新架构（更简洁、更稳定）
+            if self.data_prep_service and self.sdgx_service:
+                print(f"任务 {task_id}: ========== 使用新架构服务类（稳定版）==========")
+                
+                # 1. 数据准备（最小化预处理）
+                with app.app_context():
+                    self._update_progress(task_id, 10, "正在加载数据...")
+                
+                print(f"任务 {task_id}: [新架构] Step 1: 加载数据...")
+                prepared_data, original_data, source_file_path = self.data_prep_service.load_data(
+                    file_id=file_id,
+                    template_id=template_id,
+                    template_service=self,
+                    fields_config=fields_config
+                )
+                print(f"任务 {task_id}: [新架构] Step 1: 数据加载完成: {prepared_data.shape[0]} 行 × {prepared_data.shape[1]} 列")
+                if source_file_path:
+                    print(f"任务 {task_id}: [新架构] Step 1: 源文件路径: {source_file_path}")
+                
+                # 2. 修复关键问题（日期时间连接、'NAN_VALUE'字符串）
+                print(f"任务 {task_id}: [新架构] Step 2: 修复关键数据质量问题...")
+                prepared_data = self.data_prep_service.fix_critical_issues(prepared_data, task_id)
+                print(f"任务 {task_id}: [新架构] Step 2: 关键问题修复完成")
+                
+                # 3. 最小化验证
+                print(f"任务 {task_id}: [新架构] Step 3: 最小化验证...")
+                prepared_data = self.data_prep_service.validate_minimal(prepared_data, task_id)
+                print(f"任务 {task_id}: [新架构] Step 3: 验证完成")
+                
+                # 4. 创建连接器（始终使用DataFrameConnector，确保数据已修复）
+                with app.app_context():
+                    self._update_progress(task_id, 30, "正在准备数据连接器...")
+                
+                print(f"任务 {task_id}: [新架构] Step 4: 创建数据连接器...")
+                print(f"任务 {task_id}: [新架构] ⚠️ 重要：源文件可能包含被连接的日期时间值")
+                print(f"任务 {task_id}: [新架构] ⚠️ 必须使用DataFrameConnector，确保数据修复逻辑生效")
+                print(f"任务 {task_id}: [新架构] ⚠️ 不能使用CsvConnector，因为它会跳过所有修复逻辑")
+                # 始终使用修复后的DataFrame，而不是直接使用源文件
+                data_connector = self.sdgx_service.create_connector(prepared_data, task_id)
+                print(f"任务 {task_id}: [新架构] Step 4: 数据连接器创建完成（使用DataFrameConnector）")
+                
+                # 5. 自动识别Metadata（使用SDGX自动识别）
+                print(f"任务 {task_id}: [新架构] Step 5: 自动识别字段类型（SDGX）...")
+                metadata = self.sdgx_service.create_metadata(data_connector, task_id)
+                print(f"任务 {task_id}: [新架构] Step 5: 字段类型识别完成")
+                
+                # 6. 创建Synthesizer
+                with app.app_context():
+                    self._update_progress(task_id, 40, "正在创建合成器...")
+                
+                print(f"任务 {task_id}: [新架构] Step 6: 创建合成器...")
+                synthesizer = self.sdgx_service.create_synthesizer(metadata, model, data_connector, task_id)
+                print(f"任务 {task_id}: [新架构] Step 6: 合成器创建完成")
+                
+                # 7. 训练模型
+                with app.app_context():
+                    self._update_progress(task_id, 50, "正在训练模型...")
+                
+                print(f"任务 {task_id}: [新架构] Step 7: 开始训练模型...")
+                self.sdgx_service.train(synthesizer, task_id)
+                print(f"任务 {task_id}: [新架构] Step 7: 模型训练完成")
+                
+                # 8. 生成数据
+                with app.app_context():
+                    self._update_progress(task_id, 70, "正在生成数据...")
+                
+                print(f"任务 {task_id}: [新架构] Step 8: 开始生成数据...")
+                
+                # 创建进度回调函数
+                def update_generation_progress(progress, message):
+                    """更新生成进度的回调函数"""
+                    try:
+                        with app.app_context():
+                            self._update_progress(task_id, progress, message)
+                    except Exception as e:
+                        print(f"任务 {task_id}: 更新进度失败: {e}")
+                
+                synthetic_data = self.sdgx_service.generate(
+                    synthesizer, 
+                    data_amount, 
+                    task_id,
+                    progress_callback=update_generation_progress
+                )
+                print(f"任务 {task_id}: [新架构] Step 8: 数据生成完成: {synthetic_data.shape[0]} 行 × {synthetic_data.shape[1]} 列")
+                
+                # 9. 保存结果（使用原始数据副本）
+                with app.app_context():
+                    self._update_progress(task_id, 90, "正在保存结果...")
+                
+                print(f"任务 {task_id}: [新架构] Step 9: 保存结果...")
+                if not isinstance(synthetic_data, pd.DataFrame):
+                    synthetic_data = pd.DataFrame(synthetic_data)
+                
+                # #region agent log
+                try:
+                    import json
+                    import os
+                    if synthetic_data is not None and hasattr(synthetic_data, 'columns'):
+                        duplicate_cols = [col for col in set(synthetic_data.columns) if list(synthetic_data.columns).count(col) > 1]
+                        log_data = {
+                            'sessionId': 'debug-session',
+                            'runId': 'run1',
+                            'hypothesisId': 'C',
+                            'location': 'synthetic_service.py:991',
+                            'message': '保存结果前检查DataFrame',
+                            'data': {
+                                'df_shape': list(synthetic_data.shape),
+                                'df_columns': list(synthetic_data.columns),
+                                'df_columns_len': len(synthetic_data.columns),
+                                'unique_columns_len': len(set(synthetic_data.columns)),
+                                'has_duplicate_columns': len(synthetic_data.columns) != len(set(synthetic_data.columns)),
+                                'duplicate_columns': duplicate_cols,
+                                'df_index_duplicated': synthetic_data.index.duplicated().tolist() if hasattr(synthetic_data.index, 'duplicated') else None,
+                                'has_duplicate_index': synthetic_data.index.duplicated().any() if hasattr(synthetic_data.index, 'duplicated') else None
+                            },
+                            'timestamp': int(__import__('time').time() * 1000)
+                        }
+                        with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                            f.write(json.dumps(log_data) + '\n')
+                except Exception as e:
+                    pass
+                # #endregion
+                
+                result_path = self._save_result(task_id, original_data, synthetic_data, fields_config=fields_config)
+                print(f"任务 {task_id}: [新架构] 结果已保存到 {result_path}")
+                
+                # 更新任务状态
+                with app.app_context():
+                    task = Task.query.get(task_id)
+                    if task:
+                        task.status = 'completed'
+                        task.progress = 100
+                        task.result_path = result_path
+                        task.completed_at = datetime.utcnow()
+                        db.session.commit()
+                        print(f"任务 {task_id} 已完成（新架构）")
+                    else:
+                        print(f"任务 {task_id} 不存在，无法更新状态")
+                
+                return  # 新架构完成，直接返回
+            
+            # ========== 回退：使用旧模块架构（向后兼容）==========
+            print(f"任务 {task_id}: ========== 使用旧模块架构（向后兼容）==========")
             
             if self.data_validator and self.data_transformer and self.sdgx_adapter:
                 # 使用新模块架构
@@ -709,9 +1070,17 @@ class SyntheticService:
                     print(original_df.head(3).to_string())
                 
                 # Step 2: 识别日期列（使用DataValidator模块）
+                # 注意：如果字段类型是 'auto'，则跳过该字段的类型配置，让SDGX自动识别
                 print(f"任务 {task_id}: [Step 2] 识别日期列...")
-                date_columns = self.data_validator.identify_date_columns(training_df, fields_config)
+                # 过滤掉 'auto' 类型的字段，只对明确配置的字段进行日期识别
+                explicit_fields_config = [f for f in (fields_config or []) if f.get('type') != 'auto'] if fields_config else None
+                date_columns = self.data_validator.identify_date_columns(training_df, explicit_fields_config)
                 print(f"任务 {task_id}: [Step 2] 识别的日期列: {list(date_columns)}")
+                
+                # 统计自动识别字段数量
+                auto_fields = [f for f in (fields_config or []) if f.get('type') == 'auto'] if fields_config else []
+                if auto_fields:
+                    print(f"任务 {task_id}: [Step 2] ⚠️ 发现 {len(auto_fields)} 个字段设置为自动识别，SDGX将自动处理这些字段: {[f.get('name') for f in auto_fields]}")
                 
                 # Step 3: 数据清理（使用DataTransformer模块）
                 print(f"任务 {task_id}: [Step 3] 清理数据...")
@@ -759,8 +1128,9 @@ class SyntheticService:
                                 else:
                                     df_for_sdgx = DataFrameValidator.fix_date_columns(df_for_sdgx, {col}, task_id)
                             
-                            # 确保所有值都是10个字符的日期字符串（双重保险）
-                            df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: str(x)[:10] if len(str(x)) > 10 else str(x))
+                            # 注意：不要强制截取为10个字符，因为日期时间列应该是19个字符（YYYY-MM-DD HH:MM:SS）
+                            # 只对明显被连接的值（长度超过30）进行修复
+                            df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: self.data_validator.fix_date_value(x) if len(str(x).strip()) > 30 else str(x).strip())
                             df_for_sdgx[col] = df_for_sdgx[col].astype('object')
                             
                             # 最终验证修复结果
@@ -768,9 +1138,11 @@ class SyntheticService:
                             all_ok = True
                             for idx, val in enumerate(sample_after):
                                 val_str = str(val).strip()
-                                if len(val_str) > 10:
+                                # 日期时间列可能达到19个字符（YYYY-MM-DD HH:MM:SS），这是正常的
+                                # 但如果超过30个字符，说明仍有被连接的值
+                                if len(val_str) > 30:
                                     all_ok = False
-                                    print(f"任务 {task_id}: ❌ 严重警告: 日期列 {col} 第{idx}行仍有异常值: {val_str[:80]}...")
+                                    print(f"任务 {task_id}: ❌ 严重警告: 日期列 {col} 第{idx}行仍有异常值（被连接）: {val_str[:80]}...")
                             
                             if all_ok:
                                 print(f"任务 {task_id}: ✅ 日期列 {col} 修复完成，所有值正常")
@@ -781,8 +1153,8 @@ class SyntheticService:
                                     df_for_sdgx = self.data_validator.fix_date_columns(df_for_sdgx, {col}, task_id)
                                 else:
                                     df_for_sdgx = DataFrameValidator.fix_date_columns(df_for_sdgx, {col}, task_id)
-                                # 再次确保10字符
-                                df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: str(x)[:10] if len(str(x)) > 10 else str(x))
+                                # 再次修复被连接的值（长度超过30）
+                                df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: self.data_validator.fix_date_value(x) if len(str(x).strip()) > 30 else str(x).strip())
                                 df_for_sdgx[col] = df_for_sdgx[col].astype('object')
                 
                 print(f"任务 {task_id}: [Step 6.5] 最终验证完成")
@@ -819,8 +1191,8 @@ class SyntheticService:
                                             df_for_sdgx = self.data_validator.fix_date_columns(df_for_sdgx, {col}, task_id)
                                         else:
                                             df_for_sdgx = DataFrameValidator.fix_date_columns(df_for_sdgx, {col}, task_id)
-                                        # 再次确保10字符
-                                        df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: str(x)[:10] if len(str(x)) > 10 else str(x))
+                                        # 再次修复被连接的值（长度超过30）
+                                        df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: self.data_validator.fix_date_value(x) if len(str(x).strip()) > 30 else str(x).strip())
                                         df_for_sdgx[col] = df_for_sdgx[col].astype('object')
                 
                 # 注意：describe()可能会触发pandas的内部处理，导致日期列被错误处理
@@ -838,15 +1210,53 @@ class SyntheticService:
                 
                 # Step 6.6: 确保所有整数列都是标准int64类型（SDGX不支持Int64）
                 print(f"任务 {task_id}: [Step 6.6] 检查并修复整数列类型...")
+                # 关键：在类型转换前，先清理所有可能的空值标记（包括 'NAN_VALUE'）
+                print(f"任务 {task_id}: [Step 6.6.1] 清理所有空值标记...")
                 for col in df_for_sdgx.columns:
                     if col in (date_columns or set()):
                         continue  # 跳过日期列
+                    
+                    if df_for_sdgx[col].dtype == 'object':
+                        # 替换所有可能的空值标记为 pd.NA
+                        df_for_sdgx[col] = df_for_sdgx[col].replace([
+                            'NAN_VALUE', 'NULL', 'null', 'nan', 'NaN', 'None', 
+                            'NaT', 'nat', '<NaT>', 'N/A', 'n/a', 'NA'
+                        ], pd.NA)
+                        # 检查是否还有 'NAN_VALUE' 存在（双重保险）
+                        if df_for_sdgx[col].astype(str).str.contains('NAN_VALUE', na=False).any():
+                            print(f"任务 {task_id}: ⚠️ 警告: 列 {col} 仍有 'NAN_VALUE' 标记，强制替换为 pd.NA")
+                            df_for_sdgx[col] = df_for_sdgx[col].replace('NAN_VALUE', pd.NA)
+                
+                # 现在进行类型转换
+                for col in df_for_sdgx.columns:
+                    if col in (date_columns or set()):
+                        continue  # 跳过日期列
+                    
+                    # 关键：在类型转换之前，先清理所有可能的空值标记
+                    if df_for_sdgx[col].dtype == 'object':
+                        # 检查是否包含 'NAN_VALUE' 等标记
+                        if df_for_sdgx[col].astype(str).str.contains('NAN_VALUE', na=False).any():
+                            print(f"任务 {task_id}: ⚠️ 列 {col} 在类型转换前仍有 'NAN_VALUE' 标记，清理中...")
+                            df_for_sdgx[col] = df_for_sdgx[col].replace([
+                                'NAN_VALUE', 'NULL', 'null', 'nan', 'NaN', 'None', 
+                                'NaT', 'nat', '<NaT>', 'N/A', 'n/a', 'NA'
+                            ], pd.NA)
+                            # 再次检查
+                            if df_for_sdgx[col].astype(str).str.contains('NAN_VALUE', na=False).any():
+                                print(f"任务 {task_id}: ❌ 列 {col} 清理失败，尝试强制清理...")
+                                df_for_sdgx[col] = df_for_sdgx[col].astype(str).replace('NAN_VALUE', pd.NA)
                     
                     dtype_str = str(df_for_sdgx[col].dtype)
                     # 检查是否是Int64类型（可空整数类型）
                     if dtype_str == 'Int64':
                         print(f"任务 {task_id}: ⚠️ 发现列 {col} 是Int64类型，转换为int64...")
                         try:
+                            # 先清理空值标记（再次确保）
+                            if df_for_sdgx[col].dtype == 'object':
+                                df_for_sdgx[col] = df_for_sdgx[col].replace([
+                                    'NAN_VALUE', 'NULL', 'null', 'nan', 'NaN', 'None', 
+                                    'NaT', 'nat', '<NaT>', 'N/A', 'n/a', 'NA'
+                                ], pd.NA)
                             numeric_series = pd.to_numeric(df_for_sdgx[col], errors='coerce')
                             # 填充NaN为0，然后转换为int64
                             df_for_sdgx[col] = numeric_series.fillna(0).astype('int64')
@@ -855,27 +1265,350 @@ class SyntheticService:
                             print(f"任务 {task_id}: ❌ 列 {col} 转换为int64失败: {e}")
                             # 如果转换失败，尝试先转换为float64再转换为int64
                             try:
+                                # 再次清理（更彻底）
+                                if df_for_sdgx[col].dtype == 'object':
+                                    df_for_sdgx[col] = df_for_sdgx[col].astype(str).replace([
+                                        'NAN_VALUE', 'NULL', 'null', 'nan', 'NaN', 'None', 
+                                        'NaT', 'nat', '<NaT>', 'N/A', 'n/a', 'NA'
+                                    ], pd.NA)
                                 df_for_sdgx[col] = pd.to_numeric(df_for_sdgx[col], errors='coerce').fillna(0).astype('float64').astype('int64')
                                 print(f"任务 {task_id}: ✅ 列 {col} 通过float64中转转换为int64成功")
                             except Exception as e2:
                                 print(f"任务 {task_id}: ❌ 列 {col} 转换失败: {e2}")
+                                # 如果仍然失败，保持为object类型（字符串）
+                                print(f"任务 {task_id}: ⚠️ 列 {col} 无法转换为int64，保持为object类型")
                 
                 print(f"任务 {task_id}: [Step 6.6] 类型检查完成，最终数据类型: {df_for_sdgx.dtypes.to_dict()}")
                 
+                # Step 6.7: 最终清理所有空值标记（在传递给SDGX之前最后一次清理）
+                print(f"任务 {task_id}: [Step 6.7] 最终清理所有空值标记（确保没有 'NAN_VALUE' 等字符串）...")
+                for col in df_for_sdgx.columns:
+                    if col in (date_columns or set()):
+                        continue  # 跳过日期列
+                    
+                    if df_for_sdgx[col].dtype == 'object':
+                        # 替换所有可能的空值标记为 pd.NA（包括 'NAN_VALUE'）
+                        df_for_sdgx[col] = df_for_sdgx[col].replace([
+                            'NAN_VALUE', 'NULL', 'null', 'nan', 'NaN', 'None', 
+                            'NaT', 'nat', '<NaT>', 'N/A', 'n/a', 'NA'
+                        ], pd.NA)
+                        # 双重检查：确保没有遗漏的 'NAN_VALUE'
+                        if df_for_sdgx[col].astype(str).str.contains('NAN_VALUE', na=False).any():
+                            print(f"任务 {task_id}: ⚠️ 警告: 列 {col} 仍有 'NAN_VALUE' 标记，强制替换为 pd.NA")
+                            df_for_sdgx[col] = df_for_sdgx[col].replace('NAN_VALUE', pd.NA)
+                            # 再次检查
+                            if df_for_sdgx[col].astype(str).str.contains('NAN_VALUE', na=False).any():
+                                print(f"任务 {task_id}: ❌ 错误: 列 {col} 仍有 'NAN_VALUE' 标记，无法清理")
+                                # 尝试更彻底的清理
+                                df_for_sdgx[col] = df_for_sdgx[col].astype(str).replace('NAN_VALUE', pd.NA)
+                
+                # 验证清理结果
+                print(f"任务 {task_id}: [Step 6.7] 验证清理结果...")
+                for col in df_for_sdgx.columns:
+                    if col in (date_columns or set()):
+                        continue
+                    if df_for_sdgx[col].dtype == 'object':
+                        nan_value_count = df_for_sdgx[col].astype(str).str.contains('NAN_VALUE', na=False).sum()
+                        if nan_value_count > 0:
+                            print(f"任务 {task_id}: ❌ 严重错误: 列 {col} 仍有 {nan_value_count} 个 'NAN_VALUE' 标记")
+                        else:
+                            print(f"任务 {task_id}: ✅ 列 {col} 清理完成，无 'NAN_VALUE' 标记")
+                
+                print(f"任务 {task_id}: [Step 6.7] 最终清理完成")
+                
                 # Step 7: 创建SDGX连接器和合成器（使用SDGXAdapter模块）
                 print(f"任务 {task_id}: [Step 7] 创建SDGX连接器和合成器...")
-                # 关键：在传递给DataFrameConnector之前，最后一次验证和修复日期列
+                # 关键：在传递给DataFrameConnector之前，最后一次验证和修复日期列和日期时间列
+                # 防止日期列/日期时间列被连接成长字符串（这是导致错误的根本原因）
                 if date_columns:
+                    import re
+                    # 日期格式：YYYY-MM-DD
+                    date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+                    # 日期时间格式：YYYY/M/D H:MM 或 YYYY-MM-DD HH:MM:SS
+                    datetime_pattern1 = re.compile(r'\d{4}/\d{1,2}/\d{1,2}\s+\d{1,2}:\d{2}')
+                    datetime_pattern2 = re.compile(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}')
+                    datetime_pattern3 = re.compile(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}')
+                    
                     for col in date_columns:
                         if col in df_for_sdgx.columns:
-                            # 确保所有值都是10个字符
-                            df_for_sdgx[col] = df_for_sdgx[col].apply(lambda x: str(x)[:10] if len(str(x)) > 10 else str(x))
+                            # 逐行检查并修复被连接的日期/日期时间
+                            fixed_count = 0
+                            for idx in range(len(df_for_sdgx)):
+                                val = str(df_for_sdgx.at[idx, col]).strip()
+                                if len(val) > 20:  # 日期时间可能超过10个字符
+                                    # 先尝试匹配日期时间格式（YYYY/M/D H:MM）
+                                    datetime_found = datetime_pattern1.findall(val)
+                                    if len(datetime_found) > 0:
+                                        # 提取第一个日期时间
+                                        df_for_sdgx.at[idx, col] = datetime_found[0]
+                                        fixed_count += 1
+                                        if fixed_count <= 3:
+                                            print(f"任务 {task_id}: ⚠️ 修复日期时间列 {col} 第{idx}行: {val[:50]}... -> {datetime_found[0]}")
+                                        continue
+                                    
+                                    # 尝试匹配其他日期时间格式
+                                    datetime_found = datetime_pattern2.findall(val) or datetime_pattern3.findall(val)
+                                    if len(datetime_found) > 0:
+                                        df_for_sdgx.at[idx, col] = datetime_found[0]
+                                        fixed_count += 1
+                                        if fixed_count <= 3:
+                                            print(f"任务 {task_id}: ⚠️ 修复日期时间列 {col} 第{idx}行: {val[:50]}... -> {datetime_found[0]}")
+                                        continue
+                                    
+                                    # 尝试匹配日期格式（YYYY-MM-DD）
+                                    dates_found = date_pattern.findall(val)
+                                    if len(dates_found) > 0:
+                                        df_for_sdgx.at[idx, col] = dates_found[0]
+                                        fixed_count += 1
+                                        if fixed_count <= 3:
+                                            print(f"任务 {task_id}: ⚠️ 修复日期列 {col} 第{idx}行: {val[:50]}... -> {dates_found[0]}")
+                                        continue
+                                    
+                                    # 如果都没有匹配到，截取前20个字符（日期时间格式）
+                                    if len(val) > 20:
+                                        df_for_sdgx.at[idx, col] = val[:20]
+                                        fixed_count += 1
+                            
+                            if fixed_count > 0:
+                                print(f"任务 {task_id}: ✅ 日期列 {col} 修复完成，共修复 {fixed_count} 个被连接的值")
+                            
+                            # 对于日期列（不是日期时间），确保所有值都是10个字符（YYYY-MM-DD格式）
+                            # 对于日期时间列，保持原格式
+                            sample_val = str(df_for_sdgx[col].iloc[0]) if len(df_for_sdgx) > 0 else ""
+                            if ':' in sample_val or '/' in sample_val:
+                                # 这是日期时间列，保持原格式
+                                pass
+                            else:
+                                # 这是日期列，确保是10个字符
+                                # 关键：使用更安全的方法，避免在apply时出现问题
+                                def fix_date_value_safe(x):
+                                    val_str = str(x).strip()
+                                    if len(val_str) > 10:
+                                        # 如果长度超过10，提取第一个日期（YYYY-MM-DD格式）
+                                        dates_found = date_pattern.findall(val_str)
+                                        if len(dates_found) > 0:
+                                            return dates_found[0]
+                                        else:
+                                            return val_str[:10]
+                                    return val_str
+                                df_for_sdgx[col] = df_for_sdgx[col].apply(fix_date_value_safe)
+                            
                             df_for_sdgx[col] = df_for_sdgx[col].astype('object')
-                            # 验证
-                            sample_vals = df_for_sdgx[col].head(5).tolist()
-                            print(f"任务 {task_id}: 传递给DataFrameConnector前，日期列 {col} 的样本值: {sample_vals}")
+                            
+                            # 验证：确保没有遗漏的被连接值
+                            sample_vals = df_for_sdgx[col].head(10).tolist()
+                            for idx, val in enumerate(sample_vals):
+                                val_str = str(val).strip()
+                                if len(val_str) > 30:  # 日期时间可能超过20个字符，但30个字符肯定是被连接的
+                                    print(f"任务 {task_id}: ❌ 严重错误: 日期列 {col} 第{idx}行仍有被连接的值: {val_str[:100]}...")
+                                    # 立即修复
+                                    datetime_found = datetime_pattern1.findall(val_str) or datetime_pattern2.findall(val_str) or datetime_pattern3.findall(val_str)
+                                    if len(datetime_found) > 0:
+                                        df_for_sdgx.at[idx, col] = datetime_found[0]
+                                        print(f"任务 {task_id}: ✅ 已修复为: {datetime_found[0]}")
+                                    else:
+                                        dates_found = date_pattern.findall(val_str)
+                                        if len(dates_found) > 0:
+                                            df_for_sdgx.at[idx, col] = dates_found[0]
+                                            print(f"任务 {task_id}: ✅ 已修复为: {dates_found[0]}")
+                            
+                            # 最终验证
+                            final_sample = df_for_sdgx[col].head(5).tolist()
+                            print(f"任务 {task_id}: 传递给DataFrameConnector前，日期列 {col} 的样本值: {final_sample}")
                 
-                data_connector = self.sdgx_adapter.create_connector(df_for_sdgx, task_id, date_columns)
+                # 如果是从CSV文件上传的，先检查源文件数据质量
+                # 如果源文件有问题（被连接的日期/日期时间值），直接使用DataFrameConnector修复
+                # 如果源文件干净，尝试使用CsvConnector（完全按照SDGX示例）
+                if source_file_path and source_file_path.endswith('.csv'):
+                    print(f"任务 {task_id}: [Step 7] 检查CSV源文件数据质量...")
+                    
+                    # 先读取少量数据检查是否有被连接的值
+                    try:
+                        import re
+                        df_check = pd.read_csv(source_file_path, nrows=20)
+                        has_concatenated = False
+                        
+                        # 检查日期列和可能的日期时间列
+                        date_pattern = re.compile(r'\d{4}-\d{2}-\d{2}')
+                        datetime_pattern = re.compile(r'\d{4}/\d{1,2}/\d{1,2}\s+\d{1,2}:\d{2}')
+                        
+                        for col in df_check.columns:
+                            if df_check[col].dtype == 'object':
+                                for idx, val in enumerate(df_check[col].head(10)):
+                                    val_str = str(val).strip()
+                                    # 检查是否有被连接的日期（长度超过10且包含多个日期）
+                                    if len(val_str) > 15:
+                                        date_matches = date_pattern.findall(val_str)
+                                        datetime_matches = datetime_pattern.findall(val_str)
+                                        if len(date_matches) > 1 or len(datetime_matches) > 1:
+                                            has_concatenated = True
+                                            print(f"任务 {task_id}: [Step 7] ⚠️ 发现源文件列 {col} 包含被连接的值（第{idx+1}行）: {val_str[:80]}...")
+                                            break
+                                if has_concatenated:
+                                    break
+                        
+                        if has_concatenated:
+                            print(f"任务 {task_id}: [Step 7] ⚠️ 源文件包含被连接的日期/日期时间值，使用DataFrameConnector修复数据...")
+                            data_connector = self.sdgx_adapter.create_connector(df_for_sdgx, task_id, date_columns)
+                        else:
+                            print(f"任务 {task_id}: [Step 7] ✅ 源文件数据质量良好，尝试使用CsvConnector（完全按照SDGX示例）...")
+                            try:
+                                data_connector = self.sdgx_adapter.create_connector(None, task_id, date_columns, use_file=source_file_path)
+                                print(f"任务 {task_id}: [Step 7] ✅ 成功使用CSV源文件创建CsvConnector，跳过所有预处理")
+                            except Exception as e:
+                                error_msg = str(e)
+                                print(f"任务 {task_id}: [Step 7] ⚠️ 使用CsvConnector失败: {error_msg[:200]}...")
+                                print(f"任务 {task_id}: [Step 7] 回退到DataFrameConnector修复数据...")
+                                data_connector = self.sdgx_adapter.create_connector(df_for_sdgx, task_id, date_columns)
+                    except Exception as e:
+                        print(f"任务 {task_id}: [Step 7] ⚠️ 检查源文件时出错: {e}，使用DataFrameConnector...")
+                        data_connector = self.sdgx_adapter.create_connector(df_for_sdgx, task_id, date_columns)
+                else:
+                    if source_file_path:
+                        print(f"任务 {task_id}: [Step 7] ⚠️ 源文件是 {os.path.splitext(source_file_path)[1]} 格式，SDGX不支持Excel文件，使用DataFrameConnector")
+                    data_connector = self.sdgx_adapter.create_connector(df_for_sdgx, task_id, date_columns)
+                
+                # Step 6.8: 使用SDGX自动识别字段类型（方案3：最佳实践）
+                print(f"任务 {task_id}: [Step 6.8] 使用SDGX自动识别字段类型...")
+                try:
+                    if SDGX_AVAILABLE:
+                        from sdgx.data_loader import DataLoader
+                    else:
+                        raise ImportError("SDGX组件不可用")
+                    
+                    # 创建临时DataLoader
+                    temp_dataloader = DataLoader(data_connector)
+                    
+                    # 让SDGX自动识别字段类型
+                    print(f"任务 {task_id}: [Step 6.8] 调用Metadata.from_dataloader()让SDGX自动识别...")
+                    sdgx_metadata = Metadata.from_dataloader(temp_dataloader, max_chunk=10)
+                    
+                    # 提取SDGX识别的字段类型
+                    sdgx_field_types = {}
+                    
+                    # 收集所有识别的列类型
+                    for col_name in sdgx_metadata.column_list:
+                        col_types = []
+                        
+                        if col_name in sdgx_metadata.id_columns:
+                            col_types.append('id')
+                        if col_name in sdgx_metadata.int_columns:
+                            col_types.append('integer')
+                        if col_name in sdgx_metadata.float_columns:
+                            col_types.append('float')
+                        if col_name in sdgx_metadata.bool_columns:
+                            col_types.append('boolean')
+                        if col_name in sdgx_metadata.datetime_columns:
+                            col_types.append('datetime')
+                        if col_name in sdgx_metadata.discrete_columns:
+                            col_types.append('discrete')
+                        if col_name in sdgx_metadata.const_columns:
+                            col_types.append('const')
+                        
+                        # 确定主要类型（优先级：datetime > id > integer > float > boolean > discrete > const）
+                        if 'datetime' in col_types:
+                            sdgx_field_types[col_name] = 'datetime'
+                        elif 'id' in col_types:
+                            sdgx_field_types[col_name] = 'id'
+                        elif 'integer' in col_types:
+                            sdgx_field_types[col_name] = 'integer'
+                        elif 'float' in col_types:
+                            sdgx_field_types[col_name] = 'float'
+                        elif 'boolean' in col_types:
+                            sdgx_field_types[col_name] = 'boolean'
+                        elif 'discrete' in col_types:
+                            sdgx_field_types[col_name] = 'discrete'
+                        elif 'const' in col_types:
+                            sdgx_field_types[col_name] = 'const'
+                        else:
+                            # 默认字符串类型
+                            sdgx_field_types[col_name] = 'string'
+                    
+                    print(f"任务 {task_id}: [Step 6.8] SDGX自动识别完成，识别了 {len(sdgx_field_types)} 个字段")
+                    
+                    # 与用户配置的字段类型对比
+                    if fields_config and len(fields_config) > 0:
+                        print(f"任务 {task_id}: [Step 6.8] ========== 字段类型对比 ==========")
+                        type_mismatches = []
+                        auto_fields_count = 0
+                        
+                        for field in fields_config:
+                            field_name = field.get('name')
+                            user_type = field.get('type', 'string')
+                            sdgx_type = sdgx_field_types.get(field_name)
+                            
+                            # 如果用户选择自动识别，跳过对比，但保存SDGX识别的类型
+                            if user_type == 'auto':
+                                auto_fields_count += 1
+                                if sdgx_type:
+                                    # 保存SDGX识别的类型到字段配置中
+                                    field['sdgx_detected_type'] = sdgx_type
+                                    field['sdgx_confidence'] = 1.0  # SDGX识别的置信度设为1.0
+                                    print(f"任务 {task_id}: [Step 6.8] 🤖 字段 {field_name} 设置为自动识别，SDGX识别为: {sdgx_type}")
+                                continue
+                            
+                            # 对于手动配置的字段，也保存SDGX识别的类型（用于对比和显示）
+                            if sdgx_type:
+                                field['sdgx_detected_type'] = sdgx_type
+                                field['sdgx_confidence'] = 1.0
+                            
+                            if sdgx_type:
+                                # 类型映射：统一类型名称
+                                type_mapping = {
+                                    'string': 'string',
+                                    'integer': 'integer',
+                                    'int': 'integer',
+                                    'float': 'float',
+                                    'number': 'float',
+                                    'boolean': 'boolean',
+                                    'bool': 'boolean',
+                                    'date': 'datetime',  # 用户配置的date应该对应SDGX的datetime
+                                    'datetime': 'datetime',
+                                    'id': 'id',
+                                    'discrete': 'discrete'
+                                }
+                                
+                                user_type_normalized = type_mapping.get(user_type, user_type)
+                                
+                                if user_type_normalized != sdgx_type:
+                                    type_mismatches.append({
+                                        'field': field_name,
+                                        'user_type': user_type,
+                                        'sdgx_type': sdgx_type
+                                    })
+                                    print(f"任务 {task_id}: [Step 6.8] ⚠️ 字段 {field_name} 类型不一致:")
+                                    print(f"任务 {task_id}: [Step 6.8]    用户配置: {user_type} ({user_type_normalized})")
+                                    print(f"任务 {task_id}: [Step 6.8]    SDGX识别: {sdgx_type}")
+                                else:
+                                    print(f"任务 {task_id}: [Step 6.8] ✅ 字段 {field_name} 类型一致: {user_type} = {sdgx_type}")
+                        
+                        if auto_fields_count > 0:
+                            print(f"任务 {task_id}: [Step 6.8] 🤖 发现 {auto_fields_count} 个字段设置为自动识别，SDGX将自动处理这些字段")
+                        
+                        if type_mismatches:
+                            print(f"任务 {task_id}: [Step 6.8] ⚠️ 发现 {len(type_mismatches)} 个字段类型不一致")
+                            print(f"任务 {task_id}: [Step 6.8] ⚠️ 建议：检查字段配置，SDGX将使用其自动识别的类型进行训练")
+                        else:
+                            if auto_fields_count == 0:
+                                print(f"任务 {task_id}: [Step 6.8] ✅ 所有字段类型与SDGX识别结果一致")
+                        
+                        print(f"任务 {task_id}: [Step 6.8] =====================================")
+                    else:
+                        print(f"任务 {task_id}: [Step 6.8] ⚠️ 未提供字段配置，SDGX将完全使用自动识别的类型")
+                        print(f"任务 {task_id}: [Step 6.8] SDGX识别的字段类型:")
+                        for col_name, col_type in sdgx_field_types.items():
+                            print(f"任务 {task_id}: [Step 6.8]   {col_name}: {col_type}")
+                    
+                    # 清理临时DataLoader
+                    temp_dataloader.finalize(clear_cache=True)
+                    
+                except Exception as e:
+                    import traceback
+                    error_trace = traceback.format_exc()
+                    print(f"任务 {task_id}: [Step 6.8] ⚠️ SDGX自动识别字段类型失败: {e}")
+                    print(f"任务 {task_id}: [Step 6.8] 详细错误: {error_trace}")
+                    print(f"任务 {task_id}: [Step 6.8] 继续使用用户配置的字段类型...")
+                
                 synthesizer = self.sdgx_adapter.create_synthesizer(model, data_connector, date_columns, task_id)
                 print(f"任务 {task_id}: [Step 7] SDGX组件创建完成")
                 
@@ -947,7 +1680,7 @@ class SyntheticService:
             result_path = self._save_result(task_id, original_data_to_save, synthetic_df, fields_config=fields_config)
             print(f"任务 {task_id}: 结果已保存到 {result_path}")
             
-            # 更新任务状态
+            # 更新任务状态和配置（保存SDGX识别的字段类型）
             with app.app_context():
                 task = Task.query.get(task_id)
                 if task:
@@ -955,6 +1688,13 @@ class SyntheticService:
                     task.progress = 100
                     task.result_path = result_path
                     task.completed_at = datetime.utcnow()
+                    
+                    # 保存更新的字段配置（包含SDGX识别的类型）
+                    if fields_config:
+                        config = task.get_config()
+                        config['fields'] = fields_config
+                        task.set_config(config)
+                    
                     db.session.commit()
                     print(f"任务 {task_id} 已完成")
                 else:
@@ -1377,7 +2117,9 @@ class SyntheticService:
                 elif field_type == 'float':
                     # 确保浮点数类型
                     try:
-                        df[field_name] = pd.to_numeric(df[field_name], errors='coerce').astype('float64')
+                        numeric_series = pd.to_numeric(df[field_name], errors='coerce')
+                        # 关键：填充NaN为0.0（模板数据应该都有值）
+                        df[field_name] = numeric_series.fillna(0.0).astype('float64')
                         print(f"[_load_template_data] 字段 {field_name} 已转换为float类型")
                     except Exception as e:
                         print(f"[_load_template_data] 警告: 字段 {field_name} 转换为float失败: {e}")
@@ -1811,9 +2553,72 @@ class SyntheticService:
         # 直接保存，保持原始格式（与模板数据一致）
         original_df_save.to_csv(original_path, index=False)
         
+        # #region agent log
+        try:
+            import json
+            import os
+            if synthetic_df is not None and hasattr(synthetic_df, 'columns'):
+                duplicate_cols = [col for col in set(synthetic_df.columns) if list(synthetic_df.columns).count(col) > 1]
+                log_data = {
+                    'sessionId': 'debug-session',
+                    'runId': 'run1',
+                    'hypothesisId': 'C',
+                    'location': 'synthetic_service.py:2558',
+                    'message': '保存synthetic_df到CSV前检查',
+                    'data': {
+                        'df_shape': list(synthetic_df.shape),
+                        'df_columns': list(synthetic_df.columns),
+                        'df_columns_len': len(synthetic_df.columns),
+                        'unique_columns_len': len(set(synthetic_df.columns)),
+                        'has_duplicate_columns': len(synthetic_df.columns) != len(set(synthetic_df.columns)),
+                        'duplicate_columns': duplicate_cols,
+                        'df_index_duplicated': synthetic_df.index.duplicated().tolist() if hasattr(synthetic_df.index, 'duplicated') else None,
+                        'has_duplicate_index': synthetic_df.index.duplicated().any() if hasattr(synthetic_df.index, 'duplicated') else None
+                    },
+                    'timestamp': int(__import__('time').time() * 1000)
+                }
+                with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                    f.write(json.dumps(log_data) + '\n')
+        except Exception as e:
+            pass
+        # #endregion
+        
         # 保存合成数据
         synthetic_path = os.path.join(result_dir, 'synthetic.csv')
-        synthetic_df.to_csv(synthetic_path, index=False)
+        
+        # #region agent log
+        try:
+            # 尝试保存，捕获可能的reindex错误
+            synthetic_df.to_csv(synthetic_path, index=False)
+            log_data = {
+                'sessionId': 'debug-session',
+                'runId': 'run1',
+                'hypothesisId': 'C',
+                'location': 'synthetic_service.py:2560',
+                'message': 'to_csv成功完成',
+                'data': {'success': True},
+                'timestamp': int(__import__('time').time() * 1000)
+            }
+            with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                f.write(json.dumps(log_data) + '\n')
+        except Exception as e:
+            log_data = {
+                'sessionId': 'debug-session',
+                'runId': 'run1',
+                'hypothesisId': 'C',
+                'location': 'synthetic_service.py:2560',
+                'message': 'to_csv失败，捕获异常',
+                'data': {
+                    'error_type': type(e).__name__,
+                    'error_message': str(e),
+                    'has_duplicate_columns': len(synthetic_df.columns) != len(set(synthetic_df.columns)) if hasattr(synthetic_df, 'columns') else None
+                },
+                'timestamp': int(__import__('time').time() * 1000)
+            }
+            with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                f.write(json.dumps(log_data) + '\n')
+            raise
+        # #endregion
         
         return result_dir
     
@@ -1865,10 +2670,19 @@ class SyntheticService:
         end = start + page_size
         
         # 获取任务配置中的字段配置信息（用于格式化显示）
-        fields_config = None
-        if data_type == 'original':
-            config = task.get_config()
-            fields_config = config.get('fields', [])
+        config = task.get_config()
+        fields_config = config.get('fields', []) if config else []
+        
+        # 构建字段类型映射（用于前端显示）
+        field_types = {}
+        for field in fields_config:
+            field_name = field.get('name')
+            if field_name:
+                field_types[field_name] = {
+                    'type': field.get('type', 'string'),
+                    'sdgx_detected_type': field.get('sdgx_detected_type'),
+                    'sdgx_confidence': field.get('sdgx_confidence')
+                }
         
         # 清理NaN值并保持字段类型
         data_records = df.iloc[start:end].to_dict('records')
@@ -1883,24 +2697,21 @@ class SyntheticService:
                         record[key] = str(value) if value is not None else None
                     else:
                         # 生成数据根据字段类型转换
-                        if fields_config:
-                            field_config = next((f for f in fields_config if f.get('name') == key), None)
-                            if field_config:
-                                field_type = field_config.get('type', 'string')
-                                if field_type == 'date':
-                                    record[key] = str(value) if value is not None else None
-                                elif field_type in ['number', 'integer']:
-                                    try:
-                                        if field_type == 'integer':
-                                            record[key] = int(value) if value is not None else None
-                                        else:
-                                            record[key] = float(value) if value is not None else None
-                                    except (ValueError, TypeError):
-                                        record[key] = value
-                                else:
-                                    record[key] = str(value) if value is not None else None
+                        if field_types.get(key):
+                            field_info = field_types[key]
+                            field_type = field_info.get('type', 'string')
+                            if field_type == 'date':
+                                record[key] = str(value) if value is not None else None
+                            elif field_type in ['number', 'integer']:
+                                try:
+                                    if field_type == 'integer':
+                                        record[key] = int(value) if value is not None else None
+                                    else:
+                                        record[key] = float(value) if value is not None else None
+                                except (ValueError, TypeError):
+                                    record[key] = value
                             else:
-                                record[key] = value
+                                record[key] = str(value) if value is not None else None
                         else:
                             record[key] = value
         
@@ -1908,6 +2719,7 @@ class SyntheticService:
             'columns': df.columns.tolist(),
             'data': data_records,
             'total': total,
+            'field_types': field_types,  # 添加字段类型信息
             'pagination': {
                 'page': page,
                 'page_size': page_size,
