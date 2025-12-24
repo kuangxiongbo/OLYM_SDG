@@ -672,21 +672,82 @@ function goToStep(step) {
 }
 
 // 文件上传处理
-function handleFileUpload(input, type) {
+async function handleFileUpload(input, type) {
     const file = input.files[0];
-    if (file) {
-        wizardData[`${type}File`] = file;
-        displayFileInfo(file, type);
-        updateNavigationButtons();
+    if (!file) return;
+    
+    // 显示上传中状态
+    const fileInfo = document.getElementById(`${type}-file-info`);
+    if (fileInfo) {
+        fileInfo.style.display = 'block';
+        fileInfo.innerHTML = '<div class="uploading"><i class="fas fa-spinner fa-spin"></i> 正在上传...</div>';
+    }
+    
+    // 创建FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('data_type', type === 'original' ? 'original' : 'synthetic');
+    
+    try {
+        const response = await fetch('/api/quality/upload', {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 保存文件信息
+            wizardData[`${type}File`] = {
+                file_id: result.data.file_id,
+                filename: result.data.filename,
+                rows: result.data.rows,
+                columns: result.data.columns
+            };
+            
+            // 显示文件信息
+            displayFileInfo(file, type, result.data);
+            
+            // 更新导航按钮
+            updateNavigationButtons();
+        } else {
+            alert('上传失败: ' + (result.error || '未知错误'));
+            input.value = '';
+            if (fileInfo) fileInfo.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('文件上传失败:', error);
+        alert('文件上传失败，请重试');
+        input.value = '';
+        if (fileInfo) fileInfo.style.display = 'none';
     }
 }
 
 // 显示文件信息
-function displayFileInfo(file, type) {
+function displayFileInfo(file, type, uploadData = null) {
     const fileInfo = document.getElementById(`${type}-file-info`);
+    if (!fileInfo) return;
+    
     const fileName = fileInfo.querySelector('.file-name');
     const fileSize = fileInfo.querySelector('.file-size');
     const fileType = fileInfo.querySelector('.file-type');
+    
+    if (!fileName || !fileSize || !fileType) {
+        // 如果元素不存在，重新创建
+        fileInfo.innerHTML = `
+            <div class="file-details">
+                <span class="file-name">${uploadData ? uploadData.filename : file.name}</span>
+                <span class="file-size">${uploadData ? `${uploadData.rows} 行` : formatFileSize(file.size)}</span>
+                <span class="file-type">${getFileTypeName(uploadData ? uploadData.filename : file.name)}</span>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="removeFile('${type}')">移除</button>
+        `;
+    } else {
+        fileName.textContent = uploadData ? uploadData.filename : file.name;
+        fileSize.textContent = uploadData ? `${uploadData.rows} 行` : formatFileSize(file.size);
+        fileType.textContent = getFileTypeName(uploadData ? uploadData.filename : file.name);
+    }
     
         fileName.textContent = file.name;
         fileSize.textContent = formatFileSize(file.size);
@@ -726,24 +787,158 @@ function getFileTypeName(filename) {
 }
 
 // 开始评估
-function startEvaluation() {
-    // 模拟评估过程
-    setTimeout(() => {
-        wizardData.evaluationResults = {
-            overallQuality: 85,
-            statisticalSimilarity: 88,
-            distributionSimilarity: 82,
-            privacyProtection: 90
-        };
+async function startEvaluation() {
+    if (!wizardData.originalFile || !wizardData.sensitiveFile) {
+        alert('请先上传原始数据和合成数据');
+        return;
+    }
+    
+    // 收集评估指标配置
+    const dimensions = Array.from(document.querySelectorAll('input[name="dimensions"]:checked')).map(cb => cb.value);
+    const similarityThreshold = parseFloat(document.getElementById('similarity-threshold').value);
+    const privacyLevel = document.getElementById('privacy-level').value;
+    
+    const config = {
+        original_file_id: wizardData.originalFile.file_id,
+        synthetic_file_id: wizardData.sensitiveFile.file_id,
+        indicators: dimensions.map(dim => ({
+            name: dim,
+            enabled: true,
+            threshold: similarityThreshold
+        })),
+        privacy_level: privacyLevel
+    };
+    
+    // 显示加载状态
+    const resultsSection = document.querySelector('.evaluation-results');
+    if (resultsSection) {
+        resultsSection.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> 正在评估数据质量，请稍候...</div>';
+    }
+    
+    try {
+        const response = await fetch('/api/quality/assess', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(config)
+        });
         
-        // 更新结果显示
-        document.getElementById('overall-quality').textContent = '85%';
-        document.getElementById('statistical-similarity').textContent = '88%';
-        document.getElementById('distribution-similarity').textContent = '82%';
-        document.getElementById('privacy-protection').textContent = '90%';
+        const result = await response.json();
         
-        updateNavigationButtons();
-    }, 1000);
+        if (result.success) {
+            wizardData.taskId = result.data.task_id;
+            // 开始轮询任务状态
+            pollQualityTaskStatus(result.data.task_id);
+        } else {
+            alert('评估失败: ' + (result.error || '未知错误'));
+            if (resultsSection) {
+                resultsSection.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> 评估失败，请重试</div>';
+            }
+        }
+    } catch (error) {
+        console.error('评估失败:', error);
+        alert('评估失败，请重试');
+        if (resultsSection) {
+            resultsSection.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> 网络错误，请重试</div>';
+        }
+    }
+}
+
+// 轮询质量评估任务状态
+function pollQualityTaskStatus(taskId) {
+    const pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/quality/tasks/${taskId}`, {
+                credentials: 'include'
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                const task = result.data;
+                
+                // 更新进度显示
+                const resultsSection = document.querySelector('.evaluation-results');
+                if (resultsSection) {
+                    resultsSection.innerHTML = `
+                        <div class="progress-info">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${task.progress || 0}%"></div>
+                            </div>
+                            <p>${task.message || '处理中...'} (${task.progress || 0}%)</p>
+                        </div>
+                    `;
+                }
+                
+                if (task.status === 'completed') {
+                    clearInterval(pollInterval);
+                    // 加载评估报告
+                    loadQualityReport(taskId);
+                } else if (task.status === 'failed') {
+                    clearInterval(pollInterval);
+                    alert('评估失败: ' + (task.error_message || '未知错误'));
+                    if (resultsSection) {
+                        resultsSection.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> 评估失败</div>';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('查询任务状态失败:', error);
+        }
+    }, 2000); // 每2秒查询一次
+}
+
+// 加载质量评估报告
+async function loadQualityReport(taskId) {
+    try {
+        const response = await fetch(`/api/quality/tasks/${taskId}/report`, {
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            wizardData.evaluationResults = result.data;
+            displayQualityReport(result.data);
+            updateNavigationButtons();
+        }
+    } catch (error) {
+        console.error('加载报告失败:', error);
+    }
+}
+
+// 显示质量评估报告
+function displayQualityReport(report) {
+    const summary = report.summary || {};
+    const indicators = report.indicators || [];
+    
+    // 更新摘要卡片
+    if (document.getElementById('overall-quality')) {
+        document.getElementById('overall-quality').textContent = 
+            summary.overall_score ? (summary.overall_score * 100).toFixed(1) + '%' : '-';
+    }
+    if (document.getElementById('statistical-similarity')) {
+        const statIndicator = indicators.find(ind => ind.name === 'correlation');
+        document.getElementById('statistical-similarity').textContent = 
+            statIndicator ? (statIndicator.score * 100).toFixed(1) + '%' : '-';
+    }
+    if (document.getElementById('distribution-similarity')) {
+        const distIndicator = indicators.find(ind => ind.name === 'distribution_similarity');
+        document.getElementById('distribution-similarity').textContent = 
+            distIndicator ? (distIndicator.score * 100).toFixed(1) + '%' : '-';
+    }
+    
+    // 显示详细指标
+    const indicatorsList = document.getElementById('indicators-list');
+    if (indicatorsList) {
+        indicatorsList.innerHTML = indicators.map(ind => `
+            <div class="indicator-item">
+                <div class="indicator-name">${ind.name}</div>
+                <div class="indicator-score">${(ind.score * 100).toFixed(1)}%</div>
+                <div class="indicator-status ${ind.status === 'passed' ? 'passed' : 'failed'}">${ind.status === 'passed' ? '通过' : '未通过'}</div>
+            </div>
+        `).join('');
+    }
 }
 
 // 生成报告
@@ -757,7 +952,13 @@ function generateReport() {
 
 // 下载报告
 function downloadReport(format) {
-    alert(`下载${format.toUpperCase()}格式报告功能待实现`);
+    if (!wizardData.taskId) {
+        alert('请先完成评估');
+        return;
+    }
+    
+    const url = `/api/quality/tasks/${wizardData.taskId}/export?format=${format}`;
+    window.open(url, '_blank');
 }
 
 // 绑定步骤点击事件

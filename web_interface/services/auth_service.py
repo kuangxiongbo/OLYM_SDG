@@ -15,6 +15,9 @@ import hashlib
 import re
 from typing import Dict, Any, Optional
 
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models import db, User, UserStatus, UserRole
 from utils.validators import validate_email, validate_password
 

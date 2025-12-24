@@ -398,12 +398,55 @@ function bindBusinessEvents() {
     };
     
     // 文件上传处理
-    window.handleFileUpload = function(event) {
+    window.handleFileUpload = async function(event) {
         const file = event.target.files[0];
-        if (file) {
-            displayFileInfo(file);
-            wizardData.originalData = file;
-            wizardController.updateNavigationButtons();
+        if (!file) return;
+        
+        // 显示上传中状态
+        const fileInfo = document.getElementById('file-info');
+        if (fileInfo) {
+            fileInfo.style.display = 'block';
+            fileInfo.innerHTML = '<div class="uploading"><i class="fas fa-spinner fa-spin"></i> 正在上传...</div>';
+        }
+        
+        // 创建FormData
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        try {
+            const response = await fetch('/api/synthesis/upload', {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 保存文件信息
+                wizardData.originalData = {
+                    file_id: result.data.file_id,
+                    filename: result.data.filename,
+                    rows: result.data.rows,
+                    columns: result.data.columns,
+                    preview: result.data.preview
+                };
+                
+                // 显示文件信息
+                displayFileInfo(file, result.data);
+                
+                // 更新导航按钮
+                wizardController.updateNavigationButtons();
+            } else {
+                alert('上传失败: ' + (result.error || '未知错误'));
+                document.getElementById('file-input').value = '';
+                if (fileInfo) fileInfo.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('文件上传失败:', error);
+            alert('文件上传失败，请重试');
+            document.getElementById('file-input').value = '';
+            if (fileInfo) fileInfo.style.display = 'none';
         }
     };
     
@@ -415,9 +458,14 @@ function bindBusinessEvents() {
         const files = event.dataTransfer.files;
         if (files.length > 0) {
             const file = files[0];
-            displayFileInfo(file);
-            wizardData.originalData = file;
-            wizardController.updateNavigationButtons();
+            // 设置文件到input，触发上传
+            const fileInput = document.getElementById('file-input');
+            if (fileInput) {
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+                handleFileUpload({ target: fileInput });
+            }
         }
     };
     
@@ -447,14 +495,115 @@ function bindBusinessEvents() {
     };
     
     // 开始生成
-    window.startGeneration = function() {
+    window.startGeneration = async function() {
         console.log('开始生成合成数据...');
-        // 模拟生成过程
-        setTimeout(() => {
-            wizardData.generatedData = { rows: 1000, size: '2.5MB', time: '15s' };
-            updatePreview();
-            wizardController.updateNavigationButtons();
-        }, 3000);
+        
+        // 收集配置参数
+        const config = {
+            file_id: wizardData.originalData?.file_id,
+            data_amount: wizardData.dataAmount,
+            similarity: wizardData.similarity,
+            model_type: document.getElementById('model-type')?.value || 'ctgan',
+            privacy_protection: wizardData.privacyProtection,
+            differential_privacy: wizardData.differentialPrivacy
+        };
+        
+        // 显示加载状态
+        const previewContent = document.getElementById('preview-content');
+        if (previewContent) {
+            previewContent.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> 正在生成数据，请稍候...</div>';
+        }
+        
+        try {
+            const response = await fetch('/api/synthesis/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(config)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                wizardData.taskId = result.data.task_id;
+                // 开始轮询任务状态
+                pollTaskStatus(result.data.task_id);
+            } else {
+                alert('生成失败: ' + (result.error || '未知错误'));
+                if (previewContent) {
+                    previewContent.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> 生成失败，请重试</div>';
+                }
+            }
+        } catch (error) {
+            console.error('生成失败:', error);
+            alert('生成失败，请重试');
+            if (previewContent) {
+                previewContent.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> 网络错误，请重试</div>';
+            }
+        }
+    };
+    
+    // 轮询任务状态
+    window.pollTaskStatus = function(taskId) {
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/synthesis/tasks/${taskId}`, {
+                    credentials: 'include'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const task = result.data;
+                    
+                    // 更新进度显示
+                    const previewContent = document.getElementById('preview-content');
+                    if (previewContent) {
+                        previewContent.innerHTML = `
+                            <div class="progress-info">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${task.progress || 0}%"></div>
+                                </div>
+                                <p>${task.message || '处理中...'} (${task.progress || 0}%)</p>
+                            </div>
+                        `;
+                    }
+                    
+                    if (task.status === 'completed') {
+                        clearInterval(pollInterval);
+                        // 加载预览数据
+                        loadPreview(taskId);
+                    } else if (task.status === 'failed') {
+                        clearInterval(pollInterval);
+                        alert('生成失败: ' + (task.error_message || '未知错误'));
+                        if (previewContent) {
+                            previewContent.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> 生成失败</div>';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('查询任务状态失败:', error);
+            }
+        }, 2000); // 每2秒查询一次
+    };
+    
+    // 加载预览数据
+    window.loadPreview = async function(taskId) {
+        try {
+            const response = await fetch(`/api/synthesis/tasks/${taskId}/preview?page=1&page_size=20`, {
+                credentials: 'include'
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                wizardData.generatedData = result.data;
+                updatePreview();
+                wizardController.updateNavigationButtons();
+            }
+        } catch (error) {
+            console.error('加载预览失败:', error);
+        }
     };
     
     // 刷新预览
@@ -464,8 +613,13 @@ function bindBusinessEvents() {
     
     // 下载数据
     window.downloadData = function(format) {
-        console.log(`下载${format}格式数据`);
-        // 实现下载逻辑
+        if (!wizardData.taskId) {
+            alert('请先生成数据');
+            return;
+        }
+        
+        const url = `/api/synthesis/tasks/${wizardData.taskId}/download?format=${format}`;
+        window.open(url, '_blank');
     };
     
     // 配置参数变化
@@ -488,18 +642,77 @@ function bindBusinessEvents() {
 }
 
 // 显示文件信息
-function displayFileInfo(file) {
+function displayFileInfo(file, uploadData = null) {
     const fileInfo = document.getElementById('file-info');
+    if (!fileInfo) return;
+    
     const fileName = document.getElementById('file-name');
     const fileSize = document.getElementById('file-size');
     const fileType = document.getElementById('file-type');
     
-    if (fileInfo && fileName && fileSize && fileType) {
-        fileName.textContent = file.name;
-        fileSize.textContent = formatFileSize(file.size);
-        fileType.textContent = getFileTypeName(file.name);
-        fileInfo.style.display = 'block';
+    if (fileName) fileName.textContent = uploadData ? uploadData.filename : file.name;
+    if (fileSize) fileSize.textContent = uploadData ? `${uploadData.rows} 行` : formatFileSize(file.size);
+    if (fileType) fileType.textContent = getFileTypeName(uploadData ? uploadData.filename : file.name);
+    
+    fileInfo.style.display = 'block';
+    
+    // 如果有预览数据，显示预览按钮
+    if (uploadData && uploadData.preview && uploadData.preview.length > 0) {
+        let previewBtn = document.getElementById('preview-file-btn');
+        if (!previewBtn) {
+            previewBtn = document.createElement('button');
+            previewBtn.id = 'preview-file-btn';
+            previewBtn.className = 'btn btn-secondary btn-sm';
+            previewBtn.innerHTML = '<i class="fas fa-eye"></i> 预览数据';
+            previewBtn.onclick = () => showFilePreview(uploadData);
+            fileInfo.appendChild(previewBtn);
+        }
     }
+}
+
+// 显示文件预览
+function showFilePreview(uploadData) {
+    if (!uploadData || !uploadData.preview) return;
+    
+    const columns = uploadData.columns || [];
+    const preview = uploadData.preview || [];
+    
+    let tableHTML = '<table class="table table-striped"><thead><tr>';
+    columns.forEach(col => {
+        tableHTML += `<th>${col}</th>`;
+    });
+    tableHTML += '</tr></thead><tbody>';
+    
+    preview.forEach(row => {
+        tableHTML += '<tr>';
+        columns.forEach(col => {
+            tableHTML += `<td>${row[col] || '-'}</td>`;
+        });
+        tableHTML += '</tr>';
+    });
+    tableHTML += '</tbody></table>';
+    
+    // 显示模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>数据预览</h3>
+                <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            </div>
+            <div class="modal-body">
+                ${tableHTML}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // 点击外部关闭
+    modal.onclick = function(e) {
+        if (e.target === modal) modal.remove();
+    };
 }
 
 // 格式化文件大小
@@ -536,25 +749,39 @@ function loadDataSources() {
 // 更新预览
 function updatePreview() {
     const previewContent = document.getElementById('preview-content');
-    if (wizardData.generatedData) {
-        previewContent.innerHTML = `
+    if (!previewContent) return;
+    
+    if (wizardData.generatedData && wizardData.generatedData.data) {
+        const columns = wizardData.generatedData.columns || [];
+        const data = wizardData.generatedData.data || [];
+        const pagination = wizardData.generatedData.pagination || {};
+        
+        let tableHTML = `
             <div class="preview-table">
+                <div class="preview-header">
+                    <h4>生成结果预览</h4>
+                    <span class="preview-count">共 ${pagination.total || data.length} 条数据</span>
+                </div>
                 <table class="table table-striped">
                     <thead>
                         <tr>
-                            <th>列1</th>
-                            <th>列2</th>
-                            <th>列3</th>
-                            <th>列4</th>
+                            ${columns.map(col => `<th>${col}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>
-                        <tr><td>示例数据1</td><td>示例数据2</td><td>示例数据3</td><td>示例数据4</td></tr>
-                        <tr><td>示例数据5</td><td>示例数据6</td><td>示例数据7</td><td>示例数据8</td></tr>
+                        ${data.map(row => `
+                            <tr>
+                                ${columns.map(col => `<td>${row[col] !== null && row[col] !== undefined ? row[col] : '-'}</td>`).join('')}
+                            </tr>
+                        `).join('')}
                     </tbody>
                 </table>
             </div>
         `;
+        
+        previewContent.innerHTML = tableHTML;
+    } else {
+        previewContent.innerHTML = '<div class="empty-state"><i class="fas fa-chart-line"></i> 点击"开始生成"查看合成数据预览</div>';
     }
 }
 

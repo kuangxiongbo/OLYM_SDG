@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI数据平台静态原型</title>
+  <style>
+    body { font-family: "Segoe UI", "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif; margin: 0; padding: 0; background: #f5f7fa; color: #1f2d3d; }
+    header, section { padding: 40px 60px; }
+    header { background: linear-gradient(135deg, #5c7cfa, #7b6ef6); color: #fff; text-align: center; }
+    h1 { margin: 0; font-size: 32px; }
+    h2 { margin-top: 60px; font-size: 28px; border-left: 6px solid #5c7cfa; padding-left: 16px; }
+    h3 { margin-top: 32px; font-size: 22px; color: #36485c; }
+    .page { background: #fff; border-radius: 16px; padding: 32px; box-shadow: 0 16px 40px rgba(15, 23, 42, 0.1); margin-top: 32px; }
+    .layout { border: 1px dashed #94a3b8; padding: 20px; border-radius: 12px; margin-top: 16px; background: #f8fafc; }
+    .note { font-size: 14px; color: #64748b; margin-top: 12px; }
+    .card-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 18px; border: 1px solid #e2e8f0; box-shadow: 0 6px 18px rgba(100, 116, 139, 0.12); }
+    ul { margin: 8px 0 0 20px; }
+    code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; }
+    footer { text-align: center; font-size: 14px; color: #94a3b8; padding: 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>AI 数据平台 · 静态页面原型</h1>
+    <p>基于《系统原型设计》《静态原型稿》整理的核心页面概览，供前端实现与UI设计参考。</p>
+  </header>
+
+  <section id="login" class="page">
+    <h2>01 · 登录页</h2>
+    <div class="layout">
+      <h3>结构</h3>
+      <ul>
+        <li>顶部 Logo / 标语</li>
+        <li>输入区：账号、密码、记住我</li>
+        <li>主按钮：登录</li>
+        <li>辅助链接：注册账户、忘记密码</li>
+      </ul>
+    </div>
+    <div class="note">未认证用户默认进入此页面。提交后根据角色跳转至首页。</div>
+  </section>
+
+  <section id="register" class="page">
+    <h2>02 · 注册 & 激活流程</h2>
+    <div class="layout">
+      <h3>注册页</h3>
+      <ul>
+        <li>字段：邮箱、手机号(可选)、密码、确认密码</li>
+        <li>勾选：用户协议</li>
+        <li>注册按钮，成功后提示“已发送激活邮件”</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>激活弹窗</h3>
+      <ul>
+        <li>说明：激活码发送至注册邮箱</li>
+        <li>输入框：激活码</li>
+        <li>按钮：提交激活、重新发送</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="home" class="page">
+    <h2>03 · 首页</h2>
+    <div class="layout">
+      <h3>结构</h3>
+      <ul>
+        <li>顶部导航：Logo、首页、系统设置(管理员)、用户信息、退出</li>
+        <li>Hero 区：欢迎语、引导按钮</li>
+        <li>主体：三项工具入口卡片</li>
+      </ul>
+    </div>
+    <div class="card-grid">
+      <div class="card">
+        <h3>AI 仿真数据生成</h3>
+        <p>使用行业模板 + 字段配置生成合成数据。</p>
+      </div>
+      <div class="card">
+        <h3>AI 数据质量评估</h3>
+        <p>上传或选择数据集，评估合成与原始数据的差异。</p>
+      </div>
+      <div class="card">
+        <h3>AI 数据脱敏</h3>
+        <p>识别敏感字段，推荐仿真或非仿真遮蔽方案。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="synthesis" class="page">
+    <h2>04 · AI 仿真数据生成模块</h2>
+    <div class="layout">
+      <h3>入口页</h3>
+      <ul>
+        <li>面包屑：返回首页</li>
+        <li>标题与描述：说明模板驱动生成流程</li>
+        <li>行业模板卡片：金融、通信、零售等，可预览与使用</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>配置页面</h3>
+      <ul>
+        <li>字段配置区：字段列表、新增字段、类型、分布规则</li>
+        <li>参数配置区：模型类型、相似度滑块、目标行数、训练参数展示</li>
+        <li>操作按钮：开始生成、保存配置</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>反馈与预览</h3>
+      <ul>
+        <li>生成反馈：实时日志、进度条</li>
+        <li>预览弹窗：原始模板 vs 生成数据双 Tab，支持搜索、分页、下载</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="quality" class="page">
+    <h2>05 · AI 数据质量评估模块</h2>
+    <div class="layout">
+      <h3>入口页</h3>
+      <ul>
+        <li>面包屑与标题</li>
+        <li>说明文本：评估目标与流程</li>
+        <li>按钮：上传/选择数据集</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>评估配置</h3>
+      <ul>
+        <li>数据源面板：上传文件/历史数据、字段预览</li>
+        <li>指标设置：相关性、分布相似度、缺失率等，阈值输入</li>
+        <li>执行控制：开始评估按钮、进度 & 日志</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>评估结果</h3>
+      <ul>
+        <li>总体评分与状态</li>
+        <li>图表：仪表盘/雷达图、指标卡片</li>
+        <li>问题列表 & 样本展示</li>
+        <li>导出报告按钮</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="masking" class="page">
+    <h2>06 · AI 数据脱敏模块</h2>
+    <div class="layout">
+      <h3>入口页</h3>
+      <ul>
+        <li>面包屑与标题</li>
+        <li>说明文本：仿真/非仿真方案概览</li>
+        <li>按钮：上传/选择数据集</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>规则配置</h3>
+      <ul>
+        <li>字段识别：自动识别身份证号、手机号、姓名等类型</li>
+        <li>推荐方案：仿真方案、非仿真方案（遮蔽、掩码、哈希）</li>
+        <li>配置面板：自由切换方案，调整细节，查看示例输出</li>
+      </ul>
+    </div>
+    <div class="layout">
+      <h3>执行与结果</h3>
+      <ul>
+        <li>进度条 + 运行日志</li>
+        <li>结果预览：原值 vs 处理值</li>
+        <li>下载脱敏数据、导出报告</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="settings" class="page">
+    <h2>07 · 系统设置（管理员）</h2>
+    <div class="layout">
+      <h3>导航结构</h3>
+      <ul>
+        <li>左侧垂直导航：<code>AI 大模型</code>、<code>邮箱服务器</code></li>
+        <li>右侧内容区：依据选择显示对应表单</li>
+      </ul>
+    </div>
+    <div class="card-grid">
+      <div class="card">
+        <h3>AI 大模型配置</h3>
+        <ul>
+          <li>服务类型：线上 / 本地</li>
+          <li>Endpoint、API Key、模型名称、版本</li>
+          <li>测试连接按钮与反馈</li>
+          <li>保存按钮</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>邮箱服务器配置</h3>
+        <ul>
+          <li>SMTP 地址、端口、加密方式</li>
+          <li>发件人邮箱、授权码</li>
+          <li>测试邮件发送</li>
+          <li>保存按钮</li>
+        </ul>
+      </div>
+    </div>
+    <div class="note">普通用户访问系统设置将被重定向或提示无权限。</div>
+  </section>
+
+  <footer>
+    © 2025 AI 数据平台 · 静态原型，仅用于内部设计沟通。
+  </footer>
+</body>
+</html>
+
+
+

@@ -28,6 +28,27 @@ class DataTransformer:
         df_prepared = df.copy()
         log_prefix = f"任务 {task_id}: " if task_id else "[DataTransformer] "
         
+        # 关键：在转换前，先清理所有可能的空值标记（包括 'NAN_VALUE'）
+        # 确保所有列都没有 'NAN_VALUE', 'NULL', 'null' 等标记
+        for col in df_prepared.columns:
+            if col not in (date_columns or set()):
+                # 检查并替换所有可能的空值标记
+                if df_prepared[col].dtype == 'object':
+                    # 替换所有可能的空值标记为 pd.NA
+                    df_prepared[col] = df_prepared[col].replace([
+                        'NAN_VALUE', 'NULL', 'null', 'nan', 'NaN', 'None', 
+                        'NaT', 'nat', '<NaT>', 'N/A', 'n/a', 'NA'
+                    ], pd.NA)
+                    # 检查是否还有 'NAN_VALUE' 存在
+                    if df_prepared[col].astype(str).str.contains('NAN_VALUE', na=False).any():
+                        print(f"{log_prefix}⚠️ 警告: 列 {col} 仍有 'NAN_VALUE' 标记，强制替换为 pd.NA")
+                        df_prepared[col] = df_prepared[col].replace('NAN_VALUE', pd.NA)
+                else:
+                    # 对于非object类型，也检查是否有字符串形式的空值标记
+                    if df_prepared[col].dtype in ['int64', 'int32', 'float64', 'float32']:
+                        # 数值类型列不应该有字符串，但为了安全起见，检查一下
+                        pass
+        
         # 关键：在转换前，先验证日期列的值
         for col in date_columns:
             if col in df_prepared.columns:
@@ -91,15 +112,15 @@ class DataTransformer:
                     elif df_cleaned[col].dtype == 'object':
                         df_cleaned[col] = df_cleaned[col].replace(['nan', 'NaN', 'None', 'NaT', '<NaT>', 'nat', ''], '')
         
-        # 处理其他object列的NaN值（只替换真正的空值，不改变正常字符串值）
+        # 处理其他object列的NaN值（只替换真正的空值标记，不改变正常字符串值和空字符串）
         for col in df_cleaned.columns:
             if col not in (date_columns or set()) and df_cleaned[col].dtype == 'object':
-                # 只替换真正的空值标记，不改变正常字符串（如 'C001', '张三' 等）
-                # 使用 fillna 只处理真正的 NaN，而不是字符串 'nan'
+                # 只替换真正的空值标记（如 'NAN_VALUE', 'NULL', 'null'），不改变正常字符串
+                # 注意：不要将空字符串 '' 转换为NaN，因为原始数据中可能某些列就是空的
                 df_cleaned[col] = df_cleaned[col].replace(['NAN_VALUE', 'NULL', 'null'], pd.NA)
-                # 对于字符串 'nan', 'NaN', ''，只在它们是真正的空值时才替换
-                # 注意：不要替换正常的字符串值
-                mask = df_cleaned[col].isin(['nan', 'NaN', ''])
+                # 只替换明确的空值标记 'nan', 'NaN'，但保留空字符串 ''
+                # 空字符串 '' 保持为空字符串，不转换为NaN
+                mask = df_cleaned[col].isin(['nan', 'NaN'])
                 df_cleaned.loc[mask, col] = pd.NA
         
         return df_cleaned

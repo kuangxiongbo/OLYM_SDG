@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 数据脱敏原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <div class="brand">AI 数据平台</div>
+    <div class="menu">
+      <span style="color: var(--primary); font-weight: 600;">首页</span>
+      <span>任务中心</span>
+      <span>系统设置</span>
+    </div>
+    <div class="menu">
+      <span>user@app.com</span>
+      <span>退出</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="wizard">
+      <div class="wizard-steps">
+        <div class="wizard-step active" data-step="1">
+          <div class="index">1</div>
+          <div class="meta">
+            <strong>准备数据</strong>
+            <span>上传或选择来源</span>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="2">
+          <div class="index">2</div>
+          <div class="meta">
+            <strong>配置规则</strong>
+            <span>识别类型与方案</span>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="3">
+          <div class="index">3</div>
+          <div class="meta">
+            <strong>执行脱敏</strong>
+            <span>日志与进度</span>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="4">
+          <div class="index">4</div>
+          <div class="meta">
+            <strong>下载结果</strong>
+            <span>预览与导出</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-content">
+    <section class="section active-section" data-step="1">
+      <h2 class="visually-hidden">01 · 数据源管理</h2>
+      <div class="panel">
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+          <div>
+            <h3>数据选择</h3>
+            <ul class="list">
+              <li>上传原始数据文件</li>
+              <li>选择历史上传记录</li>
+              <li>读取仿真生成结果</li>
+            </ul>
+            <div class="actions">
+              <button class="button primary">上传文件</button>
+              <button class="button secondary">选择已有</button>
+            </div>
+          </div>
+          <div>
+            <h3>字段预览</h3>
+            <table class="table">
+              <thead>
+                <tr><th>字段名</th><th>识别类型</th><th>样例值</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>name</td><td>姓名</td><td>张伟</td></tr>
+                <tr><td>id_number</td><td>身份证号</td><td>3201**********1234</td></tr>
+                <tr><td>phone</td><td>手机号</td><td>138****2218</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev" disabled>上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="2">
+      <h2 class="visually-hidden">02 · 规则配置</h2>
+      <div class="panel">
+        <h3>推荐方案总览</h3>
+        <table class="table">
+          <thead>
+            <tr><th>字段名</th><th>自动识别类型</th><th>推荐方案</th><th>替换效果</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>name</td>
+              <td>姓名</td>
+              <td>仿真（生成虚拟姓名）</td>
+              <td>张伟 → 李雪</td>
+              <td style="color: var(--primary);">配置</td>
+            </tr>
+            <tr>
+              <td>id_number</td>
+              <td>身份证号</td>
+              <td>仿真 / 非仿真（遮蔽）</td>
+              <td>3201**********1234 → 5103**********5621</td>
+              <td style="color: var(--primary);">配置</td>
+            </tr>
+            <tr>
+              <td>phone</td>
+              <td>手机号</td>
+              <td>非仿真（局部脱敏）</td>
+              <td>138****2218</td>
+              <td style="color: var(--primary);">配置</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="panel" style="margin-top: 24px; border-radius: 12px; box-shadow: none; border: 1px dashed var(--border);">
+          <span class="badge">字段配置详情</span>
+          <h3>字段：id_number</h3>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; align-items: center;">
+            <div>
+              <h4 style="margin: 0 0 8px 0;">方案选择</h4>
+              <ul class="list">
+                <li><strong>仿真：</strong>使用 AI 生成合法身份证号</li>
+                <li><strong>非仿真：</strong>遮蔽为 6-4-4 格式（3201**********1234）</li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="margin: 0 0 8px 0;">效果预览</h4>
+              <div style="background: rgba(92, 124, 250, 0.08); padding: 14px; border-radius: 12px;">
+                <p style="margin: 0; font-family: 'Courier New', monospace;">原值：320121199212121234</p>
+                <p style="margin: 8px 0 0 0; font-family: 'Courier New', monospace;">仿真：510324199305125621</p>
+                <p style="margin: 8px 0 0 0; font-family: 'Courier New', monospace;">遮蔽：3201**********1234</p>
+              </div>
+            </div>
+            <div>
+              <h4 style="margin: 0 0 8px 0;">操作</h4>
+              <div class="actions">
+                <button class="button secondary">选择仿真方案</button>
+                <button class="button secondary">选择遮蔽方案</button>
+                <button class="button primary">保存设置</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="3">
+      <h2 class="visually-hidden">03 · 执行进度</h2>
+      <div class="panel">
+        <div>
+          <h3>执行状态</h3>
+          <div style="height: 12px; border-radius: 999px; background: rgba(92,124,250,0.12); overflow: hidden;">
+            <div style="width: 92%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--secondary));"></div>
+          </div>
+          <p style="color: var(--muted); margin-top: 8px;">正在写入结果文件 · 92%</p>
+        </div>
+        <div style="margin-top: 20px;">
+          <div style="background: rgba(92, 124, 250, 0.08); border-radius: 12px; padding: 16px;">
+            <p style="color: var(--muted); font-family: 'Courier New', monospace;">
+              [INFO] 识别字段类型完成<br>
+              [INFO] 正在应用仿真方案到字段 name, id_number<br>
+              [INFO] 正在执行遮蔽方案到字段 phone
+            </p>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="4">
+      <h2 class="visually-hidden">04 · 结果与下载</h2>
+      <div class="panel">
+        <h3>结果预览</h3>
+        <table class="table">
+          <thead>
+            <tr><th>字段名</th><th>原始值</th><th>处理后</th><th>方案</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>name</td><td>张伟</td><td>李雪</td><td>仿真</td></tr>
+            <tr><td>id_number</td><td>320121199212121234</td><td>510324199305125621</td><td>仿真</td></tr>
+            <tr><td>phone</td><td>13822181234</td><td>138****1234</td><td>非仿真</td></tr>
+          </tbody>
+        </table>
+        <div class="actions" style="margin-top: 24px;">
+          <button class="button secondary">导出处理报告</button>
+          <button class="button primary">下载脱敏数据</button>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">完成</button>
+        </div>
+      </div>
+    </section>
+    </div>
+  </main>
+  <script src="prototype.js"></script>
+</body>
+</html>

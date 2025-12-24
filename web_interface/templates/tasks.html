@@ -1,0 +1,325 @@
+{% extends "base_new.html" %}
+
+{% block title %}任务中心{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="panel">
+        <div style="margin-bottom: 24px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 6px; font-size: 14px; color: var(--muted);">任务类型</label>
+                <select id="filter-type" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);">
+                    <option value="">全部</option>
+                    <option value="synthesis">仿真数据生成</option>
+                    <option value="quality">数据质量评估</option>
+                    <option value="masking">数据脱敏</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 6px; font-size: 14px; color: var(--muted);">任务状态</label>
+                <select id="filter-status" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);">
+                    <option value="">全部</option>
+                    <option value="pending">待处理</option>
+                    <option value="running">进行中</option>
+                    <option value="completed">完成</option>
+                    <option value="failed">失败</option>
+                    <option value="cancelled">已取消</option>
+                </select>
+            </div>
+            <div style="margin-top: 24px;">
+                <button class="button primary" onclick="loadTasks()" style="padding: 8px 16px;">筛选</button>
+                <button class="button secondary" onclick="resetFilters()" style="padding: 8px 16px; margin-left: 8px;">重置</button>
+            </div>
+        </div>
+        
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>类型</th>
+                    <th>任务名称</th>
+                    <th>状态</th>
+                    <th>进度</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tasks-content">
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">加载中...</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div id="pagination" style="margin-top: 24px; display: flex; justify-content: center; align-items: center; gap: 8px;">
+            <!-- 分页控件将通过JavaScript动态生成 -->
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 任务类型映射
+const typeMap = {
+    'synthesis': '仿真数据生成',
+    'quality': '数据质量评估',
+    'masking': '数据脱敏'
+};
+
+// 状态映射
+const statusMap = {
+    'pending': '待处理',
+    'running': '进行中',
+    'completed': '完成',
+    'failed': '失败',
+    'cancelled': '已取消'
+};
+
+// 根据任务状态和类型生成任务名称
+function getTaskName(task) {
+    if (task.name) {
+        return task.name;
+    }
+    
+    const typeNames = {
+        'synthesis': '合成数据生成',
+        'quality': '数据质量评估',
+        'masking': '数据脱敏'
+    };
+    
+    const typeName = typeNames[task.task_type] || task.task_type;
+    const date = new Date(task.created_at);
+    const dateStr = date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    
+    return `${typeName}_${dateStr}`;
+}
+
+// 格式化时间（只显示时分）
+function formatTime(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+let currentPage = 1;
+let currentType = '';
+let currentStatus = '';
+
+async function loadTasks(page = 1) {
+    try {
+        currentPage = page;
+        currentType = document.getElementById('filter-type')?.value || '';
+        currentStatus = document.getElementById('filter-status')?.value || '';
+        
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page.toString(),
+            page_size: '20'
+        });
+        if (currentType) params.append('type', currentType);
+        if (currentStatus) params.append('status', currentStatus);
+        
+        const response = await fetch(`/api/tasks?${params.toString()}`, {
+            credentials: 'include',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            const tasks = result.data.tasks || [];
+            const pagination = result.data.pagination || {};
+            const tbody = document.getElementById('tasks-content');
+            
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">暂无任务</td></tr>';
+            } else {
+                tbody.innerHTML = tasks.map(task => {
+                    // 兼容不同的字段名
+                    const taskTypeCode = task.task_type || task.type || 'unknown';
+                    const taskName = task.name || task.task_name || getTaskName(task);
+                    const taskType = typeMap[taskTypeCode] || taskTypeCode;
+                    const taskStatus = statusMap[task.status] || task.status;
+                    const progress = task.progress !== undefined ? task.progress : (task.status === 'completed' ? 100 : 0);
+                    
+                    // 根据状态确定操作文本和链接
+                    let actionText = '查看';
+                    let actionUrl = '#';
+                    if (task.status === 'completed') {
+                        if (taskTypeCode === 'quality') {
+                            actionText = '查看报告';
+                            actionUrl = `/api/quality/tasks/task_${task.id}/report`;
+                        } else if (taskTypeCode === 'synthesis') {
+                            actionText = '查看结果';
+                            actionUrl = `/api/synthesis/tasks/task_${task.id}/view`;
+                        } else if (taskTypeCode === 'masking') {
+                            actionText = '查看结果';
+                            actionUrl = `/api/masking/tasks/task_${task.id}/preview`;
+                        }
+                    } else if (task.status === 'pending') {
+                        actionText = '配置';
+                    } else if (task.status === 'running') {
+                        actionText = '查看进度';
+                    }
+                    
+                    return `
+                        <tr>
+                            <td>${task.created_at ? formatTime(task.created_at) : '-'}</td>
+                            <td>${taskType}</td>
+                            <td>${taskName}</td>
+                            <td>${taskStatus}</td>
+                            <td>
+                                ${task.status === 'running' ? `
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div style="flex: 1; height: 8px; background: rgba(92,124,250,0.12); border-radius: 4px; overflow: hidden;">
+                                            <div style="width: ${progress}%; height: 100%; background: var(--primary); transition: width 0.3s;"></div>
+                                        </div>
+                                        <span style="font-size: 12px; color: var(--muted);">${progress}%</span>
+                                    </div>
+                                ` : '-'}
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <a href="${actionUrl}" onclick="${actionUrl === '#' ? `handleTaskAction('${task.id}', '${task.status}', '${taskTypeCode}'); return false;` : ''}" style="color: var(--primary);">${actionText}</a>
+                                    ${task.status === 'running' || task.status === 'pending' ? `<a href="#" onclick="cancelTask('${task.id}'); return false;" style="color: #dc2626;">取消</a>` : ''}
+                                    ${task.status === 'completed' || task.status === 'failed' || task.status === 'cancelled' ? `<a href="#" onclick="deleteTask('${task.id}'); return false;" style="color: #dc2626;">删除</a>` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+            
+            // 更新分页控件
+            updatePagination(pagination);
+        } else {
+            document.getElementById('tasks-content').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #dc2626; padding: 40px;">加载失败</td></tr>';
+        }
+    } catch (error) {
+        console.error('加载任务失败:', error);
+        document.getElementById('tasks-content').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #dc2626; padding: 40px;">加载失败，请刷新重试</td></tr>';
+    }
+}
+
+function updatePagination(pagination) {
+    const paginationDiv = document.getElementById('pagination');
+    if (!paginationDiv) return;
+    
+    const totalPages = pagination.total_pages || 1;
+    const currentPageNum = pagination.page || 1;
+    
+    if (totalPages <= 1) {
+        paginationDiv.innerHTML = '';
+        return;
+    }
+    
+    let html = '';
+    
+    // 上一页按钮
+    html += `<button class="button secondary" onclick="loadTasks(${currentPageNum - 1})" ${currentPageNum <= 1 ? 'disabled' : ''}>上一页</button>`;
+    
+    // 页码按钮
+    const startPage = Math.max(1, currentPageNum - 2);
+    const endPage = Math.min(totalPages, currentPageNum + 2);
+    
+    if (startPage > 1) {
+        html += `<button class="button secondary" onclick="loadTasks(1)">1</button>`;
+        if (startPage > 2) html += '<span>...</span>';
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="button ${i === currentPageNum ? 'primary' : 'secondary'}" onclick="loadTasks(${i})">${i}</button>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += '<span>...</span>';
+        html += `<button class="button secondary" onclick="loadTasks(${totalPages})">${totalPages}</button>`;
+    }
+    
+    // 下一页按钮
+    html += `<button class="button secondary" onclick="loadTasks(${currentPageNum + 1})" ${currentPageNum >= totalPages ? 'disabled' : ''}>下一页</button>`;
+    
+    // 显示总数
+    html += `<span style="margin-left: 16px; color: var(--muted);">共 ${pagination.total || 0} 条</span>`;
+    
+    paginationDiv.innerHTML = html;
+}
+
+function resetFilters() {
+    document.getElementById('filter-type').value = '';
+    document.getElementById('filter-status').value = '';
+    loadTasks(1);
+}
+
+async function cancelTask(taskId) {
+    if (!confirm('确定要取消此任务吗？')) return;
+    
+    try {
+        const response = await fetch(`/api/tasks/${taskId}/cancel`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('任务已取消');
+            loadTasks(currentPage);
+        } else {
+            alert('取消失败: ' + (result.error || '未知错误'));
+        }
+    } catch (error) {
+        console.error('取消任务失败:', error);
+        alert('取消任务失败，请重试');
+    }
+}
+
+async function deleteTask(taskId) {
+    if (!confirm('确定要删除此任务吗？删除后无法恢复。')) return;
+    
+    try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('任务已删除');
+            loadTasks(currentPage);
+        } else {
+            alert('删除失败: ' + (result.error || '未知错误'));
+        }
+    } catch (error) {
+        console.error('删除任务失败:', error);
+        alert('删除任务失败，请重试');
+    }
+}
+
+function handleTaskAction(taskId, status, taskType) {
+    if (status === 'completed') {
+        if (taskType === 'quality') {
+            window.location.href = `/api/quality/tasks/task_${taskId}/report`;
+        } else if (taskType === 'synthesis') {
+            window.location.href = `/api/synthesis/tasks/task_${taskId}/view`;
+        } else if (taskType === 'masking') {
+            window.location.href = `/api/masking/tasks/task_${taskId}/preview`;
+        }
+    } else if (status === 'running') {
+        // 显示任务详情或进度
+        alert(`任务 ${taskId} 正在处理中，进度可通过任务列表查看`);
+    } else {
+        alert(`任务 ${taskId} 状态：${status}`);
+    }
+}
+
+// 页面加载时自动加载任务
+document.addEventListener('DOMContentLoaded', function() {
+    loadTasks();
+});
+</script>
+{% endblock %}

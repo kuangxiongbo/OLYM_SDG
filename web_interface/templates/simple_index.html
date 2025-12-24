@@ -1,0 +1,217 @@
+{% extends "simple_base.html" %}
+
+{% block title %}真正的SDG Web界面 - 首页{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 text-primary">
+                <i class="fas fa-magic"></i> 真正的SDG合成数据生成器
+            </h1>
+            <p class="lead text-muted">使用SDGX 0.2.5.dev0和CTGAN模型生成高质量的合成数据</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="feature-card">
+            <h3><i class="fas fa-upload text-primary"></i> 数据上传</h3>
+            <p>上传您的CSV或Excel文件，系统将自动分析数据结构并准备生成合成数据。</p>
+            <div class="mt-3">
+                <input type="file" id="dataFile" class="form-control" accept=".csv,.xlsx,.xls">
+                <button class="btn btn-primary mt-2" onclick="uploadData()">
+                    <i class="fas fa-upload"></i> 上传数据
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <h3><i class="fas fa-cogs text-success"></i> 生成设置</h3>
+            <p>配置合成数据生成参数，包括生成数量和模型训练轮数。</p>
+            <div class="mt-3">
+                <div class="mb-2">
+                    <label class="form-label">生成数量:</label>
+                    <input type="number" id="numSamples" class="form-control" value="100" min="10" max="10000">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">训练轮数:</label>
+                    <input type="number" id="epochs" class="form-control" value="10" min="1" max="100">
+                </div>
+                <button class="btn btn-success" onclick="generateData()" id="generateBtn" disabled>
+                    <i class="fas fa-magic"></i> 生成合成数据
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="feature-card">
+            <h3><i class="fas fa-chart-line text-info"></i> 生成状态</h3>
+            <div id="statusArea">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> 请先上传数据文件
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4" id="resultArea" style="display: none;">
+    <div class="col-12">
+        <div class="feature-card">
+            <h3><i class="fas fa-table text-warning"></i> 合成数据预览</h3>
+            <div id="dataPreview"></div>
+            <div class="mt-3">
+                <button class="btn btn-warning" onclick="downloadResult()" id="downloadBtn" disabled>
+                    <i class="fas fa-download"></i> 下载完整数据
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSessionId = null;
+let currentResultId = null;
+
+async function uploadData() {
+    const fileInput = document.getElementById('dataFile');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        showStatus('请选择文件', 'warning');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showStatus('正在上传数据...', 'info');
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentSessionId = result.session_id;
+            showStatus(`数据上传成功！共 ${result.data_info.rows} 行，${result.data_info.columns} 列`, 'success');
+            document.getElementById('generateBtn').disabled = false;
+        } else {
+            showStatus(`上传失败: ${result.message}`, 'danger');
+        }
+    } catch (error) {
+        showStatus(`上传失败: ${error.message}`, 'danger');
+    }
+}
+
+async function generateData() {
+    if (!currentSessionId) {
+        showStatus('请先上传数据', 'warning');
+        return;
+    }
+    
+    const numSamples = document.getElementById('numSamples').value;
+    const epochs = document.getElementById('epochs').value;
+    
+    showStatus('正在使用真正的SDG生成合成数据...', 'info');
+    document.getElementById('generateBtn').disabled = true;
+    
+    try {
+        const response = await fetch('/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                session_id: currentSessionId,
+                num_samples: parseInt(numSamples),
+                epochs: parseInt(epochs)
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            currentResultId = result.result_id;
+            showStatus(`✅ 真正的SDG生成成功！生成了 ${result.data_info.synthetic_rows} 条合成数据`, 'success');
+            displayDataPreview(result.synthetic_data);
+            document.getElementById('downloadBtn').disabled = false;
+            document.getElementById('resultArea').style.display = 'block';
+        } else {
+            showStatus(`生成失败: ${result.message}`, 'danger');
+        }
+    } catch (error) {
+        showStatus(`生成失败: ${error.message}`, 'danger');
+    } finally {
+        document.getElementById('generateBtn').disabled = false;
+    }
+}
+
+function displayDataPreview(data) {
+    if (!data || data.length === 0) {
+        document.getElementById('dataPreview').innerHTML = '<p>没有数据可显示</p>';
+        return;
+    }
+    
+    const columns = Object.keys(data[0]);
+    let html = '<div class="table-responsive"><table class="table table-striped table-hover">';
+    
+    // 表头
+    html += '<thead class="table-dark"><tr>';
+    columns.forEach(col => {
+        html += `<th>${col}</th>`;
+    });
+    html += '</tr></thead>';
+    
+    // 数据行
+    html += '<tbody>';
+    data.forEach(row => {
+        html += '<tr>';
+        columns.forEach(col => {
+            html += `<td>${row[col]}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    
+    document.getElementById('dataPreview').innerHTML = html;
+}
+
+function downloadResult() {
+    if (!currentResultId) {
+        showStatus('没有可下载的结果', 'warning');
+        return;
+    }
+    
+    window.open(`/api/download/${currentResultId}`, '_blank');
+}
+
+function showStatus(message, type) {
+    const statusArea = document.getElementById('statusArea');
+    const alertClass = `alert-${type}`;
+    const iconClass = type === 'success' ? 'fa-check-circle' : 
+                     type === 'warning' ? 'fa-exclamation-triangle' : 
+                     type === 'danger' ? 'fa-times-circle' : 'fa-info-circle';
+    
+    statusArea.innerHTML = `
+        <div class="alert ${alertClass}">
+            <i class="fas ${iconClass}"></i> ${message}
+        </div>
+    `;
+}
+</script>
+{% endblock %}
+
+
+
+

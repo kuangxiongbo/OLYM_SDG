@@ -773,7 +773,11 @@ async function showEmailConfig() {
         if (result.success) {
             displayEmailConfig(result.email_config);
             // 使用Bootstrap方式显示模态框
-            const modal = new bootstrap.Modal(document.getElementById('emailConfigModal'));
+            const modalElement = document.getElementById('emailConfigModal');
+            const modal = new bootstrap.Modal(modalElement);
+            
+            // 正确设置aria-hidden属性
+            modalElement.setAttribute('aria-hidden', 'false');
             modal.show();
         } else {
             const content = document.getElementById('emailConfigContent');
@@ -784,7 +788,11 @@ async function showEmailConfig() {
                     <p>${result.message}</p>
                 </div>
             `;
-            const modal = new bootstrap.Modal(document.getElementById('emailConfigModal'));
+            const modalElement = document.getElementById('emailConfigModal');
+            const modal = new bootstrap.Modal(modalElement);
+            
+            // 正确设置aria-hidden属性
+            modalElement.setAttribute('aria-hidden', 'false');
             modal.show();
         }
     } catch (error) {
@@ -797,7 +805,11 @@ async function showEmailConfig() {
                 <p>网络错误或服务器异常</p>
             </div>
         `;
-        const modal = new bootstrap.Modal(document.getElementById('emailConfigModal'));
+        const modalElement = document.getElementById('emailConfigModal');
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // 正确设置aria-hidden属性
+        modalElement.setAttribute('aria-hidden', 'false');
         modal.show();
     }
 }
@@ -894,9 +906,28 @@ function closeEmailConfig() {
     const modalElement = document.getElementById('emailConfigModal');
     const modal = bootstrap.Modal.getInstance(modalElement);
     if (modal) {
+        // 正确设置aria-hidden属性
+        modalElement.setAttribute('aria-hidden', 'true');
         modal.hide();
     }
 }
+
+// 添加模态框事件监听器来正确处理aria-hidden属性
+document.addEventListener('DOMContentLoaded', function() {
+    const modalElement = document.getElementById('emailConfigModal');
+    
+    if (modalElement) {
+        // 当模态框显示时
+        modalElement.addEventListener('show.bs.modal', function() {
+            this.setAttribute('aria-hidden', 'false');
+        });
+        
+        // 当模态框隐藏时
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            this.setAttribute('aria-hidden', 'true');
+        });
+    }
+});
 
 // 发送测试邮件
 async function sendTestEmail() {
@@ -950,14 +981,14 @@ async function sendTestEmail() {
 </script>
 
 <!-- 邮件配置模态框 -->
-<div id="emailConfigModal" class="modal fade" tabindex="-1" role="dialog">
+<div id="emailConfigModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="emailConfigModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">
+                <h5 class="modal-title" id="emailConfigModalLabel">
                     <i class="fas fa-envelope me-2"></i>邮件服务器配置
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
             </div>
             <div class="modal-body">
                 <div id="emailConfigContent">

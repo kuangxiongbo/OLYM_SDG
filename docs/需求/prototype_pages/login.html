@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录页原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <section class="section">
+      <div style="display: flex; gap: 32px; flex-wrap: wrap; align-items: stretch;">
+        <div class="panel" style="flex: 1 1 360px; display: flex; flex-direction: column; gap: 18px; justify-content: center;">
+          <h2 style="margin: 0; font-size: clamp(26px, 4vw, 34px);">一站式 AI 数据治理工作台</h2>
+          <p style="margin: 0; color: var(--muted); line-height: 1.6;">
+            提供仿真生成、质量评估、数据脱敏等核心能力，帮助团队在安全合规的前提下高效利用数据。
+          </p>
+          <ul class="list" style="font-size: 15px;">
+            <li>行业模板驱动，快速产出可用仿真数据。</li>
+            <li>多维质量指标，实时掌握数据可靠性。</li>
+            <li>AI 与遮蔽结合的脱敏方案，兼顾安全与可用性。</li>
+            <li>角色分级控制，管理员与业务用户协同工作。</li>
+          </ul>
+        </div>
+
+        <div class="panel" style="flex: 0 1 400px;">
+          <h2 style="border: none; padding-left: 0; margin-bottom: 24px;">欢迎回来</h2>
+          <div class="grid" style="gap: 18px;">
+            <label>
+              <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">邮箱 / 账号</div>
+              <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);">示意输入框</div>
+            </label>
+            <label>
+              <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">密码</div>
+              <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface);">示意输入框</div>
+            </label>
+            <div style="display:flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--muted);">
+              <span>☐ 记住我</span>
+              <a style="color: var(--primary); text-decoration: none;" href="#">忘记密码？</a>
+            </div>
+            <div class="actions" style="justify-content: space-between;">
+              <button class="button primary" style="flex: 1;">登录</button>
+            </div>
+          </div>
+          <div class="actions" style="justify-content: center; margin-top: 24px;">
+            <a style="color: var(--primary); text-decoration: none;" href="register.html">还没有账号？立即注册</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

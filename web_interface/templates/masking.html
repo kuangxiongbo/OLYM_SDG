@@ -1,0 +1,613 @@
+{% extends "base_new.html" %}
+
+{% block title %}AI 数据脱敏{% endblock %}
+
+{% block content %}
+<div class="wizard">
+  <div class="wizard-steps">
+    <div class="wizard-step active" data-step="1">
+      <div class="index">1</div>
+      <div class="meta">
+        <strong>准备数据</strong>
+        <span>上传或选择来源</span>
+      </div>
+    </div>
+    <div class="wizard-step" data-step="2">
+      <div class="index">2</div>
+      <div class="meta">
+        <strong>配置规则</strong>
+        <span>识别类型与方案</span>
+      </div>
+    </div>
+    <div class="wizard-step" data-step="3">
+      <div class="index">3</div>
+      <div class="meta">
+        <strong>执行脱敏</strong>
+        <span>日志与进度</span>
+      </div>
+    </div>
+    <div class="wizard-step" data-step="4">
+      <div class="index">4</div>
+      <div class="meta">
+        <strong>下载结果</strong>
+        <span>预览与导出</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wizard-content">
+    <section class="section active-section" data-step="1">
+      <h2 class="visually-hidden">01 · 数据源管理</h2>
+      <div class="panel">
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px;">
+          <div>
+            <h3>数据选择</h3>
+            <ul class="list">
+              <li>上传原始数据文件</li>
+              <li>选择历史上传记录</li>
+              <li>读取仿真生成结果</li>
+            </ul>
+            <div class="actions">
+              <input type="file" id="masking-file" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileUpload(this.files[0])">
+              <button class="button primary" onclick="document.getElementById('masking-file').click()">上传文件</button>
+              <button class="button secondary" onclick="selectHistory()">选择已有</button>
+            </div>
+          </div>
+          <div>
+            <h3>字段预览</h3>
+            <table class="table" id="fields-preview">
+              <thead>
+                <tr><th>字段名</th><th>识别类型</th><th>样例值</th></tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="3" style="text-align: center; color: var(--muted);">请先上传数据</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev" disabled>上一步</button>
+          <button class="button primary" data-nav="next" onclick="detectFields()">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="2">
+      <h2 class="visually-hidden">02 · 规则配置</h2>
+      <div class="panel">
+        <h3>推荐方案总览</h3>
+        <table class="table" id="rules-table">
+          <thead>
+            <tr><th>字段名</th><th>自动识别类型</th><th>推荐方案</th><th>替换效果</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="5" style="text-align: center; color: var(--muted);">请先上传数据并识别字段</td></tr>
+          </tbody>
+        </table>
+
+        <div class="panel" style="margin-top: 24px; border-radius: 12px; box-shadow: none; border: 1px dashed var(--border); display: none;" id="field-config-panel">
+          <span class="badge">字段配置详情</span>
+          <h3 id="config-field-name">字段：-</h3>
+          <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; align-items: center;">
+            <div id="scheme-selection-container">
+              <h4 style="margin: 0 0 8px 0;">方案选择</h4>
+              <ul class="list" id="scheme-list">
+                <li><strong>仿真：</strong>使用 AI 生成合法身份证号</li>
+                <li><strong>非仿真：</strong>遮蔽为 6-4-4 格式（3201**********1234）</li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="margin: 0 0 8px 0;">效果预览</h4>
+              <div style="background: rgba(92, 124, 250, 0.08); padding: 14px; border-radius: 12px;">
+                <p style="margin: 0; font-family: 'Courier New', monospace;" id="preview-original">原值：-</p>
+                <p style="margin: 8px 0 0 0; font-family: 'Courier New', monospace;" id="preview-simulation">仿真：-</p>
+                <p style="margin: 8px 0 0 0; font-family: 'Courier New', monospace;" id="preview-masking">遮蔽：-</p>
+              </div>
+            </div>
+            <div>
+              <h4 style="margin: 0 0 8px 0;">操作</h4>
+              <div class="actions">
+                <button class="button secondary" onclick="selectStrategy('simulation')">选择仿真方案</button>
+                <button class="button secondary" onclick="selectStrategy('masking')">选择遮蔽方案</button>
+                <button class="button primary" onclick="saveFieldConfig()">保存设置</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next" onclick="executeMasking()">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="3">
+      <h2 class="visually-hidden">03 · 执行进度</h2>
+      <div class="panel">
+        <div>
+          <h3>执行状态</h3>
+          <div style="height: 12px; border-radius: 999px; background: rgba(92,124,250,0.12); overflow: hidden;">
+            <div id="masking-progress" style="width: 0%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--secondary)); transition: width 0.3s;"></div>
+          </div>
+          <p style="color: var(--muted); margin-top: 8px;" id="masking-progress-text">等待开始...</p>
+        </div>
+        <div style="margin-top: 20px;">
+          <div style="background: rgba(92, 124, 250, 0.08); border-radius: 12px; padding: 16px;">
+            <p style="color: var(--muted); font-family: 'Courier New', monospace;" id="masking-logs">
+              等待开始脱敏...
+            </p>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="4">
+      <h2 class="visually-hidden">04 · 结果与下载</h2>
+      <div class="panel">
+        <h3>结果预览</h3>
+        <table class="table" id="result-preview">
+          <thead>
+            <tr><th>字段名</th><th>原始值</th><th>处理后</th><th>方案</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" style="text-align: center; color: var(--muted);">等待脱敏完成</td></tr>
+          </tbody>
+        </table>
+        <div class="actions" style="margin-top: 24px;">
+          <button class="button secondary" onclick="exportReport()">导出处理报告</button>
+          <button class="button primary" onclick="downloadResult()" id="download-btn" disabled>下载脱敏数据</button>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next" onclick="onWizardComplete()">完成</button>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let uploadedFileId = null;
+let detectedFields = [];
+let maskingRules = {};
+let currentTaskId = null;
+let configId = null;
+
+// 文件上传处理
+async function handleFileUpload(file) {
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const response = await fetch('/api/masking/upload', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      uploadedFileId = result.data.file_id;
+      updatePreview(result.data);
+      alert('数据上传成功');
+    } else {
+      alert(result.error || '上传失败');
+    }
+  } catch (error) {
+    console.error('上传失败:', error);
+    alert('上传失败，请重试');
+  }
+}
+
+// 更新字段预览
+function updatePreview(data) {
+  let html = '';
+  if (data.columns) {
+    // 如果有示例数据，显示示例数据
+    if (data.preview && data.preview.length > 0) {
+      data.columns.forEach((col, idx) => {
+        const sampleValue = data.preview[0] && data.preview[0][col] ? data.preview[0][col] : '-';
+        html += `<tr><td>${col}</td><td>-</td><td>${sampleValue}</td></tr>`;
+      });
+    } else {
+      // 否则只显示字段名
+      data.columns.forEach(col => {
+        html += `<tr><td>${col}</td><td>-</td><td>-</td></tr>`;
+      });
+    }
+  }
+  document.querySelector('#fields-preview tbody').innerHTML = html || '<tr><td colspan="3" style="text-align: center; color: var(--muted);">请先上传数据</td></tr>';
+}
+
+// 识别字段
+async function detectFields() {
+  if (!uploadedFileId) {
+    alert('请先上传数据');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/masking/detect-fields', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({
+        file_id: uploadedFileId
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      detectedFields = result.data.fields || [];
+      renderFieldsTable();
+      goToStep(2);
+    } else {
+      alert(result.error || '识别字段失败');
+    }
+  } catch (error) {
+    console.error('识别字段失败:', error);
+    alert('操作失败，请重试');
+  }
+}
+
+// 渲染字段表格
+function renderFieldsTable() {
+  let html = '';
+  detectedFields.forEach(field => {
+    const detectedType = field.detected_type || '未知';
+    let strategyText = '';
+    let effectText = '-';
+    
+    // 根据字段类型生成推荐方案描述（严格按照原型）
+    if (detectedType === '姓名' || detectedType === 'name') {
+      strategyText = '仿真（生成虚拟姓名）';
+      effectText = `${field.sample_value || '张伟'} → ${field.simulation_value || '李雪'}`;
+    } else if (detectedType === '身份证号' || detectedType === 'id_card') {
+      strategyText = '仿真 / 非仿真（遮蔽）';
+      const originalValue = field.sample_value || '320121199212121234';
+      const maskedValue = originalValue.length >= 18 ? 
+        originalValue.substring(0, 4) + '**********' + originalValue.substring(originalValue.length - 4) : 
+        '3201**********1234';
+      effectText = `${maskedValue} → ${field.simulation_value || '5103**********5621'}`;
+    } else if (detectedType === '手机号' || detectedType === 'phone') {
+      strategyText = '非仿真（局部脱敏）';
+      const originalValue = field.sample_value || '13822181234';
+      effectText = originalValue.length >= 11 ? 
+        originalValue.substring(0, 3) + '****' + originalValue.substring(originalValue.length - 4) : 
+        '138****2218';
+    } else {
+      strategyText = field.suggested_strategy === 'simulation' ? '仿真（生成虚拟数据）' : '非仿真（遮蔽/掩码）';
+      if (field.suggested_strategy === 'simulation') {
+        effectText = `${field.sample_value || '-'} → ${field.simulation_value || '生成值'}`;
+      } else {
+        const maskedValue = (field.sample_value || '').substring(0, 2) + '***';
+        effectText = maskedValue;
+      }
+    }
+    
+    html += `
+      <tr>
+        <td>${field.name}</td>
+        <td>${detectedType}</td>
+        <td>${strategyText}</td>
+        <td>${effectText}</td>
+        <td style="color: var(--primary); cursor: pointer;" onclick="configField('${field.name}')">配置</td>
+      </tr>
+    `;
+  });
+  document.querySelector('#rules-table tbody').innerHTML = html || '<tr><td colspan="5" style="text-align: center; color: var(--muted);">请先上传数据并识别字段</td></tr>';
+}
+
+// 配置字段
+function configField(fieldName) {
+  const field = detectedFields.find(f => f.name === fieldName);
+  if (!field) return;
+  
+  document.getElementById('config-field-name').textContent = `字段：${fieldName}`;
+  document.getElementById('field-config-panel').style.display = 'block';
+  
+  // 根据字段类型更新方案选择说明（严格按照原型）
+  const detectedType = field.detected_type || '未知';
+  const schemeList = document.getElementById('scheme-list');
+  if (schemeList) {
+    let simulationDesc = '使用 AI 生成合法数据';
+    let maskingDesc = '遮蔽为指定格式';
+    
+    if (detectedType === '身份证号' || detectedType === 'id_card') {
+      simulationDesc = '使用 AI 生成合法身份证号';
+      maskingDesc = '遮蔽为 6-4-4 格式（3201**********1234）';
+    } else if (detectedType === '手机号' || detectedType === 'phone') {
+      simulationDesc = '使用 AI 生成合法手机号';
+      maskingDesc = '遮蔽为 3-4-4 格式（138****2218）';
+    } else if (detectedType === '姓名' || detectedType === 'name') {
+      simulationDesc = '使用 AI 生成虚拟姓名';
+      maskingDesc = '遮蔽为部分显示格式';
+    }
+    
+    schemeList.innerHTML = `
+      <li><strong>仿真：</strong>${simulationDesc}</li>
+      <li><strong>非仿真：</strong>${maskingDesc}</li>
+    `;
+  }
+  
+  // 更新效果预览
+  updatePreviewEffect(field);
+}
+
+// 更新预览效果
+function updatePreviewEffect(field) {
+  if (!field) {
+    const fieldName = document.getElementById('config-field-name').textContent.replace('字段：', '');
+    field = detectedFields.find(f => f.name === fieldName);
+  }
+  if (!field) return;
+  
+  const detectedType = field.detected_type || '未知';
+  const originalValue = field.sample_value || (detectedType === '身份证号' ? '320121199212121234' : 
+                                                detectedType === '手机号' ? '13822181234' : 
+                                                detectedType === '姓名' ? '张伟' : '示例值');
+  
+  // 生成遮蔽值（严格按照原型格式）
+  let maskedValue = '-';
+  if (detectedType === '身份证号' || detectedType === 'id_card') {
+    maskedValue = originalValue.length >= 18 ? 
+      originalValue.substring(0, 4) + '**********' + originalValue.substring(originalValue.length - 4) : 
+      '3201**********1234';
+  } else if (detectedType === '手机号' || detectedType === 'phone') {
+    maskedValue = originalValue.length >= 11 ? 
+      originalValue.substring(0, 3) + '****' + originalValue.substring(originalValue.length - 4) : 
+      '138****2218';
+  } else if (detectedType === '姓名' || detectedType === 'name') {
+    maskedValue = originalValue.length > 1 ? originalValue.substring(0, 1) + '**' : '**';
+  } else {
+    maskedValue = originalValue.length > 2 ? originalValue.substring(0, 2) + '***' : '***';
+  }
+  
+  // 生成仿真值（严格按照原型示例）
+  const simulationValue = field.simulation_value || (detectedType === '身份证号' ? '510324199305125621' : 
+                                                      detectedType === '手机号' ? '139****5678' : 
+                                                      detectedType === '姓名' ? '李雪' : '生成值');
+  
+  document.getElementById('preview-original').textContent = `原值：${originalValue}`;
+  document.getElementById('preview-simulation').textContent = `仿真：${simulationValue}`;
+  document.getElementById('preview-masking').textContent = `遮蔽：${maskedValue}`;
+}
+
+// 选择策略
+function selectStrategy(strategy) {
+  const fieldName = document.getElementById('config-field-name').textContent.replace('字段：', '');
+  const field = detectedFields.find(f => f.name === fieldName);
+  if (field) {
+    maskingRules[fieldName] = {
+      strategy: strategy,
+      config: {}
+    };
+    updatePreviewEffect(field);
+  }
+}
+
+// 保存字段配置
+function saveFieldConfig() {
+  const fieldName = document.getElementById('config-field-name').textContent.replace('字段：', '');
+  if (!maskingRules[fieldName]) {
+    const field = detectedFields.find(f => f.name === fieldName);
+    if (field) {
+      maskingRules[fieldName] = {
+        strategy: field.suggested_strategy || 'simulation',
+        config: {}
+      };
+    }
+  }
+  alert('配置已保存');
+}
+
+// 执行脱敏
+async function executeMasking() {
+  if (!uploadedFileId || Object.keys(maskingRules).length === 0) {
+    alert('请先配置脱敏规则');
+    return;
+  }
+  
+  try {
+    // 先配置规则（可选）
+    if (!configId) {
+      const configureResponse = await fetch('/api/masking/configure', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({
+          file_id: uploadedFileId,
+          rules: Object.keys(maskingRules).map(field => ({
+            field: field,
+            strategy: maskingRules[field].strategy,
+            config: maskingRules[field].config
+          }))
+        })
+      });
+      
+      const configureResult = await configureResponse.json();
+      if (configureResult.success) {
+        configId = configureResult.data.config_id;
+      }
+    }
+    
+    // 执行脱敏任务
+    const response = await fetch('/api/masking/execute', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'include',
+      body: JSON.stringify({
+        file_id: uploadedFileId,
+        config_id: configId,
+        rules: Object.keys(maskingRules).map(field => ({
+          field: field,
+          strategy: maskingRules[field].strategy,
+          config: maskingRules[field].config
+        }))
+      })
+    });
+    
+    const result = await response.json();
+    if (result.success) {
+      currentTaskId = result.data.task_id.replace('task_', '');
+      alert('脱敏任务已创建，正在执行...');
+      goToStep(3);
+      pollMaskingStatus();
+    } else {
+      alert(result.error || '创建脱敏任务失败');
+    }
+  } catch (error) {
+    console.error('创建脱敏任务失败:', error);
+    alert('操作失败，请重试');
+  }
+}
+
+// 轮询任务状态
+function pollMaskingStatus() {
+  if (!currentTaskId) return;
+  
+  const interval = setInterval(async () => {
+    try {
+      const response = await fetch(`/api/masking/tasks/task_${currentTaskId}`, {
+        credentials: 'include'
+      });
+      const result = await response.json();
+      if (result.success) {
+        const task = result.data;
+        const progress = task.progress || 0;
+        document.getElementById('masking-progress').style.width = progress + '%';
+        document.getElementById('masking-progress-text').textContent = task.message || `进行中 · 已完成 ${progress}%`;
+        
+        // 更新日志
+        if (task.logs && task.logs.length > 0) {
+          document.getElementById('masking-logs').innerHTML = task.logs.map(log => `[INFO] ${log}`).join('<br>');
+        }
+        
+        if (task.status === 'completed') {
+          clearInterval(interval);
+          document.getElementById('masking-progress-text').textContent = '脱敏完成！';
+          document.getElementById('download-btn').disabled = false;
+          loadPreview();
+          goToStep(4);
+        } else if (task.status === 'failed') {
+          clearInterval(interval);
+          document.getElementById('masking-progress-text').textContent = '脱敏失败: ' + (task.error_message || '未知错误');
+        }
+      }
+    } catch (error) {
+      console.error('查询任务状态失败:', error);
+    }
+  }, 2000);
+}
+
+// 加载预览
+async function loadPreview() {
+  if (!currentTaskId) return;
+  
+  try {
+    const response = await fetch(`/api/masking/tasks/task_${currentTaskId}/preview`);
+    const result = await response.json();
+    if (result.success) {
+      const data = result.data;
+      let html = '';
+      if (data.columns && data.masked_data) {
+        data.masked_data.slice(0, 10).forEach((row, idx) => {
+          const originalRow = data.original_data ? data.original_data[idx] : {};
+          data.columns.forEach(col => {
+            const strategy = maskingRules[col]?.strategy === 'simulation' ? '仿真' : '非仿真';
+            html += `<tr>
+              <td>${col}</td>
+              <td>${originalRow[col] || '-'}</td>
+              <td>${row[col] || '-'}</td>
+              <td>${strategy}</td>
+            </tr>`;
+          });
+        });
+      }
+      document.querySelector('#result-preview tbody').innerHTML = html || '<tr><td colspan="4" style="text-align: center; color: var(--muted);">暂无数据</td></tr>';
+    }
+  } catch (error) {
+    console.error('加载预览失败:', error);
+  }
+}
+
+// 下载结果
+function downloadResult() {
+  if (!currentTaskId) return;
+  window.location.href = `/api/masking/tasks/task_${currentTaskId}/download?format=csv`;
+}
+
+// 导出报告
+function exportReport() {
+  if (!currentTaskId) return;
+  window.location.href = `/api/masking/tasks/task_${currentTaskId}/report?format=pdf`;
+}
+
+// 完成向导
+function onWizardComplete() {
+  window.location.href = '/api/tasks';
+}
+
+// 选择历史记录
+function selectHistory() {
+  alert('历史记录功能待实现');
+}
+
+// 步骤导航
+function goToStep(step) {
+  document.querySelectorAll('.wizard-step').forEach((el, idx) => {
+    const stepNum = parseInt(el.getAttribute('data-step'));
+    if (stepNum === step) {
+      el.classList.add('active');
+    } else {
+      el.classList.remove('active');
+    }
+    if (stepNum < step) {
+      el.classList.add('completed');
+    } else {
+      el.classList.remove('completed');
+    }
+  });
+  
+  document.querySelectorAll('[data-step]').forEach((el) => {
+    if (el.tagName === 'SECTION') {
+      const stepNum = parseInt(el.getAttribute('data-step'));
+      if (stepNum === step) {
+        el.classList.add('active-section');
+      } else {
+        el.classList.remove('active-section');
+      }
+    }
+  });
+}
+
+// 初始化向导导航
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-nav="next"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const currentStep = parseInt(document.querySelector('[data-step].active-section').getAttribute('data-step'));
+      if (currentStep < 4) {
+        goToStep(currentStep + 1);
+      }
+    });
+  });
+  
+  document.querySelectorAll('[data-nav="prev"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const currentStep = parseInt(document.querySelector('[data-step].active-section').getAttribute('data-step'));
+      if (currentStep > 1) {
+        goToStep(currentStep - 1);
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

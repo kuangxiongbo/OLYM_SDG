@@ -1,0 +1,493 @@
+{% extends "base_new.html" %}
+
+{% block title %}查看结果 - AI 数据平台{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="panel">
+        <div style="margin-bottom: 24px;">
+            <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600;">查看结果</h2>
+            <p style="margin: 0; color: var(--muted); font-size: 14px;" id="task-info">加载中...</p>
+        </div>
+        
+        <!-- 统计信息 -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin-bottom: 24px; padding-bottom: 16px;">
+            <div id="preview-stats" style="display: flex; gap: 24px; font-size: 13px; color: var(--muted);">
+                <span id="original-stats">原始数据: -</span>
+                <span id="synthetic-stats">生成数据: -</span>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button class="button secondary" onclick="downloadData('original', 'csv')" id="download-original-btn">
+                    <i class="fas fa-download"></i> 下载原始数据 (CSV)
+                </button>
+                <button class="button primary" onclick="downloadData('synthetic', 'csv')" id="download-synthetic-btn">
+                    <i class="fas fa-download"></i> 下载生成数据 (CSV)
+                </button>
+            </div>
+        </div>
+        
+        <!-- 并排对比视图 -->
+        <div id="preview-compare-view" style="display: block;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <!-- 原始数据 -->
+                <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                        <span>📊</span> 原始数据
+                        <span id="original-count" style="margin-left: auto; font-size: 12px; opacity: 0.9;">-</span>
+                        <button onclick="viewFullOriginalData()" style="margin-left: 12px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)';" onmouseout="this.style.background='rgba(255,255,255,0.2)';">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            查看完整数据
+                        </button>
+                    </div>
+                    <div style="max-height: 600px; overflow: auto;">
+                        <table class="table" style="margin: 0;">
+                            <thead id="compare-original-thead" style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;"></thead>
+                            <tbody id="compare-original-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 生成数据 -->
+                <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 12px 16px; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                        <span>✨</span> 生成数据
+                        <span id="synthetic-count" style="margin-left: auto; font-size: 12px; opacity: 0.9;">-</span>
+                    </div>
+                    <div style="max-height: 600px; overflow: auto;" id="compare-synthetic-scroll">
+                        <table class="table" style="margin: 0;">
+                            <thead id="compare-synthetic-thead" style="position: sticky; top: 0; background: #f8f9fa; z-index: 10;"></thead>
+                            <tbody id="compare-synthetic-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 原始数据完整查看模态框 -->
+<div id="original-data-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+    <div style="background: white; margin: 40px auto; max-width: 90%; width: 1200px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 90vh; display: flex; flex-direction: column;">
+        <!-- 模态框头部 -->
+        <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <div>
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937;">原始数据详情</h3>
+                <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--muted);" id="original-data-stats">加载中...</p>
+            </div>
+            <button onclick="closeOriginalDataModal()" style="background: none; border: none; font-size: 24px; color: var(--muted); cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='#f3f4f6'; this.style.color='#1f2937';" onmouseout="this.style.background='none'; this.style.color='var(--muted)';">
+                ×
+            </button>
+        </div>
+        
+        <!-- 模态框内容 -->
+        <div style="padding: 24px; overflow-y: auto; flex: 1;">
+            <div id="original-data-table-container">
+                <div style="text-align: center; padding: 40px; color: var(--muted);">
+                    <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 模态框底部 -->
+        <div style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 12px; flex-shrink: 0;">
+            <button class="button secondary" onclick="closeOriginalDataModal()">关闭</button>
+            <button class="button primary" onclick="downloadData('original', 'csv')">下载原始数据 (CSV)</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTaskId = null;
+let fieldsConfig = [];
+
+// 页面加载时获取任务ID并加载数据
+document.addEventListener('DOMContentLoaded', function() {
+    // 从URL获取任务ID
+    const pathParts = window.location.pathname.split('/').filter(p => p);
+    console.log('URL路径:', window.location.pathname);
+    console.log('路径部分:', pathParts);
+    
+    // 查找 'tasks' 或 'synthesis' 的位置
+    let taskIdIndex = pathParts.indexOf('tasks');
+    if (taskIdIndex === -1) {
+        taskIdIndex = pathParts.indexOf('synthesis');
+    }
+    
+    if (taskIdIndex !== -1 && pathParts[taskIdIndex + 1]) {
+        let taskIdStr = pathParts[taskIdIndex + 1];
+        // 移除 'task_' 前缀（如果存在）
+        if (taskIdStr.startsWith('task_')) {
+            taskIdStr = taskIdStr.replace('task_', '');
+        }
+        // 移除 'view' 后缀（如果存在）
+        if (taskIdStr === 'view' && pathParts[taskIdIndex + 2]) {
+            taskIdStr = pathParts[taskIdIndex + 2];
+            if (taskIdStr.startsWith('task_')) {
+                taskIdStr = taskIdStr.replace('task_', '');
+            }
+        }
+        currentTaskId = taskIdStr;
+        console.log('提取的任务ID:', currentTaskId);
+        loadTaskData();
+    } else {
+        console.error('无法从URL获取任务ID');
+        document.getElementById('task-info').textContent = '错误: 无法获取任务ID，请检查URL格式';
+    }
+});
+
+// 加载任务数据
+async function loadTaskData() {
+    try {
+        // 加载任务信息
+        const taskRes = await fetch(`/api/synthesis/tasks/task_${currentTaskId}`);
+        const taskResult = await taskRes.json();
+        
+        if (!taskResult.success) {
+            throw new Error(taskResult.error || '无法加载任务信息');
+        }
+        
+        const task = taskResult.data;
+        document.getElementById('task-info').textContent = `任务: ${task.name || `任务_${currentTaskId}`} | 创建时间: ${new Date(task.created_at).toLocaleString('zh-CN')}`;
+        
+        // 获取字段配置
+        if (task.config && task.config.fields) {
+            fieldsConfig = task.config.fields;
+        }
+        
+        // 加载原始数据和生成数据
+        await Promise.all([
+            loadOriginalData(),
+            loadSyntheticData()
+        ]);
+    } catch (error) {
+        console.error('加载任务数据失败:', error);
+        document.getElementById('task-info').textContent = `错误: ${error.message}`;
+        // 显示错误信息在表格中
+        document.getElementById('compare-original-tbody').innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: #dc2626;">加载失败: ' + error.message + '</td></tr>';
+        document.getElementById('compare-synthetic-tbody').innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: #dc2626;">加载失败: ' + error.message + '</td></tr>';
+    }
+}
+
+// 加载原始数据
+async function loadOriginalData() {
+    try {
+        console.log('开始加载原始数据，任务ID:', currentTaskId);
+        const response = await fetch(`/api/synthesis/tasks/task_${currentTaskId}/preview?type=original&page=1&page_size=100`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('原始数据API响应:', result);
+        
+        if (!result.success || !result.data) {
+            throw new Error(result.error || '无法加载原始数据');
+        }
+        
+        const data = result.data;
+        console.log('原始数据:', data);
+        updateOriginalStats(data);
+        renderCompareTable('original', data);
+    } catch (error) {
+        console.error('加载原始数据失败:', error);
+        const errorMsg = error.message || '未知错误';
+        document.getElementById('compare-original-tbody').innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: #dc2626;">加载失败: ' + errorMsg + '</td></tr>';
+    }
+}
+
+// 加载生成数据
+async function loadSyntheticData() {
+    try {
+        console.log('开始加载生成数据，任务ID:', currentTaskId);
+        const response = await fetch(`/api/synthesis/tasks/task_${currentTaskId}/preview?type=synthetic&page=1&page_size=100`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP错误: ${response.status} ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('生成数据API响应:', result);
+        
+        if (!result.success || !result.data) {
+            throw new Error(result.error || '无法加载生成数据');
+        }
+        
+        const data = result.data;
+        console.log('生成数据:', data);
+        updateSyntheticStats(data);
+        renderCompareTable('synthetic', data);
+    } catch (error) {
+        console.error('加载生成数据失败:', error);
+        const errorMsg = error.message || '未知错误';
+        document.getElementById('compare-synthetic-tbody').innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: #dc2626;">加载失败: ' + errorMsg + '</td></tr>';
+    }
+}
+
+// 更新原始数据统计
+function updateOriginalStats(data) {
+    const total = data.total || (data.data ? data.data.length : 0);
+    const columns = data.columns ? data.columns.length : 0;
+    document.getElementById('original-stats').textContent = `原始数据: ${total} 行 × ${columns} 列`;
+    document.getElementById('original-count').textContent = `${total} 行`;
+}
+
+// 更新生成数据统计
+function updateSyntheticStats(data) {
+    const total = data.total || (data.data ? data.data.length : 0);
+    const columns = data.columns ? data.columns.length : 0;
+    document.getElementById('synthetic-stats').textContent = `生成数据: ${total} 行 × ${columns} 列`;
+    document.getElementById('synthetic-count').textContent = `${total} 行`;
+}
+
+// 渲染对比表格
+function renderCompareTable(type, data) {
+    const theadId = type === 'original' ? 'compare-original-thead' : 'compare-synthetic-thead';
+    const tbodyId = type === 'original' ? 'compare-original-tbody' : 'compare-synthetic-tbody';
+    
+    const thead = document.getElementById(theadId);
+    const tbody = document.getElementById(tbodyId);
+    
+    if (!data.columns || !data.data) {
+        tbody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 40px; color: var(--muted);">暂无数据</td></tr>';
+        return;
+    }
+    
+    // 获取字段类型信息（从预览数据中获取，如果不存在则从fieldsConfig获取）
+    const fieldTypes = data.field_types || {};
+    
+    // 如果fieldTypes为空，尝试从fieldsConfig构建
+    if (Object.keys(fieldTypes).length === 0 && fieldsConfig && fieldsConfig.length > 0) {
+        fieldsConfig.forEach(field => {
+            if (field.name && !fieldTypes[field.name]) {
+                fieldTypes[field.name] = {
+                    type: field.type || 'string',
+                    sdgx_detected_type: field.sdgx_detected_type,
+                    sdgx_confidence: field.sdgx_confidence
+                };
+            }
+        });
+    }
+    
+    // 渲染表头
+    let theadHtml = '<tr>';
+    data.columns.forEach(col => {
+        const fieldInfo = fieldTypes[col] || {};
+        const fieldType = fieldInfo.type || 'string';
+        let typeLabel = '文本';
+        
+        // 根据数据类型和配置显示类型标签
+        if (type === 'original') {
+            // 原始数据：如果配置的是自动识别，显示"自动识别"；否则显示配置的类型
+            if (fieldType === 'auto') {
+                typeLabel = '🤖 自动识别';
+            } else {
+                typeLabel = getTypeLabel(fieldType);
+            }
+        } else {
+            // 生成数据：如果配置的是自动识别，显示SDGX识别的类型；否则显示配置的类型
+            if (fieldType === 'auto') {
+                const sdgxType = fieldInfo.sdgx_detected_type || 'string';
+                typeLabel = `🤖 ${getTypeLabel(sdgxType)}`;
+            } else {
+                typeLabel = getTypeLabel(fieldType);
+            }
+        }
+        
+        theadHtml += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 13px; white-space: nowrap;">
+            ${col}
+            <span style="font-weight: normal; color: var(--muted); font-size: 11px; margin-left: 8px;">(${typeLabel})</span>
+        </th>`;
+    });
+    theadHtml += '</tr>';
+    thead.innerHTML = theadHtml;
+    
+    // 渲染数据行
+    let tbodyHtml = '';
+    data.data.forEach((row, idx) => {
+        const rowClass = idx % 2 === 0 ? 'background: #fff;' : 'background: #f8f9fa;';
+        tbodyHtml += `<tr style="border-bottom: 1px solid #e5e7eb; ${rowClass}">`;
+        data.columns.forEach(col => {
+            const value = row[col];
+            const fieldInfo = fieldTypes[col] || {};
+            // 对于生成数据，如果配置的是自动识别，使用SDGX识别的类型；否则使用配置的类型
+            let fieldType = fieldInfo.type || 'string';
+            if (type === 'synthetic' && fieldType === 'auto') {
+                fieldType = fieldInfo.sdgx_detected_type || 'string';
+            }
+            let displayValue = '-';
+            let cellStyle = 'padding: 10px 12px; font-size: 13px;';
+            
+            if (value !== null && value !== undefined) {
+                const valueStr = String(value);
+                
+                // 根据字段类型格式化
+                if (fieldType === 'date') {
+                    displayValue = valueStr;
+                    cellStyle += ' font-family: monospace; color: #059669;';
+                } else if (fieldType === 'number' || fieldType === 'integer') {
+                    displayValue = valueStr;
+                    cellStyle += ' text-align: right; font-family: monospace; color: #2563eb;';
+                } else {
+                    displayValue = valueStr.length > 50 ? valueStr.substring(0, 50) + '...' : valueStr;
+                    cellStyle += ' color: #1f2937;';
+                }
+            }
+            
+            tbodyHtml += `<td style="${cellStyle}" title="${value !== null && value !== undefined ? String(value) : ''}">${displayValue}</td>`;
+        });
+        tbodyHtml += '</tr>';
+    });
+    tbody.innerHTML = tbodyHtml;
+}
+
+// 查看完整原始数据
+async function viewFullOriginalData() {
+    const modal = document.getElementById('original-data-modal');
+    if (!modal) return;
+    
+    modal.style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    const container = document.getElementById('original-data-table-container');
+    const statsEl = document.getElementById('original-data-stats');
+    
+    try {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>加载中...</p></div>';
+        
+        // 加载所有原始数据（最多1000行）
+        const response = await fetch(`/api/synthesis/tasks/task_${currentTaskId}/preview?type=original&page=1&page_size=1000`);
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+            throw new Error(result.error || '无法加载原始数据');
+        }
+        
+        const data = result.data;
+        
+        // 更新统计信息
+        if (statsEl) {
+            statsEl.textContent = `共 ${data.total || (data.data ? data.data.length : 0)} 行 × ${data.columns ? data.columns.length : 0} 列`;
+        }
+        
+        // 获取字段类型信息（从预览数据中获取）
+        const fieldTypes = data.field_types || {};
+        
+        // 渲染表格
+        if (data.columns && data.data) {
+            let tableHtml = '<div style="overflow-x: auto;"><table class="table" style="width: 100%; border-collapse: collapse;">';
+            
+            // 表头
+            tableHtml += '<thead style="background: #f8f9fa; position: sticky; top: 0; z-index: 10;"><tr>';
+            data.columns.forEach(col => {
+                const fieldInfo = fieldTypes[col] || {};
+                const fieldType = fieldInfo.type || 'string';
+                let typeLabel = '文本';
+                
+                // 原始数据：如果配置的是自动识别，显示"自动识别"；否则显示配置的类型
+                if (fieldType === 'auto') {
+                    typeLabel = '🤖 自动识别';
+                } else {
+                    typeLabel = getTypeLabel(fieldType);
+                }
+                
+                tableHtml += `<th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--border); font-weight: 600; font-size: 13px; white-space: nowrap;">
+                    ${col}
+                    <span style="font-weight: normal; color: var(--muted); font-size: 11px; margin-left: 8px;">(${typeLabel})</span>
+                </th>`;
+            });
+            tableHtml += '</tr></thead>';
+            
+            // 数据行
+            tableHtml += '<tbody>';
+            data.data.forEach((row, idx) => {
+                const rowClass = idx % 2 === 0 ? 'background: #fff;' : 'background: #f8f9fa;';
+                tableHtml += `<tr style="border-bottom: 1px solid #e5e7eb; ${rowClass}">`;
+                data.columns.forEach(col => {
+                    const value = row[col];
+                    const fieldInfo = fieldTypes[col] || {};
+                    const fieldType = fieldInfo.type || 'string';
+                    let displayValue = '-';
+                    let cellStyle = 'padding: 10px 12px; font-size: 13px;';
+                    
+                    if (value !== null && value !== undefined) {
+                        const valueStr = String(value);
+                        
+                        if (fieldType === 'date') {
+                            displayValue = valueStr;
+                            cellStyle += ' font-family: monospace; color: #059669;';
+                        } else if (fieldType === 'number' || fieldType === 'integer') {
+                            displayValue = valueStr;
+                            cellStyle += ' text-align: right; font-family: monospace; color: #2563eb;';
+                        } else {
+                            displayValue = valueStr.length > 100 ? valueStr.substring(0, 100) + '...' : valueStr;
+                            cellStyle += ' color: #1f2937;';
+                        }
+                    }
+                    
+                    tableHtml += `<td style="${cellStyle}" title="${value !== null && value !== undefined ? String(value) : ''}">${displayValue}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table></div>';
+            
+            container.innerHTML = tableHtml;
+        } else {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--muted);"><p>暂无数据</p></div>';
+        }
+    } catch (error) {
+        console.error('加载完整原始数据失败:', error);
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc2626;"><p>加载失败: ' + error.message + '</p></div>';
+    }
+}
+
+// 关闭原始数据模态框
+function closeOriginalDataModal() {
+    const modal = document.getElementById('original-data-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+}
+
+// 点击模态框外部关闭
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('original-data-modal');
+    if (modal && e.target === modal) {
+        closeOriginalDataModal();
+    }
+});
+
+// 下载数据
+function downloadData(dataType, format) {
+    if (!currentTaskId) {
+        alert('任务ID不存在');
+        return;
+    }
+    window.location.href = `/api/synthesis/tasks/task_${currentTaskId}/download?format=${format}&type=${dataType}`;
+}
+
+// 获取字段类型的中文标签
+function getTypeLabel(fieldType) {
+    const typeLabels = {
+        'string': '文本',
+        'integer': '整数',
+        'float': '浮点数',
+        'number': '数值',
+        'boolean': '布尔值',
+        'date': '日期',
+        'datetime': '日期时间',
+        'id': 'ID',
+        'discrete': '离散/分类',
+        'auto': '自动识别'
+    };
+    return typeLabels[fieldType] || '文本';
+}
+</script>
+{% endblock %}
+

@@ -1,271 +1,322 @@
 {% extends "base_new.html" %}
 
-{% block title %}注册 - SDG多账号控制系统{% endblock %}
+{% block title %}注册{% endblock %}
+
+{% block extra_css %}
+<style>
+.register-container {
+    max-width: 560px;
+    margin: 0 auto;
+}
+.form-group {
+    margin-bottom: 20px;
+}
+.form-label {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+}
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--text);
+}
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.checkbox-group {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 20px;
+}
+.checkbox-group input[type="checkbox"] {
+    margin-right: 6px;
+}
+.notice {
+    margin-top: 20px;
+    padding: 12px;
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.error-message {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 6px;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow-lg">
-                <div class="card-header text-center">
-                    <h4 class="mb-0">
-                        <i class="fas fa-user-plus me-2"></i>用户注册
-                    </h4>
+<section class="section">
+    <div class="panel register-container">
+        <h2 style="border: none; padding-left: 0; margin-bottom: 24px;">注册新账号</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label class="form-label">邮箱</label>
+                <input type="email" class="form-input" id="email" name="email" required>
+                <div class="error-message" id="email-error"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">手机号（可选）</label>
+                <input type="tel" class="form-input" id="phone" name="phone">
+            </div>
+            <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="password" name="password" required>
+                    <div class="error-message" id="password-error"></div>
                 </div>
-                <div class="card-body p-4">
-                    <form id="registerForm" class="ajax-form" action="/auth/register" method="POST" data-refresh="true">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">
-                                <i class="fas fa-user me-1"></i>用户名
-                            </label>
-                            <input type="text" class="form-control" id="username" name="username" required>
-                            <div class="form-text">3-20位字母、数字或下划线</div>
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="email" class="form-label">
-                                <i class="fas fa-envelope me-1"></i>邮箱地址
-                            </label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                            <div class="form-text">用于登录和接收验证邮件</div>
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="password" class="form-label">
-                                <i class="fas fa-lock me-1"></i>密码
-                            </label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="password" name="password" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
-                                    <i class="fas fa-eye" id="passwordToggle"></i>
-                                </button>
-                            </div>
-                            <div class="form-text">至少8位，包含大小写字母、数字和特殊字符</div>
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="confirmPassword" class="form-label">
-                                <i class="fas fa-lock me-1"></i>确认密码
-                            </label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('confirmPassword')">
-                                    <i class="fas fa-eye" id="confirmPasswordToggle"></i>
-                                </button>
-                            </div>
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="agreeTerms" required>
-                            <label class="form-check-label" for="agreeTerms">
-                                我已阅读并同意
-                                <a href="#" class="text-decoration-none">用户协议</a>
-                                和
-                                <a href="#" class="text-decoration-none">隐私政策</a>
-                            </label>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-user-plus me-2"></i>注册账号
-                            </button>
-                        </div>
-                    </form>
-
-                    <hr class="my-4">
-
-                    <div class="text-center">
-                        <p class="text-muted mb-0">已有账号？</p>
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary mt-2">
-                            <i class="fas fa-sign-in-alt me-2"></i>立即登录
-                        </a>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">确认密码</label>
+                    <input type="password" class="form-input" id="confirm_password" name="confirm_password" required>
+                    <div class="error-message" id="confirm-password-error"></div>
                 </div>
             </div>
-        </div>
+            <div class="form-group">
+                <label class="form-label">验证码 <span style="color: #dc2626;">*</span></label>
+                <div style="display: flex; gap: 12px; align-items: stretch;">
+                    <input type="text" class="form-input" id="captcha" name="captcha" required 
+                           placeholder="请输入计算结果" style="flex: 1;" maxlength="10">
+                    <div id="captcha-display" style="
+                        min-width: 140px;
+                        padding: 14px 16px;
+                        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                        border: 1px solid var(--border);
+                        border-radius: 12px;
+                        text-align: center;
+                        font-size: 20px;
+                        font-weight: 700;
+                        color: var(--primary);
+                        user-select: none;
+                        cursor: pointer;
+                        position: relative;
+                        transition: all 0.2s;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    " title="点击刷新验证码" onmouseover="this.style.background='linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)'; this.style.borderColor='var(--primary)';" onmouseout="this.style.background='linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'; this.style.borderColor='var(--border)';">
+                        <span id="captcha-text">加载中...</span>
+                    </div>
+                </div>
+                <div class="error-message" id="captcha-error"></div>
+            </div>
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" id="agree" required>
+                    我已阅读并同意<a href="/api/auth/agreement" target="_blank" style="color: var(--primary); text-decoration: none; margin-left: 4px;">《用户协议》</a>
+                </label>
+            </div>
+            <div class="actions">
+                <button type="submit" class="button primary" style="flex: 1;">提交注册</button>
+            </div>
+            <div class="notice">
+                提交后我们会向邮箱发送激活码，请在 30 分钟内完成激活。
+            </div>
+        </form>
     </div>
-</div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// 表单验证
-$(document).ready(function() {
-    // 实时验证
-    $('#username').on('blur', validateUsername);
-    $('#email').on('blur', validateEmail);
-    $('#password').on('input', validatePassword);
-    $('#confirmPassword').on('blur', validateConfirmPassword);
+// 自定义弹窗函数
+function showModal(title, message, type = 'info', onConfirm = null) {
+    const modal = document.createElement('div');
+    modal.className = 'custom-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000;';
     
-    // 表单提交
-    $('#registerForm').on('submit', function(e) {
-        e.preventDefault();
+    const iconMap = {
+        'success': '✅',
+        'error': '❌',
+        'warning': '⚠️',
+        'info': 'ℹ️'
+    };
+    
+    const colorMap = {
+        'success': '#10b981',
+        'error': '#dc2626',
+        'warning': '#f59e0b',
+        'info': '#3b82f6'
+    };
+    
+    // 生成唯一的回调函数名
+    const callbackName = onConfirm ? 'modalCallback_' + Date.now() : null;
+    if (onConfirm && callbackName) {
+        window[callbackName] = function() {
+            if (typeof onConfirm === 'function') {
+                onConfirm();
+            }
+            const modal = document.querySelector('.custom-modal');
+            if (modal) {
+                modal.remove();
+            }
+            delete window[callbackName];
+        };
+    }
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 18px; font-weight: 600; color: ${colorMap[type] || colorMap.info};">${iconMap[type] || iconMap.info} ${title}</h3>
+                <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--muted); font-size: 20px;" onclick="this.closest('.custom-modal').remove(); ${callbackName ? 'if (window.' + callbackName + ') delete window.' + callbackName + ';' : ''}">✕</div>
+            </div>
+            <div style="color: var(--text); font-size: 14px; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;">${message}</div>
+            <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                <button class="button primary" onclick="${callbackName ? callbackName + '()' : 'this.closest(\'.custom-modal\').remove();'}" style="padding: 10px 20px;">
+                    确定
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// 加载验证码
+async function loadCaptcha() {
+    try {
+        const response = await fetch('/api/auth/captcha', {
+            method: 'GET',
+            credentials: 'include'
+        });
+        const result = await response.json();
         
-        // 清除之前的验证状态
-        $('.form-control').removeClass('is-invalid');
-        $('.invalid-feedback').text('');
-        
-        // 验证所有字段
-        let isValid = true;
-        
-        if (!validateUsername()) isValid = false;
-        if (!validateEmail()) isValid = false;
-        if (!validatePassword()) isValid = false;
-        if (!validateConfirmPassword()) isValid = false;
-        
-        // 验证协议同意
-        if (!$('#agreeTerms').is(':checked')) {
-            showMessage('请同意用户协议和隐私政策', 'error');
-            isValid = false;
+        if (result.success) {
+            const captchaText = document.getElementById('captcha-text');
+            if (result.data.type === 'math') {
+                captchaText.textContent = result.data.question + ' = ?';
+            } else {
+                captchaText.textContent = result.data.code || '点击刷新';
+            }
+        } else {
+            document.getElementById('captcha-text').textContent = '加载失败';
         }
-        
-        if (isValid) {
-            submitRegisterForm();
-        }
-    });
+    } catch (error) {
+        console.error('加载验证码失败:', error);
+        document.getElementById('captcha-text').textContent = '加载失败';
+    }
+}
+
+// 点击验证码图形刷新
+const captchaDisplay = document.getElementById('captcha-display');
+
+captchaDisplay.addEventListener('click', function() {
+    loadCaptcha();
+    // 清空验证码输入框
+    document.getElementById('captcha').value = '';
+    document.getElementById('captcha-error').textContent = '';
+    
+    // 添加点击动画效果
+    this.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+        this.style.transform = 'scale(1)';
+    }, 150);
 });
 
-// 验证用户名
-function validateUsername() {
-    const username = $('#username').val();
-    const regex = /^[a-zA-Z0-9_]{3,20}$/;
-    
-    if (!username) {
-        showFieldError('username', '用户名不能为空');
-        return false;
-    }
-    
-    if (!regex.test(username)) {
-        showFieldError('username', '用户名格式不正确，应为3-20位字母、数字或下划线');
-        return false;
-    }
-    
-    $('#username').removeClass('is-invalid');
-    return true;
-}
+// 页面加载时获取验证码
+loadCaptcha();
 
-// 验证邮箱
-function validateEmail() {
-    const email = $('#email').val();
+document.getElementById('registerForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
     
-    if (!email) {
-        showFieldError('email', '邮箱地址不能为空');
-        return false;
+    // 清除之前的错误
+    document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+    
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const captcha = document.getElementById('captcha').value.trim();
+    const agree = document.getElementById('agree').checked;
+    
+    // 验证
+    if (!agree) {
+        showModal('提示', '请先同意用户协议', 'warning');
+        return;
     }
     
-    if (!validateEmail(email)) {
-        showFieldError('email', '请输入有效的邮箱地址');
-        return false;
-    }
-    
-    $('#email').removeClass('is-invalid');
-    return true;
-}
-
-// 验证密码
-function validatePassword() {
-    const password = $('#password').val();
-    
-    if (!password) {
-        showFieldError('password', '密码不能为空');
-        return false;
-    }
-    
-    if (!validatePassword(password)) {
-        showFieldError('password', '密码强度不足，需要至少8位，包含大小写字母、数字和特殊字符');
-        return false;
-    }
-    
-    $('#password').removeClass('is-invalid');
-    
-    // 重新验证确认密码
-    if ($('#confirmPassword').val()) {
-        validateConfirmPassword();
-    }
-    
-    return true;
-}
-
-// 验证确认密码
-function validateConfirmPassword() {
-    const password = $('#password').val();
-    const confirmPassword = $('#confirmPassword').val();
-    
-    if (!confirmPassword) {
-        showFieldError('confirmPassword', '请确认密码');
-        return false;
+    if (!captcha) {
+        document.getElementById('captcha-error').textContent = '请输入验证码';
+        return;
     }
     
     if (password !== confirmPassword) {
-        showFieldError('confirmPassword', '两次输入的密码不一致');
-        return false;
+        document.getElementById('confirm-password-error').textContent = '两次输入的密码不一致';
+        return;
     }
     
-    $('#confirmPassword').removeClass('is-invalid');
-    return true;
-}
-
-// 显示字段错误
-function showFieldError(fieldName, message) {
-    $(`#${fieldName}`).addClass('is-invalid');
-    $(`#${fieldName}`).siblings('.invalid-feedback').text(message);
-}
-
-// 提交注册表单
-async function submitRegisterForm() {
-    const form = $('#registerForm');
-    const formData = {
-        username: $('#username').val(),
-        email: $('#email').val(),
-        password: $('#password').val()
-    };
+    if (password.length < 8) {
+        document.getElementById('password-error').textContent = '密码长度至少8位';
+        return;
+    }
     
     try {
-        showLoading();
-        
-        const response = await fetch('/auth/register', {
+        const response = await fetch('/api/auth/register', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(formData)
+            credentials: 'include',
+            body: JSON.stringify({
+                email: email,
+                phone: phone || '',
+                password: password,
+                confirm_password: confirmPassword,
+                captcha: captcha
+            })
         });
         
         const result = await response.json();
         
         if (result.success) {
-            showMessage('注册成功！请查收邮箱验证邮件', 'success');
-            setTimeout(() => {
-                window.location.href = '/auth/login';
-            }, 2000);
+            // 保存邮箱到sessionStorage，用于激活页面
+            sessionStorage.setItem('register_email', email);
+            
+            // 构建成功消息
+            let successMessage = '注册成功！\n\n';
+            if (result.data?.message) {
+                successMessage += result.data.message;
+            } else {
+                successMessage += '激活码已发送至您的邮箱，请查收。\n\n';
+                successMessage += '请在 24 小时内完成账号激活。';
+            }
+            
+            // 如果邮件发送失败，显示激活码
+            if (result.data?.activation_code) {
+                successMessage += `\n\n⚠️ 邮件发送失败，您的激活码是：\n${result.data.activation_code}`;
+            }
+            
+            showModal('注册成功', successMessage, 'success', function() {
+                window.location.href = '/api/auth/activate';
+            });
         } else {
-            showMessage(result.message || '注册失败', 'error');
+            // 显示错误信息
+            if (result.code === 'CAPTCHA_INVALID' || result.code === 'CAPTCHA_EXPIRED') {
+                document.getElementById('captcha-error').textContent = result.error;
+                // 自动刷新验证码
+                loadCaptcha();
+                document.getElementById('captcha').value = '';
+            } else if (result.error.includes('邮箱')) {
+                document.getElementById('email-error').textContent = result.error;
+            } else if (result.error.includes('密码')) {
+                document.getElementById('password-error').textContent = result.error;
+            } else {
+                showModal('注册失败', result.error || '注册失败，请稍后重试', 'error');
+            }
         }
     } catch (error) {
         console.error('注册失败:', error);
-        showMessage('注册失败，请稍后重试', 'error');
-    } finally {
-        hideLoading();
+        showModal('网络错误', '网络连接失败，请检查网络后重试', 'error');
     }
-}
-
-// 切换密码显示
-function togglePassword(fieldId) {
-    const passwordField = $(`#${fieldId}`);
-    const toggleIcon = $(`#${fieldId}Toggle`);
-    
-    if (passwordField.attr('type') === 'password') {
-        passwordField.attr('type', 'text');
-        toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-    } else {
-        passwordField.attr('type', 'password');
-        toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
-    }
-}
+});
 </script>
 {% endblock %}
-

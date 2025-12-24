@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>注册与激活原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <section class="section">
+      <div class="panel" style="max-width: 560px; margin: 0 auto;">
+        <h2 style="border: none; padding-left: 0; margin-bottom: 24px;">注册新账号</h2>
+        <div class="grid" style="gap: 20px;">
+          <div>
+            <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">邮箱</div>
+            <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);">示意输入框</div>
+          </div>
+          <div>
+            <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">手机号（可选）</div>
+            <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);">示意输入框</div>
+          </div>
+          <div class="grid" style="gap: 16px;">
+            <div>
+              <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">密码</div>
+              <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);">示意输入框</div>
+            </div>
+            <div>
+              <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">确认密码</div>
+              <div style="padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);">示意输入框</div>
+            </div>
+          </div>
+          <div style="font-size: 14px; color: var(--muted);">☑ 我已阅读并同意《用户协议》</div>
+          <div class="actions">
+            <button class="button primary" style="flex:1;" onclick="window.location.href='activation.html'">提交注册</button>
+          </div>
+          <div class="notice">提交后我们会向邮箱发送激活码，请在 30 分钟内完成激活。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -7,7 +7,10 @@
 基于SQLAlchemy的任务数据模型
 """
 
-from .user import db
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from models import db
 from datetime import datetime
 import enum
 

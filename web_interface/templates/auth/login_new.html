@@ -1,168 +1,229 @@
 {% extends "base_new.html" %}
 
-{% block title %}登录 - SDG多账号控制系统{% endblock %}
+{% block title %}登录{% endblock %}
+
+{% block extra_css %}
+<style>
+.login-container {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+.login-left {
+    flex: 1 1 360px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    justify-content: center;
+}
+.login-right {
+    flex: 0 1 400px;
+}
+.form-group {
+    margin-bottom: 18px;
+}
+.form-label {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+}
+.form-input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--text);
+}
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.checkbox-group {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 18px;
+}
+.checkbox-group input[type="checkbox"] {
+    margin-right: 6px;
+}
+.link {
+    color: var(--primary);
+    text-decoration: none;
+}
+.link:hover {
+    text-decoration: underline;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-6 col-lg-5">
-            <div class="card shadow-lg">
-                <div class="card-header text-center">
-                    <h4 class="mb-0">
-                        <i class="fas fa-sign-in-alt me-2"></i>用户登录
-                    </h4>
+<section class="section">
+    <div class="login-container">
+        <div class="login-left">
+            <h2 style="margin: 0; font-size: clamp(26px, 4vw, 34px);">一站式 AI 数据治理工作台</h2>
+            <p style="margin: 0; color: var(--muted); line-height: 1.6;">
+                提供仿真生成、质量评估、数据脱敏等核心能力，帮助团队在安全合规的前提下高效利用数据。
+            </p>
+            <ul class="list" style="font-size: 15px;">
+                <li>行业模板驱动，快速产出可用仿真数据。</li>
+                <li>多维质量指标，实时掌握数据可靠性。</li>
+                <li>AI 与遮蔽结合的脱敏方案，兼顾安全与可用性。</li>
+                <li>角色分级控制，管理员与业务用户协同工作。</li>
+            </ul>
+        </div>
+
+        <div class="login-right panel">
+            <h2 style="border: none; padding-left: 0; margin-bottom: 24px;">欢迎回来</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">邮箱 / 账号</label>
+                    <input type="email" class="form-input" id="email" name="email" required>
                 </div>
-                <div class="card-body p-4">
-                    <form id="loginForm" class="ajax-form" action="/auth/login" method="POST" data-refresh="true">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">
-                                <i class="fas fa-envelope me-1"></i>邮箱地址
-                            </label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="password" class="form-label">
-                                <i class="fas fa-lock me-1"></i>密码
-                            </label>
-                            <div class="input-group">
-                                <input type="password" class="form-control" id="password" name="password" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
-                                    <i class="fas fa-eye" id="passwordToggle"></i>
-                                </button>
-                            </div>
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="remember">
-                            <label class="form-check-label" for="remember">
-                                记住我
-                            </label>
-                        </div>
-
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-sign-in-alt me-2"></i>登录
-                            </button>
-                        </div>
-                    </form>
-
-                    <div class="text-center mt-3">
-                        <a href="#" class="text-decoration-none" onclick="showMessage('忘记密码功能开发中...', 'info')">
-                            <i class="fas fa-key me-1"></i>忘记密码？
-                        </a>
-                    </div>
-
-                    <hr class="my-4">
-
-                    <div class="text-center">
-                        <p class="text-muted mb-0">还没有账号？</p>
-                        <a href="{{ url_for('register') }}" class="btn btn-outline-primary mt-2">
-                            <i class="fas fa-user-plus me-2"></i>立即注册
-                        </a>
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="password" name="password" required>
+                </div>
+                <div id="captcha_container" style="display: none; margin-bottom: 18px;">
+                    <label class="form-label">图形验证码</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="form-input" id="captcha_code" name="captcha_code" placeholder="请输入验证码" style="flex: 1; text-transform: uppercase;" maxlength="4">
+                        <img id="captcha_image" src="" alt="验证码" style="cursor: pointer; border: 1px solid var(--border); border-radius: 8px; height: 40px;" onclick="refreshCaptcha()" title="点击刷新">
                     </div>
                 </div>
-            </div>
-
-            <!-- 快速登录提示 -->
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h6 class="card-title">
-                        <i class="fas fa-info-circle me-2"></i>快速登录
-                    </h6>
-                    <p class="card-text small text-muted">
-                        测试账号：<br>
-                        <strong>普通用户：</strong> test@example.com / test123<br>
-                        <strong>管理员：</strong> admin@sdg.com / admin123
-                    </p>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="remember" name="remember">
+                        记住我
+                    </label>
+                    <a href="#" class="link">忘记密码？</a>
                 </div>
+                <div class="actions" style="justify-content: space-between;">
+                    <button type="submit" class="button primary" style="flex: 1;">登录</button>
+                </div>
+            </form>
+            <div class="actions" style="justify-content: center; margin-top: 24px;">
+                <a href="/api/auth/register" class="link">还没有账号？立即注册</a>
             </div>
         </div>
     </div>
-</div>
+</section>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// 表单验证
-$(document).ready(function() {
-    $('#loginForm').on('submit', function(e) {
-        e.preventDefault();
-        
-        // 清除之前的验证状态
-        $('.form-control').removeClass('is-invalid');
-        $('.invalid-feedback').text('');
-        
-        // 验证邮箱格式
-        const email = $('#email').val();
-        if (!validateEmail(email)) {
-            showFieldError('email', '请输入有效的邮箱地址');
-            return false;
-        }
-        
-        // 验证密码
-        const password = $('#password').val();
-        if (password.length < 6) {
-            showFieldError('password', '密码长度至少6位');
-            return false;
-        }
-        
-        // 提交表单
-        submitLoginForm();
-    });
-});
+let captchaSessionId = null;
+let requireCaptcha = false;
 
-// 显示字段错误
-function showFieldError(fieldName, message) {
-    $(`#${fieldName}`).addClass('is-invalid');
-    $(`#${fieldName}`).siblings('.invalid-feedback').text(message);
+// 加载图形验证码
+async function loadCaptcha() {
+    try {
+        const response = await fetch('/api/captcha/generate');
+        const result = await response.json();
+        
+        if (result.success && result.image && result.session_id) {
+            captchaSessionId = result.session_id;
+            document.getElementById('captcha_image').src = result.image;
+            document.getElementById('captcha_container').style.display = 'block';
+            requireCaptcha = true;
+        }
+    } catch (error) {
+        console.error('加载验证码失败:', error);
+    }
 }
 
-// 提交登录表单
-async function submitLoginForm() {
-    const form = $('#loginForm');
-    const formData = new FormData(form[0]);
+// 刷新验证码
+function refreshCaptcha() {
+    loadCaptcha();
+    document.getElementById('captcha_code').value = '';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const remember = document.getElementById('remember').checked;
+    const captchaCode = document.getElementById('captcha_code')?.value.trim().toUpperCase() || '';
+    
+    // 清除之前的错误提示
+    const errorDiv = document.getElementById('errorMessage');
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.style.display = 'none';
+    }
+    
+    // 基本验证
+    if (!email || !password) {
+        showError('请输入邮箱和密码');
+        return;
+    }
+    
+    // 如果要求验证码，验证验证码
+    if (requireCaptcha && !captchaCode) {
+        showError('请输入图形验证码');
+        return;
+    }
     
     try {
-        showLoading();
+        const requestBody = {
+            email: email,
+            password: password,
+            remember: remember
+        };
         
-        const response = await fetch('/auth/login', {
+        if (requireCaptcha && captchaSessionId) {
+            requestBody.captcha_session_id = captchaSessionId;
+            requestBody.captcha_code = captchaCode;
+        }
+        
+        const response = await fetch('/api/auth/login', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(requestBody)
         });
         
         const result = await response.json();
         
         if (result.success) {
-            showMessage('登录成功，正在跳转...', 'success');
-            setTimeout(() => {
-                window.location.href = '/';
-            }, 1000);
+            window.location.href = '/';
         } else {
-            showMessage(result.message || '登录失败', 'error');
+            const errorMsg = result.error || result.message || '登录失败';
+            showError(errorMsg);
+            
+            // 如果需要验证码，显示验证码输入框
+            if (result.require_captcha || errorMsg.includes('验证码')) {
+                if (!requireCaptcha) {
+                    loadCaptcha();
+                }
+            }
         }
     } catch (error) {
         console.error('登录失败:', error);
-        showMessage('登录失败，请稍后重试', 'error');
-    } finally {
-        hideLoading();
+        showError('网络错误，请稍后重试');
     }
-}
+});
 
-// 切换密码显示
-function togglePassword() {
-    const passwordField = $('#password');
-    const toggleIcon = $('#passwordToggle');
-    
-    if (passwordField.attr('type') === 'password') {
-        passwordField.attr('type', 'text');
-        toggleIcon.removeClass('fa-eye').addClass('fa-eye-slash');
-    } else {
-        passwordField.attr('type', 'password');
-        toggleIcon.removeClass('fa-eye-slash').addClass('fa-eye');
+function showError(message) {
+    let errorDiv = document.getElementById('errorMessage');
+    if (!errorDiv) {
+        errorDiv = document.createElement('div');
+        errorDiv.id = 'errorMessage';
+        errorDiv.style.cssText = 'color: #dc2626; font-size: 13px; margin-top: 12px; padding: 8px 12px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;';
+        document.getElementById('loginForm').appendChild(errorDiv);
     }
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
 }
 </script>
 {% endblock %}

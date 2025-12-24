@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 仿真数据生成原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="navbar">
+    <div class="brand">AI 数据平台</div>
+    <div class="menu">
+      <span style="color: var(--primary); font-weight: 600;">首页</span>
+      <span>任务中心</span>
+      <span>系统设置</span>
+    </div>
+    <div class="menu">
+      <span>管理员</span>
+      <span>退出</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="wizard">
+      <div class="wizard-steps">
+        <div class="wizard-step active" data-step="1">
+          <div class="index">1</div>
+          <div class="meta">
+            <strong>选择模板</strong>
+            <span>行业分类与基础字段</span>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="2">
+          <div class="index">2</div>
+          <div class="meta">
+            <strong>配置字段</strong>
+            <span>类型与分布规则</span>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="3">
+          <div class="index">3</div>
+          <div class="meta">
+            <strong>设置参数</strong>
+            <span>模型/相似度/行数</span>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="4">
+          <div class="index">4</div>
+          <div class="meta">
+            <strong>生成与预览</strong>
+            <span>日志反馈与导出</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wizard-content">
+    <section class="section active-section" data-step="1">
+      <h2 class="visually-hidden">01 · 行业模板选择</h2>
+      <div class="panel">
+        <p style="color: var(--muted);">选择行业模板以加载预置字段、类型与示例数据。</p>
+        <div class="grid cards">
+          <div class="card">
+            <span class="badge">金融</span>
+            <h3>银行客户模板</h3>
+            <p style="color: var(--muted);">包含客户基本信息、账户行为、风险画像等字段配置。</p>
+            <button class="button primary" style="width: 100%; margin-top: 12px;">使用模板</button>
+          </div>
+          <div class="card">
+            <span class="badge">通信</span>
+            <h3>话单模板</h3>
+            <p style="color: var(--muted);">含基站、时段、通话类型等字段，可快速生成通联数据。</p>
+            <button class="button primary" style="width: 100%; margin-top: 12px;">使用模板</button>
+          </div>
+          <div class="card">
+            <span class="badge">零售</span>
+            <h3>门店销售模板</h3>
+            <p style="color: var(--muted);">覆盖商品、库存、销售记录，适合场景模拟。</p>
+            <button class="button primary" style="width: 100%; margin-top: 12px;">使用模板</button>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev" disabled>上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="2">
+      <h2 class="visually-hidden">02 · 字段配置</h2>
+      <div class="panel">
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px;">
+          <div>
+            <h3>字段列表</h3>
+            <table class="table">
+              <thead>
+                <tr><th>字段名</th><th>类型</th><th>操作</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>customer_id</td><td>数值</td><td style="color: var(--primary);">编辑 | 删除</td></tr>
+                <tr><td>customer_name</td><td>文本</td><td style="color: var(--primary);">编辑 | 删除</td></tr>
+                <tr><td>signup_date</td><td>日期</td><td style="color: var(--primary);">编辑 | 删除</td></tr>
+              </tbody>
+            </table>
+            <div class="actions">
+              <button class="button secondary">新增字段</button>
+            </div>
+          </div>
+          <div>
+            <h3>字段详情配置</h3>
+            <div class="panel" style="padding: 18px; box-shadow: none; border-radius: 12px; border: 1px dashed var(--border);">
+              <p style="color: var(--muted);">字段：<strong>customer_income</strong></p>
+              <ul class="list">
+                <li>字段类型：数值</li>
+                <li>分布规则：正态分布（均值 12,000，方差 3,000）</li>
+                <li>取值范围：8,000 - 30,000</li>
+                <li>缺失率设置：2%</li>
+              </ul>
+              <div class="actions">
+                <button class="button primary">保存配置</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="3">
+      <h2 class="visually-hidden">03 · 参数配置与生成</h2>
+      <div class="panel">
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; align-items: center;">
+          <div>
+            <h3>模型选择</h3>
+            <ul class="list">
+              <li>模型类型：CTGAN</li>
+              <li>相似度：0.85（滑块）</li>
+              <li>生成行数：10,000</li>
+            </ul>
+          </div>
+          <div>
+            <h3>参数映射</h3>
+            <ul class="list">
+              <li>Epochs：180</li>
+              <li>Batch Size：256</li>
+              <li>Generator LR：1e-4</li>
+            </ul>
+          </div>
+          <div>
+            <h3>操作</h3>
+            <div class="actions">
+              <button class="button secondary">保存配置</button>
+              <button class="button primary">开始生成</button>
+            </div>
+          </div>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">下一步</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" data-step="4">
+      <h2 class="visually-hidden">04 · 生成反馈与预览</h2>
+      <div class="panel">
+        <div style="margin-bottom: 24px;">
+          <h3>生成状态</h3>
+          <div style="height: 12px; border-radius: 999px; background: rgba(92,124,250,0.12); overflow: hidden;">
+            <div style="width: 68%; height: 100%; background: linear-gradient(135deg, var(--primary), var(--secondary));"></div>
+          </div>
+          <p style="color: var(--muted); margin-top: 12px;">训练中 · 已完成 68%</p>
+        </div>
+        <div class="actions">
+          <button class="button secondary">查看日志</button>
+          <button class="button primary">预览生成数据</button>
+          <button class="button primary">下载 CSV</button>
+        </div>
+        <div class="panel" style="margin-top: 24px; border-radius: 12px; box-shadow: none; border: 1px dashed var(--border);">
+          <h3>预览弹窗结构</h3>
+          <div class="tab-bar">
+            <button class="active">原始模板</button>
+            <button>生成数据</button>
+          </div>
+          <table class="table" style="margin-top: 20px;">
+            <thead>
+              <tr><th>字段名</th><th>示例值</th><th>备注</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>customer_name</td><td>李雪</td><td>文本</td></tr>
+              <tr><td>customer_income</td><td>12543.28</td><td>数值</td></tr>
+              <tr><td>signup_date</td><td>2024-08-16</td><td>日期</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="wizard-nav">
+          <button class="button secondary" data-nav="prev">上一步</button>
+          <button class="button primary" data-nav="next">完成</button>
+        </div>
+      </div>
+    </section>
+    </div>
+  </main>
+  <script src="prototype.js"></script>
+</body>
+</html>

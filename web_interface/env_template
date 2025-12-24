@@ -1,37 +1,59 @@
 # SDG Web界面环境变量配置模板
 # ================================
-# 复制此文件为 .env 并填入实际配置
+# 使用方式：
+# 1. 复制此文件为 `.env`
+# 2. 根据实际环境（开发 / 测试 / 生产）填写或修改变量
+# 3. 应用启动时通过 python-dotenv 自动加载
 
-# Flask配置
+# Flask 基础配置
+# ----------------
+# 运行环境：development / production
 FLASK_ENV=development
+# 是否开启调试（生产环境请设置为 False）
 FLASK_DEBUG=True
+# Flask 会话加密密钥（生产环境请修改为随机长字符串）
 SECRET_KEY=your_secret_key_here
 
+# 数据库配置（必填）
+# ------------------
+# 统一使用 DATABASE_URL，后端通过 SQLALCHEMY_DATABASE_URI 读取
+# PostgreSQL 示例（推荐）：
+# DATABASE_URL=postgresql+psycopg2://用户名:密码@192.168.210.90:5433/数据库名
+# 例如：DATABASE_URL=postgresql+psycopg2://SDC:nScWntDCaEajtJmD@192.168.210.90:5433/SDC
+#
+# 本地开发如需使用 SQLite，可改为：
+# DATABASE_URL=sqlite:///ai_data_platform.db
+DATABASE_URL=
+
 # 文件上传配置
+# ----------------
 MAX_CONTENT_LENGTH=52428800  # 50MB
-UPLOAD_FOLDER=uploads
-RESULTS_FOLDER=results
+UPLOAD_FOLDER=uploads        # 相对路径，默认在 web_interface/uploads
+RESULTS_FOLDER=results       # 结果文件目录
 
-# 数据库配置（可选）
-DATABASE_URL=sqlite:///sdg_web.db
-
-# OpenAI API配置（GPT模型需要）
+# OpenAI 兼容模型 API 配置（可选）
+# -------------------------------
+# 如果你在系统设置里配置了 OpenAI / DeepSeek / 其他兼容服务，
+# 这里可以放默认的 API Key / Endpoint（也可以只在系统设置页面中配置）。
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_API_URL=https://api.openai.com/v1/
 
-# DeepSeek API配置（本地部署需要）
+# DeepSeek API 配置（本地部署示例，可选）
 DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_API_URL=http://localhost:8000/v1/
 
 # 日志配置
-LOG_LEVEL=INFO
-LOG_FILE=app.log
+# ----------
+LOG_LEVEL=INFO              # DEBUG / INFO / WARNING / ERROR
+LOG_FILE=app.log            # 日志文件名
 
 # 会话配置
-SESSION_TIMEOUT=3600  # 1小时
-MAX_SESSIONS=100
+# ----------
+SESSION_TIMEOUT=3600        # 会话过期时间，单位秒（1小时）
+MAX_SESSIONS=100            # 最大并发会话数
 
-# 生成配置
+# 生成任务默认参数（可按需要调整）
+# ----------
 MAX_SAMPLES=10000
 MIN_SAMPLES=10
 DEFAULT_SAMPLES=100

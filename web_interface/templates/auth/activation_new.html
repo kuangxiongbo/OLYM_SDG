@@ -1,0 +1,198 @@
+{% extends "base_new.html" %}
+
+{% block title %}账号激活{% endblock %}
+
+{% block extra_css %}
+<style>
+.activation-container {
+    max-width: 520px;
+    margin: 0 auto;
+}
+.form-group {
+    margin-bottom: 18px;
+}
+.form-label {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+}
+.form-input {
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    color: var(--text);
+}
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.note {
+    margin-top: 24px;
+    padding: 12px;
+    background: rgba(37, 99, 235, 0.08);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+}
+.error-message {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 6px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="panel activation-container">
+        <span class="badge">激活流程</span>
+        <p style="color: var(--muted); margin-top: 12px;">
+            我们已向 <strong id="email-display">user@example.com</strong> 发送激活邮件，请查收并填写激活码。
+        </p>
+        <form id="activateForm">
+            <div class="form-group">
+                <label class="form-label">激活码</label>
+                <input type="text" class="form-input" id="activation_code" name="activation_code" required placeholder="请输入激活码" style="text-transform: uppercase;">
+                <div class="error-message" id="code-error"></div>
+            </div>
+            <div class="actions" style="justify-content: space-between;">
+                <button type="button" class="button secondary" onclick="resendActivation()">重新发送激活邮件</button>
+                <button type="submit" class="button primary">提交激活</button>
+            </div>
+        </form>
+        <div class="note">
+            激活成功后将自动跳转至登录页，请使用注册的邮箱密码登录系统。
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 从sessionStorage获取注册时的邮箱
+const registerEmail = sessionStorage.getItem('register_email');
+if (registerEmail) {
+    document.getElementById('email-display').textContent = registerEmail;
+    document.getElementById('email-display').style.color = 'var(--text)';
+}
+
+// 激活码输入自动转大写
+document.getElementById('activation_code').addEventListener('input', function(e) {
+    e.target.value = e.target.value.toUpperCase();
+});
+
+document.getElementById('activateForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const email = registerEmail || prompt('请输入注册时的邮箱：');
+    if (!email) {
+        document.getElementById('code-error').textContent = '请输入邮箱';
+        return;
+    }
+    
+    const activationCode = document.getElementById('activation_code').value.trim().toUpperCase();
+    if (!activationCode) {
+        document.getElementById('code-error').textContent = '请输入激活码';
+        return;
+    }
+    
+    // 清除之前的错误
+    document.getElementById('code-error').textContent = '';
+    
+    // 显示加载状态
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '激活中...';
+    
+    try {
+        const response = await fetch('/api/auth/activate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                email: email,
+                activation_code: activationCode
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('code-error').textContent = '';
+            document.getElementById('code-error').style.color = '#10b981';
+            document.getElementById('code-error').textContent = '激活成功！正在跳转...';
+            sessionStorage.removeItem('register_email');
+            setTimeout(() => {
+                window.location.href = '/api/auth/login';
+            }, 1500);
+        } else {
+            document.getElementById('code-error').style.color = '#dc2626';
+            document.getElementById('code-error').textContent = result.error || '激活失败，请检查激活码是否正确';
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        }
+    } catch (error) {
+        console.error('激活失败:', error);
+        document.getElementById('code-error').style.color = '#dc2626';
+        document.getElementById('code-error').textContent = '网络错误，请稍后重试';
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+});
+
+async function resendActivation() {
+    const email = registerEmail || prompt('请输入注册时的邮箱：');
+    if (!email) {
+        alert('请输入邮箱');
+        return;
+    }
+    
+    const resendBtn = document.querySelector('button[onclick="resendActivation()"]');
+    const originalText = resendBtn.textContent;
+    resendBtn.disabled = true;
+    resendBtn.textContent = '发送中...';
+    
+    try {
+        const response = await fetch('/api/auth/resend-activation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                email: email
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('激活码已重新发送，请查收邮箱');
+            // 更新显示的邮箱
+            if (registerEmail) {
+                document.getElementById('email-display').textContent = email;
+            }
+        } else {
+            alert(result.error || '发送失败，请稍后重试');
+        }
+    } catch (error) {
+        console.error('发送失败:', error);
+        alert('网络错误，请稍后重试');
+    } finally {
+        resendBtn.disabled = false;
+        resendBtn.textContent = originalText;
+    }
+}
+</script>
+{% endblock %}
+
+
+

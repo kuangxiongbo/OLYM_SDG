@@ -83,6 +83,15 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label for="uploadDataSize" class="form-label">生成数据量</label>
+                                    <input type="number" class="form-control" id="uploadDataSize" value="1000" min="100" max="10000">
+                                    <div class="form-text">基于上传数据生成的合成数据数量</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- 演示数据选项 -->
@@ -120,44 +129,63 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="modelType" class="form-label">生成模型</label>
-                                <select class="form-select" id="modelType">
-                                    <option value="ctgan">CTGAN (推荐)</option>
-                                    <option value="tvae">TVAE</option>
-                                    <option value="gaussian_copula">Gaussian Copula</option>
-                                    <option value="copula_gan">Copula GAN</option>
-                                    <option value="tab_ddpm">Tab DDPM</option>
-                                </select>
+        <label for="modelType" class="form-label">生成模型</label>
+        <select class="form-select" id="modelType">
+            <option value="ctgan">CTGAN (推荐)</option>
+            <option value="gaussian_copula">Gaussian Copula</option>
+        </select>
+        <div class="form-text">
+            <i class="fas fa-info-circle text-info"></i>
+            当前SDGX版本支持: CTGAN、Gaussian Copula
+        </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="modelConfig" class="form-label">模型配置</label>
-                                <select class="form-select" id="modelConfig">
-                                    <option value="default">默认配置</option>
-                                    <option value="fast">快速训练</option>
-                                    <option value="high_quality">高质量</option>
-                                    <option value="custom">自定义</option>
-                                </select>
+                                <label class="form-label">训练参数</label>
+                                <div class="p-3 border rounded bg-light">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">训练轮数</small>
+                                            <div id="epochsDisplay" class="fw-bold">10轮</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">批次大小</small>
+                                            <div id="batchSizeDisplay" class="fw-bold">500</div>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">生成器学习率</small>
+                                            <div id="genLRDisplay" class="fw-bold">0.0002</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">判别器学习率</small>
+                                            <div id="discLRDisplay" class="fw-bold">0.0002</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle text-info"></i>
+                                    训练参数根据相似度要求自动调整
+                                </div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="dataAmount" class="form-label">生成数据量</label>
-                                <input type="number" class="form-control" id="dataAmount" value="1000" min="100" max="10000">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <div class="mb-3">
                                 <label for="similarity" class="form-label">相似度要求</label>
-                                <input type="range" class="form-range" id="similarity" min="0.1" max="1.0" step="0.1" value="0.8">
+                                <input type="range" class="form-range" id="similarity" min="0.1" max="1.0" step="0.1" value="0.8" oninput="updateSimilarityLabel(this.value)">
                                 <div class="d-flex justify-content-between">
-                                    <small>0.1 (低相似度)</small>
-                                    <small id="similarityValue">0.8</small>
-                                    <small>1.0 (高相似度)</small>
+                                    <small>0.1 (快速生成)</small>
+                                    <small id="similarityValue">0.8 (高质量)</small>
+                                    <small>1.0 (最高质量)</small>
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle text-info"></i>
+                                    相似度越高，训练时间越长，生成质量越好
                                 </div>
                             </div>
                         </div>
@@ -317,6 +345,27 @@
 
 {% block extra_js %}
 <script>
+// 获取CSRF Token
+function getCSRFToken() {
+    // 从meta标签获取CSRF token
+    const token = $('meta[name="csrf-token"]').attr('content');
+    if (token) {
+        return token;
+    }
+    
+    // 如果没有meta标签，尝试从cookie获取
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrf_token') {
+            return value;
+        }
+    }
+    
+    // 如果都没有，返回空字符串
+    return '';
+}
+
 // 页面加载完成后初始化
 $(document).ready(function() {
     loadDataSources();
@@ -341,11 +390,31 @@ $(document).ready(function() {
         loadDemoDataSample();
     });
     
-    // 绑定模型配置变化事件
-    $('#modelConfig').on('change', function() {
-        updateModelConfig($('#modelType').val(), $(this).val());
+    // 绑定文件上传事件
+    $('#fileUpload').on('change', function() {
+        handleFileUpload(this.files[0]);
     });
+    
+    // 初始化训练参数显示
+    updateTrainingParamsDisplay(0.8);
+    
+    // 设置模态框的aria-hidden属性管理
+    setupModalAriaHandling();
 });
+
+// 设置模态框的aria-hidden属性管理
+function setupModalAriaHandling() {
+    // 监听所有模态框的显示和隐藏事件
+    document.addEventListener('show.bs.modal', function(event) {
+        const modal = event.target;
+        modal.setAttribute('aria-hidden', 'false');
+    });
+    
+    document.addEventListener('hidden.bs.modal', function(event) {
+        const modal = event.target;
+        modal.setAttribute('aria-hidden', 'true');
+    });
+}
 
 // 加载数据源列表
 async function loadDataSources() {
@@ -355,6 +424,10 @@ async function loadDataSources() {
         
         if (result.success && result.data_sources) {
             const select = $('#dataSourceSelect');
+            // 清空现有选项，保留默认选项
+            select.empty().append('<option value="">请选择数据源</option>');
+            
+            // 添加数据源选项
             result.data_sources.forEach(ds => {
                 select.append(`<option value="${ds.id}">${ds.name} (${ds.type})</option>`);
             });
@@ -367,7 +440,99 @@ async function loadDataSources() {
 // 更新相似度显示
 function updateSimilarityDisplay() {
     const value = $('#similarity').val();
-    $('#similarityValue').text(value);
+    updateSimilarityLabel(value);
+}
+
+// 更新相似度标签和训练参数显示
+function updateSimilarityLabel(value) {
+    const similarityValue = parseFloat(value);
+    let label = '';
+    if (similarityValue >= 0.9) {
+        label = `${value} (最高质量)`;
+    } else if (similarityValue >= 0.7) {
+        label = `${value} (高质量)`;
+    } else if (similarityValue >= 0.5) {
+        label = `${value} (中等质量)`;
+    } else {
+        label = `${value} (快速生成)`;
+    }
+    $('#similarityValue').text(label);
+    
+    // 更新训练参数显示
+    updateTrainingParamsDisplay(similarityValue);
+}
+
+// 根据相似度更新训练参数显示
+function updateTrainingParamsDisplay(similarity) {
+    let epochs, batchSize, genLR, discLR;
+    
+    // 精确映射每个相似度值到独特的训练参数
+    if (similarity >= 1.0) {
+        // 1.0: 最高质量 - 最多训练轮数，最小批次
+        epochs = 60;
+        batchSize = 150;
+        genLR = 0.00008;
+        discLR = 0.00008;
+    } else if (similarity >= 0.9) {
+        // 0.9: 最高质量 - 更多训练轮数，更小批次
+        epochs = 50;
+        batchSize = 200;
+        genLR = 0.0001;
+        discLR = 0.0001;
+    } else if (similarity >= 0.8) {
+        // 0.8: 高质量 - 较多训练轮数
+        epochs = 30;
+        batchSize = 400;
+        genLR = 0.00015;
+        discLR = 0.00015;
+    } else if (similarity >= 0.7) {
+        // 0.7: 高质量 - 中等训练轮数
+        epochs = 20;
+        batchSize = 500;
+        genLR = 0.0002;
+        discLR = 0.0002;
+    } else if (similarity >= 0.6) {
+        // 0.6: 中等质量 - 标准配置
+        epochs = 15;
+        batchSize = 600;
+        genLR = 0.00022;
+        discLR = 0.00022;
+    } else if (similarity >= 0.5) {
+        // 0.5: 中等质量 - 基础配置
+        epochs = 10;
+        batchSize = 500;
+        genLR = 0.0002;
+        discLR = 0.0002;
+    } else if (similarity >= 0.4) {
+        // 0.4: 较低质量 - 平衡配置
+        epochs = 8;
+        batchSize = 800;
+        genLR = 0.00025;
+        discLR = 0.00025;
+    } else if (similarity >= 0.3) {
+        // 0.3: 较低质量 - 快速配置
+        epochs = 6;
+        batchSize = 900;
+        genLR = 0.00028;
+        discLR = 0.00028;
+    } else if (similarity >= 0.2) {
+        // 0.2: 快速生成 - 较少训练轮数，大批次
+        epochs = 4;
+        batchSize = 1000;
+        genLR = 0.0003;
+        discLR = 0.0003;
+    } else {
+        // 0.1: 最快生成 - 最少训练轮数，最大批次
+        epochs = 3;
+        batchSize = 1200;
+        genLR = 0.00035;
+        discLR = 0.00035;
+    }
+    
+    $('#epochsDisplay').text(`${epochs}轮`);
+    $('#batchSizeDisplay').text(batchSize);
+    $('#genLRDisplay').text(genLR);
+    $('#discLRDisplay').text(discLR);
 }
 
 // 切换数据源类型显示
@@ -378,6 +543,52 @@ function toggleDataSourceSections(type) {
     } else {
         $('#uploadDataSection').show();
         $('#demoDataSection').hide();
+    }
+}
+
+// 处理文件上传
+async function handleFileUpload(file) {
+    if (!file) return;
+    
+    // 检查文件类型
+    const allowedTypes = ['.csv', '.json', '.xlsx', '.xls'];
+    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(fileExt)) {
+        showMessage('不支持的文件类型，请选择CSV、JSON或Excel文件', 'error');
+        return;
+    }
+    
+    // 检查文件大小 (16MB)
+    if (file.size > 16 * 1024 * 1024) {
+        showMessage('文件大小不能超过16MB', 'error');
+        return;
+    }
+    
+    try {
+        showMessage('正在上传文件...', 'info');
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/data-sources/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showMessage('文件上传成功！', 'success');
+            // 更新数据源选择下拉菜单
+            await loadDataSources();
+            // 自动选择刚上传的文件
+            $('#dataSourceSelect').val(result.data_source.id);
+        } else {
+            showMessage(result.message || '文件上传失败', 'error');
+        }
+    } catch (error) {
+        console.error('文件上传错误:', error);
+        showMessage('文件上传失败，请重试', 'error');
     }
 }
 
@@ -416,7 +627,8 @@ async function loadDemoDatasets(industryId) {
             select.empty().append('<option value="">请选择数据集</option>').prop('disabled', false);
             
             result.datasets.forEach(dataset => {
-                select.append(`<option value="${dataset.id}">${dataset.name} (${dataset.size}条记录)</option>`);
+                const size = dataset.size || '未知';
+                select.append(`<option value="${dataset.id}">${dataset.name} (${size}条记录)</option>`);
             });
         }
     } catch (error) {
@@ -465,16 +677,25 @@ function updateModelConfig(modelType, configType) {
 
 // 开始生成
 async function startGeneration() {
+    const dataSourceType = $('input[name="dataSourceType"]:checked').val();
     const dataSourceId = $('#dataSourceSelect').val();
+    const demoIndustry = $('#demoIndustry').val();
+    const demoDataset = $('#demoDataset').val();
     const modelType = $('#modelType').val();
-    const dataAmount = $('#dataAmount').val();
+    const dataAmount = dataSourceType === 'demo' ? $('#demoDataSize').val() : $('#uploadDataSize').val();
     const similarity = $('#similarity').val();
     const privacyProtection = $('#privacyProtection').is(':checked');
     const differentialPrivacy = $('#differentialPrivacy').is(':checked');
     const customConfig = $('#customConfig').val();
     
-    if (!dataSourceId) {
+    // 验证数据源选择
+    if (dataSourceType === 'upload' && !dataSourceId) {
         showMessage('请选择数据源', 'error');
+        return;
+    }
+    
+    if (dataSourceType === 'demo' && (!demoIndustry || !demoDataset)) {
+        showMessage('请选择演示数据的行业和数据集', 'error');
         return;
     }
     
@@ -487,11 +708,150 @@ async function startGeneration() {
     $('#progressContainer').show();
     $('#generateBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>生成中...');
     
-    // 模拟生成过程
-    simulateGeneration();
+    // 调用真正的SDG API
+    await callRealSDGAPI();
 }
 
-// 模拟生成过程
+// 调用真正的SDG API
+async function callRealSDGAPI() {
+    const dataSourceType = $('input[name="dataSourceType"]:checked').val();
+    const modelType = $('#modelType').val();
+    const dataAmount = dataSourceType === 'demo' ? $('#demoDataSize').val() : $('#uploadDataSize').val();
+    const similarity = $('#similarity').val();
+    const customConfig = $('#customConfig').val();
+    
+    try {
+        let requestData;
+        
+        if (dataSourceType === 'demo') {
+            // 演示数据生成
+            const demoIndustry = $('#demoIndustry').val();
+            const demoDataset = $('#demoDataset').val();
+            const demoSize = 50; // 演示数据大小
+            
+            requestData = {
+                industry_id: demoIndustry,
+                dataset_id: demoDataset,
+                demo_size: demoSize,
+                synthetic_amount: parseInt(dataAmount),
+                model_type: modelType,
+                similarity: parseFloat(similarity)
+            };
+            
+            // 相似度参数会自动映射到训练参数，无需额外配置
+            
+            console.log('调用演示数据生成API:', requestData);
+            
+            const response = await fetch('/api/synthetic/generate_from_demo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 显示真正的生成结果
+                showRealGenerationResult(result.data);
+            } else {
+                showMessage('生成失败: ' + result.message, 'error');
+                resetGenerateButton();
+            }
+            
+        } else {
+            // 上传数据生成
+            const dataSourceId = $('#dataSourceSelect').val();
+            
+            if (!dataSourceId) {
+                showMessage('请先选择数据源', 'error');
+                return;
+            }
+            
+            requestData = {
+                data_source: 'upload',
+                data_source_id: dataSourceId,
+                data_amount: parseInt(dataAmount),
+                model_type: modelType,
+                similarity: parseFloat(similarity)
+            };
+            
+            // 相似度参数会自动映射到训练参数，无需额外配置
+            
+            console.log('调用合成数据生成API:', requestData);
+            
+            const response = await fetch('/api/synthetic/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 显示真正的生成结果
+                showRealGenerationResult(result.data);
+            } else {
+                showMessage('生成失败: ' + result.message, 'error');
+                resetGenerateButton();
+            }
+        }
+        
+    } catch (error) {
+        console.error('API调用失败:', error);
+        showMessage('生成失败: ' + error.message, 'error');
+        resetGenerateButton();
+    }
+}
+
+// 显示真正的生成结果
+function showRealGenerationResult(data) {
+    // 存储生成的数据
+    window.generatedData = data.synthetic_data.data;
+    // 保存完整的原始数据，而不仅仅是样本
+    window.originalData = data.original_data.data || data.original_data.sample;
+    window.qualityMetrics = data.quality_metrics;
+    window.generationConfig = data.generation_config;
+    
+    $('#progressContainer').hide();
+    $('#resultContainer').show();
+    resetGenerateButton();
+    
+    // 显示质量指标
+    const metrics = data.quality_metrics;
+    const config = data.generation_config;
+    
+    let message = `合成数据生成完成！`;
+    message += `\n模型类型: ${metrics.model_type || config.model_type}`;
+    message += `\n质量评分: ${(metrics.overall_score * 100).toFixed(1)}%`;
+    message += `\n处理时间: ${metrics.processing_time || config.processing_time}秒`;
+    
+    showMessage(message, 'success');
+    
+    // 更新结果统计
+    updateResultStats(data);
+}
+
+// 更新结果统计
+function updateResultStats(data) {
+    const originalShape = data.original_data.shape;
+    const syntheticShape = data.synthetic_data.shape;
+    
+    // 这里可以更新页面上的统计信息显示
+    console.log('原始数据:', originalShape);
+    console.log('合成数据:', syntheticShape);
+    console.log('质量指标:', data.quality_metrics);
+}
+
+// 重置生成按钮
+function resetGenerateButton() {
+    $('#generateBtn').prop('disabled', false).html('<i class="fas fa-magic me-2"></i>开始生成合成数据');
+}
+
+// 模拟生成过程（保留作为备用）
 function simulateGeneration() {
     const steps = [
         { progress: 10, message: '正在读取原始数据...' },
@@ -520,6 +880,9 @@ function simulateGeneration() {
 
 // 显示生成结果
 function showGenerationResult() {
+    // 生成模拟数据
+    window.generatedData = generateSampleData();
+    
     $('#progressContainer').hide();
     $('#resultContainer').show();
     $('#generateBtn').prop('disabled', false).html('<i class="fas fa-magic me-2"></i>开始生成合成数据');
@@ -529,17 +892,995 @@ function showGenerationResult() {
 
 // 下载结果
 function downloadResult() {
-    showMessage('下载功能开发中...', 'info');
+    if (!window.generatedData || window.generatedData.length === 0) {
+        showMessage('没有数据可下载', 'warning');
+        return;
+    }
+    
+    // 创建下载选择模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'downloadModal';
+    modal.setAttribute('tabindex', '-1');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.setAttribute('aria-labelledby', 'downloadModalLabel');
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="downloadModalLabel">
+                        <i class="fas fa-download"></i> 下载数据
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择下载内容:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="downloadType" value="synthetic" id="downloadSynthetic" checked>
+                            <label class="form-check-label" for="downloadSynthetic">
+                                <i class="fas fa-magic me-2"></i>合成数据
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="downloadType" value="original" id="downloadOriginal">
+                            <label class="form-check-label" for="downloadOriginal">
+                                <i class="fas fa-database me-2"></i>原始数据
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="downloadType" value="both" id="downloadBoth">
+                            <label class="form-check-label" for="downloadBoth">
+                                <i class="fas fa-layer-group me-2"></i>原始数据 + 合成数据
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">选择文件格式:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="downloadFormat" value="csv" id="formatCsv" checked>
+                            <label class="form-check-label" for="formatCsv">CSV格式</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="downloadFormat" value="json" id="formatJson">
+                            <label class="form-check-label" for="formatJson">JSON格式</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="downloadFormat" value="excel" id="formatExcel">
+                            <label class="form-check-label" for="formatExcel">Excel格式</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">文件名:</label>
+                        <input type="text" class="form-control" id="downloadFileName" value="synthetic_data">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="executeDownload()">
+                        <i class="fas fa-download"></i> 开始下载
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 执行下载
+function executeDownload() {
+    const downloadType = document.querySelector('input[name="downloadType"]:checked').value;
+    const format = document.querySelector('input[name="downloadFormat"]:checked').value;
+    const fileName = document.getElementById('downloadFileName').value || 'data';
+    
+    // 获取当前选择的数据源ID
+    const dataSourceId = document.getElementById('dataSourceSelect').value;
+    if (!dataSourceId) {
+        showMessage('请先选择数据源', 'warning');
+        return;
+    }
+    
+    // 显示加载状态
+    showMessage('正在准备下载数据...', 'info');
+    
+    // 调用后端下载API
+    fetch('/api/synthetic/download', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            data_source_id: dataSourceId,
+            download_type: downloadType,
+            format: format,
+            filename: fileName
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // 获取文件名
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = `${fileName}_${downloadType}.${format}`;
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        // 下载文件
+        return response.blob().then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            showMessage('下载完成！', 'success');
+        });
+    })
+    .catch(error => {
+        console.error('下载失败:', error);
+        showMessage('下载失败: ' + error.message, 'error');
+    });
+    
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('downloadModal'));
+    modal.hide();
 }
 
 // 预览结果
 function previewResult() {
-    showMessage('预览功能开发中...', 'info');
+    // 检查是否有生成的数据
+    if (!window.generatedData) {
+        showMessage('请先生成数据', 'warning');
+        return;
+    }
+    
+    // 创建预览模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'dataPreviewModal';
+    modal.setAttribute('tabindex', '-1');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.setAttribute('aria-labelledby', 'dataPreviewModalLabel');
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dataPreviewModalLabel">
+                        <i class="fas fa-eye"></i> 数据预览
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 标签页导航 -->
+                    <ul class="nav nav-tabs mb-3" id="previewTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="original-tab" data-bs-toggle="tab" data-bs-target="#original-panel" type="button" role="tab" aria-controls="original-panel" aria-selected="true">
+                                <i class="fas fa-database me-2"></i>原始数据
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="synthetic-tab" data-bs-toggle="tab" data-bs-target="#synthetic-panel" type="button" role="tab" aria-controls="synthetic-panel" aria-selected="false">
+                                <i class="fas fa-magic me-2"></i>合成数据
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- 标签页内容 -->
+                    <div class="tab-content" id="previewTabContent">
+                        <!-- 原始数据标签页 -->
+                        <div class="tab-pane fade show active" id="original-panel" role="tabpanel" aria-labelledby="original-tab">
+                            <div class="preview-info mb-3">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-table text-primary"></i>
+                                            <div>
+                                                <h6>原始数据行数</h6>
+                                                <span class="info-value" id="originalDataRows">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-columns text-success"></i>
+                                            <div>
+                                                <h6>原始数据列数</h6>
+                                                <span class="info-value" id="originalDataCols">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-file text-warning"></i>
+                                            <div>
+                                                <h6>原始文件大小</h6>
+                                                <span class="info-value" id="originalFileSize">0 KB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-clock text-info"></i>
+                                            <div>
+                                                <h6>数据源</h6>
+                                                <span class="info-value" id="originalDataSource">演示数据</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-controls mb-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">显示行数:</span>
+                                            <select class="form-select" id="originalPreviewRows" onchange="updateOriginalPreviewRows()">
+                                                <option value="10">10行</option>
+                                                <option value="20" selected>20行</option>
+                                                <option value="50">50行</option>
+                                                <option value="100">100行</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">搜索:</span>
+                                            <input type="text" class="form-control" id="originalPreviewSearch" placeholder="搜索原始数据..." onkeyup="filterOriginalPreviewData()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-table-container">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="originalPreviewTable">
+                                        <thead class="table-dark">
+                                            <tr id="originalPreviewTableHeader"></tr>
+                                        </thead>
+                                        <tbody id="originalPreviewTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-pagination mt-3">
+                                <nav>
+                                    <ul class="pagination justify-content-center" id="originalPreviewPagination"></ul>
+                                </nav>
+                            </div>
+                        </div>
+                        
+                        <!-- 合成数据标签页 -->
+                        <div class="tab-pane fade" id="synthetic-panel" role="tabpanel" aria-labelledby="synthetic-tab">
+                            <div class="preview-info mb-3">
+                                <div class="row">
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-table text-primary"></i>
+                                            <div>
+                                                <h6>合成数据行数</h6>
+                                                <span class="info-value" id="syntheticDataRows">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-columns text-success"></i>
+                                            <div>
+                                                <h6>合成数据列数</h6>
+                                                <span class="info-value" id="syntheticDataCols">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-file text-warning"></i>
+                                            <div>
+                                                <h6>合成文件大小</h6>
+                                                <span class="info-value" id="syntheticFileSize">0 KB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="info-card">
+                                            <i class="fas fa-clock text-info"></i>
+                                            <div>
+                                                <h6>生成时间</h6>
+                                                <span class="info-value">${new Date().toLocaleTimeString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-controls mb-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">显示行数:</span>
+                                            <select class="form-select" id="syntheticPreviewRows" onchange="updateSyntheticPreviewRows()">
+                                                <option value="10">10行</option>
+                                                <option value="20" selected>20行</option>
+                                                <option value="50">50行</option>
+                                                <option value="100">100行</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="input-group">
+                                            <span class="input-group-text">搜索:</span>
+                                            <input type="text" class="form-control" id="syntheticPreviewSearch" placeholder="搜索合成数据..." onkeyup="filterSyntheticPreviewData()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-table-container">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="syntheticPreviewTable">
+                                        <thead class="table-dark">
+                                            <tr id="syntheticPreviewTableHeader"></tr>
+                                        </thead>
+                                        <tbody id="syntheticPreviewTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="preview-pagination mt-3">
+                                <nav>
+                                    <ul class="pagination justify-content-center" id="syntheticPreviewPagination"></ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" onclick="downloadPreviewData()">
+                        <i class="fas fa-download"></i> 下载数据
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="exportPreviewData()">
+                        <i class="fas fa-file-export"></i> 导出数据
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> 关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    // 初始化预览数据
+    initializePreviewData();
+    
+    // 模态框关闭时移除元素
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
 }
 
 // 保存结果
 function saveResult() {
     showMessage('保存功能开发中...', 'info');
+}
+
+// 预览数据相关函数
+let previewData = {
+    allData: [],
+    filteredData: [],
+    currentPage: 1,
+    rowsPerPage: 20,
+    totalPages: 1
+};
+
+// 原始数据预览相关函数
+let originalPreviewData = {
+    allData: [],
+    filteredData: [],
+    currentPage: 1,
+    rowsPerPage: 20,
+    totalPages: 1
+};
+
+// 初始化预览数据
+function initializePreviewData() {
+    if (!window.generatedData || window.generatedData.length === 0) {
+        showMessage('没有数据可预览', 'warning');
+        return;
+    }
+    
+    // 初始化合成数据
+    previewData.allData = window.generatedData;
+    previewData.filteredData = [...window.generatedData];
+    previewData.currentPage = 1;
+    previewData.rowsPerPage = parseInt(document.getElementById('syntheticPreviewRows').value);
+    
+    // 初始化原始数据
+    if (window.originalData) {
+        originalPreviewData.allData = window.originalData;
+        originalPreviewData.filteredData = [...window.originalData];
+        originalPreviewData.currentPage = 1;
+        originalPreviewData.rowsPerPage = parseInt(document.getElementById('originalPreviewRows').value);
+        
+        // 更新原始数据信息
+        updateOriginalDataInfo();
+        updateOriginalPreviewTable();
+        updateOriginalPreviewPagination();
+    }
+    
+    // 更新合成数据信息
+    updateSyntheticDataInfo();
+    updateSyntheticPreviewTable();
+    updateSyntheticPreviewPagination();
+}
+
+// 更新预览表格
+function updatePreviewTable() {
+    const headerRow = document.getElementById('previewTableHeader');
+    const bodyRows = document.getElementById('previewTableBody');
+    
+    if (previewData.filteredData.length === 0) {
+        headerRow.innerHTML = '<th colspan="100%" class="text-center">没有数据</th>';
+        bodyRows.innerHTML = '';
+        return;
+    }
+    
+    // 创建表头
+    const columns = Object.keys(previewData.filteredData[0]);
+    headerRow.innerHTML = columns.map(col => `<th style="min-width: 150px; white-space: nowrap; overflow: visible; text-overflow: unset;" title="${col}">${col}</th>`).join('');
+    
+    // 计算当前页数据
+    const startIndex = (previewData.currentPage - 1) * previewData.rowsPerPage;
+    const endIndex = Math.min(startIndex + previewData.rowsPerPage, previewData.filteredData.length);
+    const currentPageData = previewData.filteredData.slice(startIndex, endIndex);
+    
+    // 创建表格行
+    bodyRows.innerHTML = currentPageData.map(row => {
+        return `<tr>${columns.map(col => `<td>${formatCellValue(row[col])}</td>`).join('')}</tr>`;
+    }).join('');
+}
+
+// 格式化单元格值
+function formatCellValue(value) {
+    if (value === null || value === undefined) {
+        return '<span class="text-muted">-</span>';
+    }
+    if (typeof value === 'number') {
+        return value.toLocaleString();
+    }
+    if (typeof value === 'string' && value.length > 50) {
+        return `<span title="${value}">${value.substring(0, 50)}...</span>`;
+    }
+    return value;
+}
+
+// 更新预览分页
+function updatePreviewPagination() {
+    previewData.totalPages = Math.ceil(previewData.filteredData.length / previewData.rowsPerPage);
+    
+    const pagination = document.getElementById('previewPagination');
+    if (previewData.totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHTML = '';
+    
+    // 上一页按钮
+    paginationHTML += `
+        <li class="page-item ${previewData.currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePreviewPage(${previewData.currentPage - 1})">上一页</a>
+        </li>
+    `;
+    
+    // 页码按钮
+    const startPage = Math.max(1, previewData.currentPage - 2);
+    const endPage = Math.min(previewData.totalPages, previewData.currentPage + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `
+            <li class="page-item ${i === previewData.currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePreviewPage(${i})">${i}</a>
+            </li>
+        `;
+    }
+    
+    // 下一页按钮
+    paginationHTML += `
+        <li class="page-item ${previewData.currentPage === previewData.totalPages ? 'disabled' : ''}">
+            <a class="page-link" href="#" onclick="changePreviewPage(${previewData.currentPage + 1})">下一页</a>
+        </li>
+    `;
+    
+    pagination.innerHTML = paginationHTML;
+}
+
+// 切换预览页面
+function changePreviewPage(page) {
+    if (page < 1 || page > previewData.totalPages) return;
+    
+    previewData.currentPage = page;
+    updatePreviewTable();
+    updatePreviewPagination();
+}
+
+// 更新预览行数
+function updatePreviewRows() {
+    previewData.rowsPerPage = parseInt(document.getElementById('previewRows').value);
+    previewData.currentPage = 1;
+    updatePreviewTable();
+    updatePreviewPagination();
+}
+
+// 过滤预览数据
+function filterPreviewData() {
+    const searchTerm = document.getElementById('previewSearch').value.toLowerCase();
+    
+    if (searchTerm === '') {
+        previewData.filteredData = [...previewData.allData];
+    } else {
+        previewData.filteredData = previewData.allData.filter(row => {
+            return Object.values(row).some(value => 
+                String(value).toLowerCase().includes(searchTerm)
+            );
+        });
+    }
+    
+    previewData.currentPage = 1;
+    updatePreviewTable();
+    updatePreviewPagination();
+}
+
+// 下载预览数据
+function downloadPreviewData() {
+    // 检查当前激活的标签页
+    const activeTab = document.querySelector('#previewTabs .nav-link.active');
+    if (!activeTab) {
+        showMessage('无法确定当前标签页', 'warning');
+        return;
+    }
+    
+    const tabId = activeTab.getAttribute('aria-controls');
+    let dataToDownload = [];
+    let fileName = '';
+    
+    if (tabId === 'original-panel') {
+        // 下载原始数据
+        if (!originalPreviewData.allData || originalPreviewData.allData.length === 0) {
+            showMessage('没有原始数据可下载', 'warning');
+            return;
+        }
+        dataToDownload = originalPreviewData.allData;
+        fileName = 'original_data';
+    } else if (tabId === 'synthetic-panel') {
+        // 下载合成数据
+        if (!previewData.allData || previewData.allData.length === 0) {
+            showMessage('没有合成数据可下载', 'warning');
+            return;
+        }
+        dataToDownload = previewData.allData;
+        fileName = 'synthetic_data';
+    } else {
+        showMessage('未知的标签页', 'warning');
+        return;
+    }
+    
+    // 创建快速下载模态框
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'quickDownloadModal';
+    modal.setAttribute('tabindex', '-1');
+    modal.setAttribute('aria-hidden', 'true');
+    modal.setAttribute('aria-labelledby', 'quickDownloadModalLabel');
+    modal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickDownloadModalLabel">
+                        <i class="fas fa-download"></i> 快速下载
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择文件格式:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="quickFormat" value="csv" id="quickCsv" checked>
+                            <label class="form-check-label" for="quickCsv">CSV格式</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="quickFormat" value="json" id="quickJson">
+                            <label class="form-check-label" for="quickJson">JSON格式</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">文件名:</label>
+                        <input type="text" class="form-control" id="quickFileName" value="${fileName}">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="executeQuickDownload()">
+                        <i class="fas fa-download"></i> 下载
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    
+    modal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(modal);
+    });
+}
+
+// 执行快速下载
+function executeQuickDownload() {
+    const format = document.querySelector('input[name="quickFormat"]:checked').value;
+    const fileName = document.getElementById('quickFileName').value || 'data';
+    
+    // 获取当前标签页的数据
+    const activeTab = document.querySelector('#previewTabs .nav-link.active');
+    const tabId = activeTab.getAttribute('aria-controls');
+    let dataToDownload = [];
+    
+    if (tabId === 'original-panel') {
+        dataToDownload = originalPreviewData.allData;
+    } else if (tabId === 'synthetic-panel') {
+        dataToDownload = previewData.allData;
+    }
+    
+    if (!dataToDownload || dataToDownload.length === 0) {
+        showMessage('没有数据可下载', 'warning');
+        return;
+    }
+    
+    // 生成文件内容
+    let content, mimeType, extension;
+    
+    switch (format) {
+        case 'csv':
+            content = convertToCSV(dataToDownload);
+            mimeType = 'text/csv;charset=utf-8;';
+            extension = 'csv';
+            break;
+        case 'json':
+            content = JSON.stringify(dataToDownload, null, 2);
+            mimeType = 'application/json;charset=utf-8;';
+            extension = 'json';
+            break;
+    }
+    
+    // 下载文件
+    const finalFileName = `${fileName}.${extension}`;
+    downloadFile(content, finalFileName, mimeType);
+    
+    // 关闭模态框
+    const quickDownloadModal = bootstrap.Modal.getInstance(document.getElementById('quickDownloadModal'));
+    quickDownloadModal.hide();
+    
+    showMessage(`数据已下载为${format.toUpperCase()}格式！`, 'success');
+}
+
+// 导出预览数据
+function exportPreviewData() {
+    if (!previewData.allData || previewData.allData.length === 0) {
+        showMessage('没有数据可导出', 'warning');
+        return;
+    }
+    
+    // 创建导出选项模态框
+    const exportModal = document.createElement('div');
+    exportModal.className = 'modal fade';
+    exportModal.id = 'exportModal';
+    exportModal.setAttribute('tabindex', '-1');
+    exportModal.setAttribute('aria-hidden', 'true');
+    exportModal.setAttribute('aria-labelledby', 'exportModalLabel');
+    exportModal.innerHTML = `
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">导出数据</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择导出格式:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="exportFormat" value="csv" id="formatCsv" checked>
+                            <label class="form-check-label" for="formatCsv">CSV格式</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="exportFormat" value="json" id="formatJson">
+                            <label class="form-check-label" for="formatJson">JSON格式</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="exportFormat" value="excel" id="formatExcel">
+                            <label class="form-check-label" for="formatExcel">Excel格式</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">文件名:</label>
+                        <input type="text" class="form-control" id="exportFileName" value="synthetic_data">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="executeExport()">导出</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(exportModal);
+    const bootstrapModal = new bootstrap.Modal(exportModal);
+    bootstrapModal.show();
+    
+    exportModal.addEventListener('hidden.bs.modal', function() {
+        document.body.removeChild(exportModal);
+    });
+}
+
+// 执行导出
+function executeExport() {
+    const format = document.querySelector('input[name="exportFormat"]:checked').value;
+    const fileName = document.getElementById('exportFileName').value || 'synthetic_data';
+    
+    let content, mimeType, extension;
+    
+    switch (format) {
+        case 'csv':
+            content = convertToCSV(previewData.allData);
+            mimeType = 'text/csv;charset=utf-8;';
+            extension = 'csv';
+            break;
+        case 'json':
+            content = JSON.stringify(previewData.allData, null, 2);
+            mimeType = 'application/json;charset=utf-8;';
+            extension = 'json';
+            break;
+        case 'excel':
+            // 对于Excel，我们导出为CSV格式（浏览器限制）
+            content = convertToCSV(previewData.allData);
+            mimeType = 'text/csv;charset=utf-8;';
+            extension = 'csv';
+            break;
+        default:
+            showMessage('不支持的导出格式', 'error');
+            return;
+    }
+    
+    downloadFile(content, `${fileName}.${extension}`, mimeType);
+    
+    // 关闭导出模态框
+    const exportModal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    exportModal.hide();
+    
+    showMessage(`数据已导出为${format.toUpperCase()}格式！`, 'success');
+}
+
+// 转换为CSV格式
+function convertToCSV(data) {
+    if (!data || data.length === 0) return '';
+    
+    const columns = Object.keys(data[0]);
+    const csvRows = [];
+    
+    // 添加表头
+    csvRows.push(columns.join(','));
+    
+    // 添加数据行
+    data.forEach(row => {
+        const values = columns.map(column => {
+            const value = row[column];
+            // 处理包含逗号、引号或换行符的值
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        });
+        csvRows.push(values.join(','));
+    });
+    
+    return csvRows.join('\n');
+}
+
+// 下载文件
+function downloadFile(content, fileName, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// 下载CSV文件
+function downloadCSV(csvContent, fileName) {
+    downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
+}
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// 生成示例数据
+function generateSampleData() {
+    const dataSourceType = $('input[name="dataSourceType"]:checked').val();
+    const dataAmount = parseInt(dataSourceType === 'demo' ? $('#demoDataSize').val() : $('#uploadDataSize').val()) || 1000;
+    const data = [];
+    
+    // 根据选择的数据源类型生成不同的数据
+    
+    if (dataSourceType === 'demo') {
+        const demoIndustry = $('#demoIndustry').val();
+        const demoDataset = $('#demoDataset').val();
+        
+        if (demoIndustry === 'finance' && demoDataset === 'bank_customers') {
+            // 银行客户数据
+            const surnames = ['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
+            const givenNames = ['伟', '芳', '娜', '秀英', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀兰', '霞'];
+            const cities = ['北京市', '上海市', '广州市', '深圳市', '杭州市', '南京市', '武汉市', '成都市', '西安市', '重庆市'];
+            const districts = ['朝阳区', '海淀区', '浦东新区', '天河区', '南山区', '西湖区', '鼓楼区', '江汉区', '锦江区', '雁塔区'];
+            
+            for (let i = 1; i <= dataAmount; i++) {
+                const surname = surnames[Math.floor(Math.random() * surnames.length)];
+                const givenName = givenNames[Math.floor(Math.random() * givenNames.length)];
+                const city = cities[Math.floor(Math.random() * cities.length)];
+                const district = districts[Math.floor(Math.random() * districts.length)];
+                const age = Math.floor(Math.random() * 62) + 18;
+                const income = Math.floor(Math.random() * 100000) + 20000;
+                
+                data.push({
+                    customer_id: `CUST${String(1000000 + i).substring(1)}`,
+                    customer_name: `${surname}${givenName}`,
+                    age: age,
+                    income: income,
+                    credit_score: Math.floor(Math.random() * 550) + 300,
+                    loan_amount: Math.floor(Math.random() * 500000) + 10000,
+                    employment_years: Math.floor(Math.random() * 40) + 1,
+                    education_level: ['高中', '大专', '本科', '硕士', '博士'][Math.floor(Math.random() * 5)],
+                    marital_status: ['单身', '已婚', '离异', '丧偶'][Math.floor(Math.random() * 4)],
+                    city: city,
+                    district: district,
+                    phone: `1${Math.floor(Math.random() * 9) + 3}${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`,
+                    email: `${surname.toLowerCase()}${givenName.toLowerCase()}${Math.floor(Math.random() * 1000)}@${['qq.com', '163.com', 'gmail.com', 'sina.com'][Math.floor(Math.random() * 4)]}`,
+                    account_balance: Math.floor(Math.random() * 1000000) + 1000,
+                    risk_level: ['低风险', '中风险', '高风险'][Math.floor(Math.random() * 3)]
+                });
+            }
+        } else if (demoIndustry === 'ecommerce' && demoDataset === 'user_orders') {
+            // 电商用户订单数据
+            const productNames = ['iPhone 15 Pro', 'MacBook Air', 'iPad Pro', 'AirPods Pro', 'Apple Watch', 'Samsung Galaxy S24', '华为Mate 60', '小米14', 'OPPO Find X7', 'vivo X100'];
+            const categories = ['手机', '电脑', '平板', '耳机', '手表', '配件'];
+            const brands = ['Apple', 'Samsung', '华为', '小米', 'OPPO', 'vivo', 'OnePlus', 'Realme'];
+            const cities = ['北京市', '上海市', '广州市', '深圳市', '杭州市', '南京市', '武汉市', '成都市'];
+            const districts = ['朝阳区', '海淀区', '浦东新区', '天河区', '南山区', '西湖区', '鼓楼区', '江汉区'];
+            
+            for (let i = 1; i <= dataAmount; i++) {
+                const productName = productNames[Math.floor(Math.random() * productNames.length)];
+                const category = categories[Math.floor(Math.random() * categories.length)];
+                const brand = brands[Math.floor(Math.random() * brands.length)];
+                const city = cities[Math.floor(Math.random() * cities.length)];
+                const district = districts[Math.floor(Math.random() * districts.length)];
+                const quantity = Math.floor(Math.random() * 5) + 1;
+                const price = parseFloat((Math.random() * 8000 + 100).toFixed(2));
+                const totalAmount = parseFloat((price * quantity * (0.8 + Math.random() * 0.4)).toFixed(2));
+                
+                data.push({
+                    order_id: `ORD${new Date().getFullYear()}${String(Math.floor(Math.random() * 1000000)).padStart(6, '0')}`,
+                    user_id: `USER${String(Math.floor(Math.random() * 100000)).padStart(5, '0')}`,
+                    product_name: productName,
+                    product_category: category,
+                    brand: brand,
+                    quantity: quantity,
+                    unit_price: price,
+                    total_amount: totalAmount,
+                    order_date: new Date(2024, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+                    payment_method: ['支付宝', '微信支付', '信用卡', '花呗', '白条'][Math.floor(Math.random() * 5)],
+                    shipping_address: `${city}${district}${['街道1号', '街道2号', '街道3号', '街道4号'][Math.floor(Math.random() * 4)]}`,
+                    order_status: ['待付款', '已付款', '已发货', '已完成', '已取消'][Math.floor(Math.random() * 5)],
+                    delivery_company: ['顺丰速运', '圆通速递', '中通快递', '韵达速递', '京东物流'][Math.floor(Math.random() * 5)],
+                    tracking_number: `SF${String(Math.floor(Math.random() * 10000000000)).padStart(10, '0')}`,
+                    customer_rating: Math.floor(Math.random() * 5) + 1
+                });
+            }
+        } else {
+            // 默认通用数据 - 员工信息
+            const surnames = ['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
+            const givenNames = ['伟', '芳', '娜', '秀英', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀兰', '霞'];
+            const departments = ['技术部', '销售部', '市场部', '人事部', '财务部', '运营部', '客服部', '产品部'];
+            const positions = ['经理', '主管', '专员', '助理', '工程师', '分析师', '顾问', '总监'];
+            
+            for (let i = 1; i <= dataAmount; i++) {
+                const surname = surnames[Math.floor(Math.random() * surnames.length)];
+                const givenName = givenNames[Math.floor(Math.random() * givenNames.length)];
+                const department = departments[Math.floor(Math.random() * departments.length)];
+                const position = positions[Math.floor(Math.random() * positions.length)];
+                const age = Math.floor(Math.random() * 40) + 22;
+                const salary = Math.floor(Math.random() * 50000) + 5000;
+                
+                data.push({
+                    employee_id: `EMP${String(10000 + i).substring(1)}`,
+                    employee_name: `${surname}${givenName}`,
+                    age: age,
+                    department: department,
+                    position: position,
+                    salary: salary,
+                    work_years: Math.floor(Math.random() * 20) + 1,
+                    performance_score: Math.floor(Math.random() * 40) + 60,
+                    category: ['优秀', '良好', '一般', '待改进'][Math.floor(Math.random() * 4)],
+                    join_date: new Date(2020 + Math.floor(Math.random() * 4), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+                    email: `${surname.toLowerCase()}${givenName.toLowerCase()}${Math.floor(Math.random() * 100)}@company.com`,
+                    phone: `1${Math.floor(Math.random() * 9) + 3}${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`
+                });
+            }
+        }
+    } else {
+        // 默认通用数据 - 客户信息
+        const surnames = ['王', '李', '张', '刘', '陈', '杨', '赵', '黄', '周', '吴', '徐', '孙', '胡', '朱', '高', '林', '何', '郭', '马', '罗'];
+        const givenNames = ['伟', '芳', '娜', '秀英', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀兰', '霞'];
+        const cities = ['北京市', '上海市', '广州市', '深圳市', '杭州市', '南京市', '武汉市', '成都市'];
+        const industries = ['互联网', '金融', '制造业', '教育', '医疗', '房地产', '零售', '物流'];
+        
+        for (let i = 1; i <= dataAmount; i++) {
+            const surname = surnames[Math.floor(Math.random() * surnames.length)];
+            const givenName = givenNames[Math.floor(Math.random() * givenNames.length)];
+            const city = cities[Math.floor(Math.random() * cities.length)];
+            const industry = industries[Math.floor(Math.random() * industries.length)];
+            const age = Math.floor(Math.random() * 50) + 20;
+            const score = Math.floor(Math.random() * 40) + 60;
+            
+            data.push({
+                customer_id: `CUST${String(100000 + i).substring(1)}`,
+                customer_name: `${surname}${givenName}`,
+                age: age,
+                city: city,
+                industry: industry,
+                satisfaction_score: score,
+                category: ['VIP客户', '普通客户', '潜在客户', '流失客户'][Math.floor(Math.random() * 4)],
+                purchase_amount: parseFloat((Math.random() * 10000 + 100).toFixed(2)),
+                registration_date: new Date(2020 + Math.floor(Math.random() * 4), Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1).toISOString().split('T')[0],
+                email: `${surname.toLowerCase()}${givenName.toLowerCase()}${Math.floor(Math.random() * 1000)}@${['qq.com', '163.com', 'gmail.com', 'sina.com'][Math.floor(Math.random() * 4)]}`,
+                phone: `1${Math.floor(Math.random() * 9) + 3}${String(Math.floor(Math.random() * 100000000)).padStart(8, '0')}`
+            });
+        }
+    }
+    
+    return data;
 }
 
 // 显示帮助
@@ -551,5 +1892,434 @@ function showHelp() {
 function showHistory() {
     showMessage('历史记录功能开发中...', 'info');
 }
+
+// ==================== 双标签页预览功能 ====================
+
+// 更新原始数据信息
+function updateOriginalDataInfo() {
+    if (!originalPreviewData.allData || originalPreviewData.allData.length === 0) {
+        document.getElementById('originalDataRows').textContent = '0';
+        document.getElementById('originalDataCols').textContent = '0';
+        document.getElementById('originalFileSize').textContent = '0 KB';
+        return;
+    }
+    
+    const rows = originalPreviewData.allData.length;
+    const cols = originalPreviewData.allData.length > 0 ? Object.keys(originalPreviewData.allData[0]).length : 0;
+    const fileSize = JSON.stringify(originalPreviewData.allData).length;
+    
+    document.getElementById('originalDataRows').textContent = rows.toLocaleString();
+    document.getElementById('originalDataCols').textContent = cols;
+    document.getElementById('originalFileSize').textContent = formatFileSize(fileSize);
+}
+
+// 更新合成数据信息
+function updateSyntheticDataInfo() {
+    if (!previewData.allData || previewData.allData.length === 0) {
+        document.getElementById('syntheticDataRows').textContent = '0';
+        document.getElementById('syntheticDataCols').textContent = '0';
+        document.getElementById('syntheticFileSize').textContent = '0 KB';
+        return;
+    }
+    
+    const rows = previewData.allData.length;
+    const cols = previewData.allData.length > 0 ? Object.keys(previewData.allData[0]).length : 0;
+    const fileSize = JSON.stringify(previewData.allData).length;
+    
+    document.getElementById('syntheticDataRows').textContent = rows.toLocaleString();
+    document.getElementById('syntheticDataCols').textContent = cols;
+    document.getElementById('syntheticFileSize').textContent = formatFileSize(fileSize);
+}
+
+// 更新原始数据预览表格
+function updateOriginalPreviewTable() {
+    const headerRow = document.getElementById('originalPreviewTableHeader');
+    const bodyRows = document.getElementById('originalPreviewTableBody');
+    
+    if (originalPreviewData.filteredData.length === 0) {
+        headerRow.innerHTML = '<th colspan="100%" class="text-center">没有原始数据</th>';
+        bodyRows.innerHTML = '';
+        return;
+    }
+    
+    // 创建表头
+    const columns = Object.keys(originalPreviewData.filteredData[0]);
+    headerRow.innerHTML = columns.map(col => `<th style="min-width: 150px; white-space: nowrap; overflow: visible; text-overflow: unset; position: relative;" title="${col}">${col}</th>`).join('');
+    
+    // 计算分页
+    const startIndex = (originalPreviewData.currentPage - 1) * originalPreviewData.rowsPerPage;
+    const endIndex = startIndex + originalPreviewData.rowsPerPage;
+    const pageData = originalPreviewData.filteredData.slice(startIndex, endIndex);
+    
+    // 创建表格行
+    bodyRows.innerHTML = pageData.map(row => {
+        return `<tr>${columns.map(col => `<td style="min-width: 150px; white-space: nowrap; overflow: visible; text-overflow: unset;" title="${row[col]}">${row[col] || ''}</td>`).join('')}</tr>`;
+    }).join('');
+}
+
+// 更新合成数据预览表格
+function updateSyntheticPreviewTable() {
+    const headerRow = document.getElementById('syntheticPreviewTableHeader');
+    const bodyRows = document.getElementById('syntheticPreviewTableBody');
+    
+    if (previewData.filteredData.length === 0) {
+        headerRow.innerHTML = '<th colspan="100%" class="text-center">没有合成数据</th>';
+        bodyRows.innerHTML = '';
+        return;
+    }
+    
+    // 创建表头
+    const columns = Object.keys(previewData.filteredData[0]);
+    headerRow.innerHTML = columns.map(col => `<th style="min-width: 150px; white-space: nowrap; overflow: visible; text-overflow: unset; position: relative;" title="${col}">${col}</th>`).join('');
+    
+    // 计算分页
+    const startIndex = (previewData.currentPage - 1) * previewData.rowsPerPage;
+    const endIndex = startIndex + previewData.rowsPerPage;
+    const pageData = previewData.filteredData.slice(startIndex, endIndex);
+    
+    // 创建表格行
+    bodyRows.innerHTML = pageData.map(row => {
+        return `<tr>${columns.map(col => `<td style="min-width: 150px; white-space: nowrap; overflow: visible; text-overflow: unset;" title="${row[col]}">${row[col] || ''}</td>`).join('')}</tr>`;
+    }).join('');
+}
+
+// 更新原始数据分页
+function updateOriginalPreviewPagination() {
+    const pagination = document.getElementById('originalPreviewPagination');
+    if (!pagination) return;
+    
+    originalPreviewData.totalPages = Math.ceil(originalPreviewData.filteredData.length / originalPreviewData.rowsPerPage);
+    
+    if (originalPreviewData.totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHTML = '';
+    
+    // 上一页按钮
+    paginationHTML += `<li class="page-item ${originalPreviewData.currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changeOriginalPage(${originalPreviewData.currentPage - 1})">上一页</a>
+    </li>`;
+    
+    // 页码按钮
+    for (let i = 1; i <= originalPreviewData.totalPages; i++) {
+        if (i === originalPreviewData.currentPage) {
+            paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+        } else {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changeOriginalPage(${i})">${i}</a></li>`;
+        }
+    }
+    
+    // 下一页按钮
+    paginationHTML += `<li class="page-item ${originalPreviewData.currentPage === originalPreviewData.totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changeOriginalPage(${originalPreviewData.currentPage + 1})">下一页</a>
+    </li>`;
+    
+    pagination.innerHTML = paginationHTML;
+}
+
+// 更新合成数据分页
+function updateSyntheticPreviewPagination() {
+    const pagination = document.getElementById('syntheticPreviewPagination');
+    if (!pagination) return;
+    
+    previewData.totalPages = Math.ceil(previewData.filteredData.length / previewData.rowsPerPage);
+    
+    if (previewData.totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+    }
+    
+    let paginationHTML = '';
+    
+    // 上一页按钮
+    paginationHTML += `<li class="page-item ${previewData.currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changeSyntheticPage(${previewData.currentPage - 1})">上一页</a>
+    </li>`;
+    
+    // 页码按钮
+    for (let i = 1; i <= previewData.totalPages; i++) {
+        if (i === previewData.currentPage) {
+            paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+        } else {
+            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="changeSyntheticPage(${i})">${i}</a></li>`;
+        }
+    }
+    
+    // 下一页按钮
+    paginationHTML += `<li class="page-item ${previewData.currentPage === previewData.totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changeSyntheticPage(${previewData.currentPage + 1})">下一页</a>
+    </li>`;
+    
+    pagination.innerHTML = paginationHTML;
+}
+
+// 原始数据分页切换
+function changeOriginalPage(page) {
+    if (page < 1 || page > originalPreviewData.totalPages) return;
+    originalPreviewData.currentPage = page;
+    updateOriginalPreviewTable();
+    updateOriginalPreviewPagination();
+}
+
+// 合成数据分页切换
+function changeSyntheticPage(page) {
+    if (page < 1 || page > previewData.totalPages) return;
+    previewData.currentPage = page;
+    updateSyntheticPreviewTable();
+    updateSyntheticPreviewPagination();
+}
+
+// 更新原始数据每页显示行数
+function updateOriginalPreviewRows() {
+    originalPreviewData.rowsPerPage = parseInt(document.getElementById('originalPreviewRows').value);
+    originalPreviewData.currentPage = 1;
+    updateOriginalPreviewTable();
+    updateOriginalPreviewPagination();
+}
+
+// 更新合成数据每页显示行数
+function updateSyntheticPreviewRows() {
+    previewData.rowsPerPage = parseInt(document.getElementById('syntheticPreviewRows').value);
+    previewData.currentPage = 1;
+    updateSyntheticPreviewTable();
+    updateSyntheticPreviewPagination();
+}
+
+// 过滤原始数据
+function filterOriginalPreviewData() {
+    const searchTerm = document.getElementById('originalPreviewSearch').value.toLowerCase();
+    
+    if (searchTerm === '') {
+        originalPreviewData.filteredData = [...originalPreviewData.allData];
+    } else {
+        originalPreviewData.filteredData = originalPreviewData.allData.filter(row => {
+            return Object.values(row).some(value => 
+                String(value).toLowerCase().includes(searchTerm)
+            );
+        });
+    }
+    
+    originalPreviewData.currentPage = 1;
+    updateOriginalPreviewTable();
+    updateOriginalPreviewPagination();
+}
+
+// 过滤合成数据
+function filterSyntheticPreviewData() {
+    const searchTerm = document.getElementById('syntheticPreviewSearch').value.toLowerCase();
+    
+    if (searchTerm === '') {
+        previewData.filteredData = [...previewData.allData];
+    } else {
+        previewData.filteredData = previewData.allData.filter(row => {
+            return Object.values(row).some(value => 
+                String(value).toLowerCase().includes(searchTerm)
+            );
+        });
+    }
+    
+    previewData.currentPage = 1;
+    updateSyntheticPreviewTable();
+    updateSyntheticPreviewPagination();
+}
 </script>
+
+<style>
+/* 预览数据样式 */
+.info-card {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+    margin-bottom: 10px;
+}
+
+.info-card i {
+    font-size: 24px;
+    margin-right: 15px;
+    width: 30px;
+    text-align: center;
+}
+
+.info-card h6 {
+    margin: 0;
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-card .info-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #212529;
+    margin-top: 2px;
+}
+
+.preview-controls {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.preview-table-container {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.preview-table-container table {
+    margin-bottom: 0;
+}
+
+.preview-table-container th {
+    position: sticky;
+    top: 0;
+    background: #343a40 !important;
+    z-index: 10;
+}
+
+.preview-pagination .pagination {
+    margin-bottom: 0;
+}
+
+.preview-pagination .page-link {
+    color: #007bff;
+    border-color: #dee2e6;
+}
+
+.preview-pagination .page-item.active .page-link {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.preview-pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+}
+
+/* 表格样式优化 */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.075);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* 表格样式优化 */
+#previewTable, #originalPreviewTable, #syntheticPreviewTable {
+    table-layout: auto;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+#previewTable th, #originalPreviewTable th, #syntheticPreviewTable th {
+    min-width: 150px;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: unset;
+    position: sticky;
+    top: 0;
+    background-color: #343a40;
+    color: white;
+    z-index: 10;
+    padding: 8px 12px;
+}
+
+#previewTable td, #originalPreviewTable td, #syntheticPreviewTable td {
+    min-width: 150px;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: unset;
+    padding: 8px 12px;
+}
+
+#previewTable th:hover, #previewTable td:hover,
+#originalPreviewTable th:hover, #originalPreviewTable td:hover,
+#syntheticPreviewTable th:hover, #syntheticPreviewTable td:hover {
+    overflow: visible;
+    white-space: normal;
+    word-break: break-all;
+    z-index: 20;
+    position: relative;
+    background-color: #f8f9fa;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2);
+}
+
+/* 模态框样式 */
+.modal-xl {
+    max-width: 95%;
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-bottom: none;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-title i {
+    margin-right: 8px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .info-card {
+        margin-bottom: 10px;
+    }
+    
+    .preview-controls .row > div {
+        margin-bottom: 10px;
+    }
+    
+    .modal-xl {
+        max-width: 100%;
+        margin: 0;
+    }
+    
+    .preview-table-container {
+        max-height: 300px;
+    }
+}
+
+/* 加载状态 */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
 {% endblock %}

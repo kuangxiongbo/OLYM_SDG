@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>账号激活原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <section class="section">
+      <div class="panel" style="max-width: 520px; margin: 0 auto;">
+        <span class="badge">激活流程</span>
+        <p style="color: var(--muted);">我们已向 <strong>user@example.com</strong> 发送激活邮件，请查收并填写激活码。</p>
+        <div class="grid" style="gap: 18px;">
+          <div>
+            <div style="font-size: 14px; color: var(--muted); margin-bottom: 6px;">激活码</div>
+            <div style="padding: 16px; border-radius: 12px; border: 1px solid var(--border);">示意输入框</div>
+          </div>
+          <div class="actions" style="justify-content: space-between;">
+            <button class="button secondary">重新发送激活邮件</button>
+            <button class="button primary" onclick="window.location.href='login.html'">提交激活</button>
+          </div>
+        </div>
+        <div class="note" style="margin-top: 24px;">
+          激活成功后将自动跳转至登录页，请使用注册的邮箱密码登录系统。
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
