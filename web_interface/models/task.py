@@ -8,6 +8,9 @@ from models.user import db
 from datetime import datetime
 import json
 
+# 导出db以便其他模块使用
+__all__ = ['Task', 'db']
+
 class Task(db.Model):
     """任务模型"""
     __tablename__ = 'tasks'

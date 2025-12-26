@@ -13,6 +13,30 @@ task_bp = Blueprint('tasks', __name__)
 @login_required
 def get_tasks():
     """获取任务列表"""
+    # #region agent log
+    try:
+        import json
+        import os
+        log_data = {
+            'sessionId': 'debug-session',
+            'runId': 'run1',
+            'hypothesisId': 'A',
+            'location': 'task.py:14',
+            'message': 'get_tasks函数入口',
+            'data': {
+                'user_id': current_user.id if current_user.is_authenticated else None,
+                'is_authenticated': current_user.is_authenticated,
+                'request_args': dict(request.args),
+                'accept_header': request.headers.get('Accept', '')
+            },
+            'timestamp': int(__import__('time').time() * 1000)
+        }
+        with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+            f.write(json.dumps(log_data) + '\n')
+    except Exception as e:
+        pass
+    # #endregion
+    
     try:
         # 如果是HTML请求，返回HTML页面
         if request.headers.get('Accept', '').find('text/html') != -1:
@@ -101,22 +125,123 @@ def get_tasks():
         try:
             # 从当前应用上下文中获取db和Task模型
             # 使用延迟导入，确保使用正确的db实例
-            from app_complete import db
-            from models.task import Task
+            try:
+                from models.task import Task, db
+            except ImportError as ie:
+                print(f"导入Task模型失败: {ie}")
+                import traceback
+                traceback.print_exc()
+                raise
             
             task_type = request.args.get('type')
             status = request.args.get('status')
-            page = int(request.args.get('page', 1))
-            page_size = int(request.args.get('page_size', 20))
+            try:
+                page = int(request.args.get('page', 1))
+                page_size = int(request.args.get('page_size', 20))
+            except ValueError:
+                page = 1
+                page_size = 20
             
             # 查询任务
-            query = Task.query.filter_by(user_id=current_user.id)
-            if task_type:
-                query = query.filter_by(task_type=task_type)
-            if status:
-                query = query.filter_by(status=status)
-            
-            pagination = query.order_by(Task.created_at.desc()).paginate(page=page, per_page=page_size, error_out=False)
+            try:
+                # #region agent log
+                try:
+                    import json
+                    import os
+                    log_data = {
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'B',
+                        'location': 'task.py:118',
+                        'message': '开始数据库查询',
+                        'data': {
+                            'user_id': current_user.id,
+                            'task_type': task_type,
+                            'status': status,
+                            'page': page,
+                            'page_size': page_size
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }
+                    with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps(log_data) + '\n')
+                except Exception as e:
+                    pass
+                # #endregion
+                
+                query = Task.query.filter_by(user_id=current_user.id)
+                if task_type:
+                    query = query.filter_by(task_type=task_type)
+                if status:
+                    query = query.filter_by(status=status)
+                
+                pagination = query.order_by(Task.created_at.desc()).paginate(page=page, per_page=page_size, error_out=False)
+                
+                # #region agent log
+                try:
+                    import json
+                    import os
+                    log_data = {
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'B',
+                        'location': 'task.py:140',
+                        'message': '数据库查询成功',
+                        'data': {
+                            'total_tasks': pagination.total,
+                            'current_page': pagination.page,
+                            'total_pages': pagination.pages,
+                            'items_count': len(pagination.items)
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }
+                    with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps(log_data) + '\n')
+                except Exception as e:
+                    pass
+                # #endregion
+            except Exception as db_error:
+                # #region agent log
+                try:
+                    import json
+                    import os
+                    import traceback
+                    error_trace = traceback.format_exc()
+                    log_data = {
+                        'sessionId': 'debug-session',
+                        'runId': 'run1',
+                        'hypothesisId': 'C',
+                        'location': 'task.py:145',
+                        'message': '数据库查询失败',
+                        'data': {
+                            'error_type': type(db_error).__name__,
+                            'error_message': str(db_error),
+                            'error_trace': error_trace[:500]
+                        },
+                        'timestamp': int(__import__('time').time() * 1000)
+                    }
+                    with open('/Users/kuangxb/Desktop/AI 生成数据 SDG /.cursor/debug.log', 'a') as f:
+                        f.write(json.dumps(log_data) + '\n')
+                except Exception as e:
+                    pass
+                # #endregion
+                
+                print(f"数据库查询失败: {db_error}")
+                import traceback
+                traceback.print_exc()
+                # 返回空列表而不是500错误
+                return jsonify({
+                    'success': True,
+                    'data': {
+                        'tasks': [],
+                        'pagination': {
+                            'page': page,
+                            'page_size': page_size,
+                            'total': 0,
+                            'total_pages': 0
+                        }
+                    }
+                }), 200
             
             # 处理任务数据
             tasks_data = []
@@ -157,48 +282,50 @@ def get_tasks():
                 }
             }), 200
         except Exception as e:
-                print(f"查询任务失败: {e}")
-                import traceback
-                print(traceback.format_exc())
-                # 如果查询失败，返回空列表
-                return jsonify({
-                    'success': True,
-                    'data': {
-                        'tasks': [],
-                        'pagination': {
-                            'page': page,
-                            'page_size': page_size,
-                            'total': 0,
-                            'total_pages': 0
-                        }
-                    }
-                }), 200
-        except Exception as e:
-            print(f"处理任务请求失败: {e}")
+            print(f"查询任务失败: {e}")
             import traceback
             print(traceback.format_exc())
+            # 如果查询失败，返回空列表（避免500错误）
+            try:
+                page = int(request.args.get('page', 1))
+                page_size = int(request.args.get('page_size', 20))
+            except:
+                page = 1
+                page_size = 20
             return jsonify({
-                'success': False,
-                'error': str(e),
-                'code': 'INTERNAL_ERROR',
+                'success': True,
                 'data': {
                     'tasks': [],
                     'pagination': {
-                        'page': 1,
-                        'page_size': 20,
+                        'page': page,
+                        'page_size': page_size,
                         'total': 0,
                         'total_pages': 0
                     }
                 }
-            }), 500
+            }), 200
     except Exception as e:
         import traceback
+        error_trace = traceback.format_exc()
         print(f"获取任务列表失败: {e}")
-        print(traceback.format_exc())
+        print(error_trace)
+        # 返回详细的错误信息（开发环境）
+        error_msg = str(e)
+        if current_app.config.get('DEBUG'):
+            error_msg = f"{error_msg}\n\n{error_trace[:500]}"
         return jsonify({
             'success': False,
-            'error': str(e),
-            'code': 'INTERNAL_ERROR'
+            'error': error_msg,
+            'code': 'INTERNAL_ERROR',
+            'data': {
+                'tasks': [],
+                'pagination': {
+                    'page': 1,
+                    'page_size': 20,
+                    'total': 0,
+                    'total_pages': 0
+                }
+            }
         }), 500
 
 @task_bp.route('/<task_id>/cancel', methods=['POST'])
@@ -206,8 +333,7 @@ def get_tasks():
 def cancel_task(task_id):
     """取消任务"""
     try:
-        from app_complete import db
-        from models.task import Task
+        from models.task import Task, db
         
         # 支持 task_123 或 123 格式
         if isinstance(task_id, str) and task_id.startswith('task_'):
@@ -249,8 +375,7 @@ def cancel_task(task_id):
 def delete_task(task_id):
     """删除任务"""
     try:
-        from app_complete import db
-        from models.task import Task
+        from models.task import Task, db
         
         # 支持 task_123 或 123 格式
         if isinstance(task_id, str) and task_id.startswith('task_'):

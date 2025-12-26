@@ -991,7 +991,7 @@ class SyntheticService:
                 # #region agent log
                 try:
                     import json
-                    import os
+                    # os已在文件顶部导入，不需要再次导入
                     if synthetic_data is not None and hasattr(synthetic_data, 'columns'):
                         duplicate_cols = [col for col in set(synthetic_data.columns) if list(synthetic_data.columns).count(col) > 1]
                         log_data = {
@@ -2556,7 +2556,7 @@ class SyntheticService:
         # #region agent log
         try:
             import json
-            import os
+            # os已在文件顶部导入，不需要再次导入
             if synthetic_df is not None and hasattr(synthetic_df, 'columns'):
                 duplicate_cols = [col for col in set(synthetic_df.columns) if list(synthetic_df.columns).count(col) > 1]
                 log_data = {

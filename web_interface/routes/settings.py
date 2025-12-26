@@ -8,19 +8,8 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 
 # 导入模型
-try:
-    from models.user import User, db
-except ImportError:
-    # 如果导入失败，从app_complete导入
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from app_complete import db, User
-
-try:
-    from models.config import SystemConfig
-except ImportError:
-    from app_complete import SystemConfig
+from models.user import User, db
+from models.config import SystemConfig
 
 try:
     from models.log import OperationLog
